@@ -50,8 +50,8 @@ begin
     -- Check if table exists and if not create one
     table_exists := (select exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = tablename));
     if not table_exists then
-    execute 'create table ' || tablename || '() inherits (telemetry_aggregates_buildid)';
-    execute 'create index on ' || tablename || ' using GIN (dimensions jsonb_path_ops)';
+        execute 'create table ' || tablename || '() inherits (telemetry_aggregates_buildid)';
+        execute 'create index on ' || tablename || ' using GIN (dimensions jsonb_path_ops)';
     end if;
 
     -- Check if the document already exists and update it, if not create one
