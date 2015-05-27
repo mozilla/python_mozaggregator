@@ -19,5 +19,5 @@ setup(name='python_mozaggregator',
       url='https://github.com/vitillo/python_mozaggregator',
       packages=['aggregator'],
       package_dir={'aggregator': 'aggregator'},
-      install_requires=['python_moztelemtry'])
+      install_requires=['python_moztelemtry', 'ujson', 'psycopg2', 'pandas>=0.15.2'])
 

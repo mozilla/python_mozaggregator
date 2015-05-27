@@ -27,7 +27,6 @@ loop
    if acc[i + 1] is NULL then
        acc[i + 1] = 0;
    end if;
-
    tmp := x->i;
    acc[i + 1] := acc[i + 1] + tmp;
 end loop;
@@ -46,14 +45,13 @@ declare
     table_exists bool;
     temporary text;
 begin
-    tablename := channel || version || buildid;
+    tablename := channel || '_' || version || '_' || buildid;
     -- Check if table exists and if not create one
     table_exists := (select exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = tablename));
     if not table_exists then
-        execute 'create table ' || tablename || '() inherits (telemetry_aggregates_buildid)';
+        execute 'create table ' || tablename || '(id serial primary key) inherits (telemetry_aggregates_buildid)';
         execute 'create index on ' || tablename || ' using GIN (dimensions jsonb_path_ops)';
     end if;
-
     -- Check if the document already exists and update it, if not create one
     execute 'with upsert as (update ' || tablename || ' as t
                              set histogram = array_to_json((select aggregate_histograms(v) from (values (1, t.histogram), (2, $1)) as t (k, v)))::jsonb
@@ -66,7 +64,7 @@ begin
 end
 $$ language plpgsql strict;
 
-create table if not exists telemetry_aggregates_buildid (id serial primary key, dimensions jsonb, histogram jsonb);
+create table if not exists telemetry_aggregates_buildid (dimensions jsonb, histogram jsonb);
     """
 
     cursor.execute(query)
@@ -90,8 +88,7 @@ def transform_entry(row):
     return entry
 
 
-def updatedb(frame, max_entries=None):
-    conn = psycopg2.connect("dbname=vitillo user=vitillo")
+def updatedb(conn, frame, max_entries=None):
     cursor = conn.cursor()
     preparedb(conn, cursor)
 
@@ -128,8 +125,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Database updater utitily.",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument("-i", "--input", help="Pandas filename containing the aggregates.")
-
+    parser.add_argument("-i", "--input", help="Pandas filename containing the aggregates", required=True)
+    parser.add_argument("-u", "--user", help="Postgres username", default="root")
+    parser.add_argument("-p", "--password", help="Postgres password", required=True)
+    parser.add_argument("-d", "--database", help="Postgres database", default="telemetry")
+    parser.add_argument("-o", "--host", help="Postgres host", required=True)
+    parser.add_argument("-l", "--limit", help="Updates limit", default=None)
     args = parser.parse_args()
+
+    conn = psycopg2.connect(dbname=args.database, user=args.user, password=args.password, host=args.host)
     frame = pd.read_json(args.input)
-    updatedb(frame)
+    updatedb(conn, frame, int(args.limit) if args.limit else None)
