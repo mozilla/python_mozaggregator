@@ -121,6 +121,36 @@ def updatedb(conn, frame, max_entries=None):
     print "All done in {}, total entries added {}".format((datetime.now() - beginning), processed)
 
 
+def process_build_id(cursor, aggregate):    
+    key, metrics = aggregate
+    channel, version, build_id, application, architecture, revision, os, os_version = key
+    
+    dimensions = {"application": application,
+                  "architecture": architecture,
+                  "revision": revision,
+                  "os": os,
+                  "os_version": os_version}
+    
+    for metric, payload in metrics.iteritems():
+        metric, label, child = metric
+        label = label.replace("'", ""); # Postgres doesn't like quotes
+        
+        dimensions["metric"] = metric
+        dimensions["label"] = label
+        dimensions["child"] = child
+        
+        try:
+            histogram = get_complete_histogram(metric, payload["histogram"]) + [payload["count"]]  # Append count at the end
+        except KeyError as e:  # TODO: use revision service once it's ready 
+            continue
+        
+    
+        cursor.execute("select add_buildid_metric('{}', '{}', '{}', '{}', '{}')".format(channel,
+                                                                                        version,
+                                                                                        build_id,
+                                                                                        json.dumps(dimensions),
+                                                                                        json.dumps(histogram)))
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Database updater utitily.",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)

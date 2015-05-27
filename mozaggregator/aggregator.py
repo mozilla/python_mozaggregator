@@ -132,10 +132,9 @@ def _map_ping_to_dimensions(ping):
     application = ping["application"]["name"]
     architecture = ping["application"]["architecture"]
     revision = ping["payload"]["info"]["revision"].split('/')[-1]
-    child = False
     os = ping["environment"]["system"]["os"]["name"]
     os_version = ping["environment"]["system"]["os"]["version"]
     if os == "Linux":
         os_version = str(os_version)[:3]
     
-    return ((channel, version, build_id, application, architecture, revision, child, os, os_version), ping)
+    return ((channel, version, build_id, application, architecture, revision, os, os_version), ping)
