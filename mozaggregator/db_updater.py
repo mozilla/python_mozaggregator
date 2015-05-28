@@ -13,14 +13,23 @@ import argparse
 
 from datetime import datetime
 from moztelemetry.spark import Histogram
+from boto.s3.connection import S3Connection
 
 
-def preparedb(conn, cursor):
+def submit_aggregates(aggregates):
+    _preparedb()
+    aggregates.map(_update_partial_aggregate).count()
+    _vacuumdb()
+
+
+def _preparedb():
+    conn = _create_connection()
+    cursor = conn.cursor()
     query = """
-create or replace function aggregate_arrays(acc int[], x jsonb) returns int[] as $$
+create or replace function aggregate_arrays(acc bigint[], x jsonb) returns bigint[] as $$
 declare
    i int;
-   tmp int;
+   tmp bigint;
 begin
 for i in 0 .. json_array_length(x::json) - 1
 loop
@@ -36,7 +45,7 @@ $$ language plpgsql strict immutable;
 
 drop aggregate if exists aggregate_histograms(jsonb);
 create aggregate aggregate_histograms ( jsonb ) (
-    sfunc = aggregate_arrays, stype = int[], initcond = '{}'
+    sfunc = aggregate_arrays, stype = bigint[], initcond = '{}'
 );
 
 create or replace function add_buildid_metric(channel text, version text, buildid text, dimensions jsonb, histogram jsonb) returns void as $$
@@ -68,10 +77,21 @@ create table if not exists telemetry_aggregates_buildid (dimensions jsonb, histo
     """
 
     cursor.execute(query)
-    conn.commit()
 
 
-def get_complete_histogram(metric, values):
+def _create_connection(autocommit=True):
+    s3 = S3Connection()
+    config = s3.get_bucket("telemetry-spark-emr").get_key("aggregator_credentials").get_contents_as_string()
+    config = json.loads(config)    
+    conn = psycopg2.connect(dbname=config["dbname"], user=config["user"], password=config["password"], host=config["host"])   
+
+    if autocommit:
+        conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+
+    return conn
+
+
+def _get_complete_histogram(metric, values):
     if metric.startswith("SIMPLE_"):
         histogram = values  # histogram is already complete
     else:
@@ -80,89 +100,53 @@ def get_complete_histogram(metric, values):
     return map(int, list(histogram))
 
 
-def transform_entry(row):
-    entry = row.to_dict()
-    entry["histogram"] = get_complete_histogram(row["metric"], row["histogram"])
-    entry["child"] = bool(row["child"])
-    entry["label"] = row["label"].replace("'", "");  # Postgres doesn't like quotes
-    return entry
-
-
-def updatedb(conn, frame, max_entries=None):
-    cursor = conn.cursor()
-    preparedb(conn, cursor)
-
-    beginning = datetime.now()
-    batch_start = beginning
-    processed = 0
-
-    for i in range(len(frame) if not max_entries else min(max_entries, len(frame))):
-        try:
-            entry = transform_entry(frame.iloc[i])
-        except KeyError as e:
-            continue
-
-        processed += 1
-        channel = entry.pop("channel")
-        version = entry.pop("version")
-        build_id = entry.pop("build_id")
-        histogram = json.dumps(entry.pop("histogram"))
-        dimensions = json.dumps(entry)
-
-        cursor.execute("select add_buildid_metric('{}', '{}', '{}', '{}', '{}')".
-                    format(channel, version, build_id, dimensions, histogram))
-
-        if processed % 10000 == 0 and processed != 0:
-            now = datetime.now()
-            print "10K entries updated in {}s - current total {}".format((now - batch_start).seconds, processed)
-            batch_start = now
-
-    conn.commit()
-    print "All done in {}, total entries added {}".format((datetime.now() - beginning), processed)
-
-
-def process_build_id(cursor, aggregate):    
+def _commit_partial_aggregate(cursor, aggregate):        
     key, metrics = aggregate
     channel, version, build_id, application, architecture, revision, os, os_version = key
-    
+
     dimensions = {"application": application,
                   "architecture": architecture,
                   "revision": revision,
                   "os": os,
                   "os_version": os_version}
-    
+
     for metric, payload in metrics.iteritems():
         metric, label, child = metric
         label = label.replace("'", ""); # Postgres doesn't like quotes
-        
+
         dimensions["metric"] = metric
         dimensions["label"] = label
         dimensions["child"] = child
-        
+
         try:
-            histogram = get_complete_histogram(metric, payload["histogram"]) + [payload["count"]]  # Append count at the end
+            histogram = _get_complete_histogram(metric, payload["histogram"]) + [payload["count"]]  # Append count at the end
         except KeyError as e:  # TODO: use revision service once it's ready 
             continue
-        
-    
+
         cursor.execute("select add_buildid_metric('{}', '{}', '{}', '{}', '{}')".format(channel,
                                                                                         version,
                                                                                         build_id,
                                                                                         json.dumps(dimensions),
                                                                                         json.dumps(histogram)))
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Database updater utitily.",
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+def _update_partial_aggregate(aggregate):
+    conn = _create_connection()
+    cursor = conn.cursor()
 
-    parser.add_argument("-i", "--input", help="Pandas filename containing the aggregates", required=True)
-    parser.add_argument("-u", "--user", help="Postgres username", default="root")
-    parser.add_argument("-p", "--password", help="Postgres password", required=True)
-    parser.add_argument("-d", "--database", help="Postgres database", default="telemetry")
-    parser.add_argument("-o", "--host", help="Postgres host", required=True)
-    parser.add_argument("-l", "--limit", help="Updates limit", default=None)
-    args = parser.parse_args()
+    try:
+        return _commit_partial_aggregate(cursor, aggregate)
+    except psycopg2.IntegrityError as e:
+        #see: http://www.postgresql.org/message-id/CA+TgmoZAdYVtwBfp1FL2sMZbiHCWT4UPrzRLNnX1Nb30Ku3-gg@mail.gmail.com
+        return _commit_partial_aggregate(cursor, aggregate)
 
-    conn = psycopg2.connect(dbname=args.database, user=args.user, password=args.password, host=args.host)
-    frame = pd.read_json(args.input)
-    updatedb(conn, frame, int(args.limit) if args.limit else None)
+    conn.close()
+
+
+def _vacuumdb():
+    conn = _create_connection()
+    old_isolation_level = conn.isolation_level
+    conn.set_isolation_level(0)
+    cursor = conn.cursor()
+    cursor.execute("vacuum")
+    conn.set_isolation_level(old_isolation_level)
+    conn.close()

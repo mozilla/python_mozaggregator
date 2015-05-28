@@ -68,7 +68,7 @@ def _extract_simple_measures(state, simple):
                     _extract_simple_measure(state, u"SIMPLE_MEASURES_{}_{}".format(name.upper(), sub_name.upper()), sub_value)
         elif type(value) in (int, float, long):
             _extract_simple_measure(state, u"SIMPLE_MEASURES_{}".format(name.upper()), value)
-            
+
 
 def _extract_simple_measure(state, name, value):    
     accessor = (name, u"", False)
@@ -89,7 +89,7 @@ def _extract_children_histograms(state, payload):
     child_payloads = payload.get("childPayloads", {})
     for child in child_payloads:
         _extract_histograms(state, child, True)
-    
+
 def _aggregate_ping(state, ping):
     _extract_histograms(state, ping["payload"])
     _extract_simple_measures(state, ping["payload"].get("simpleMeasurements", {}))
@@ -103,8 +103,8 @@ def _trim_ping(ping):
             "environment": ping["environment"],
             "application": ping["application"],
             "payload": payload}
-    
-    
+
+
 def _aggregate_pings(state, ping):
     return _aggregate_ping(state, ping)
 
@@ -113,17 +113,17 @@ def _aggregate_aggregates(agg1, agg2):
     for metric, payload in agg2.iteritems():
         if metric == "count":
             continue
-        
+
         if metric not in agg1:
             agg1[metric] = payload
-        
+
         agg1[metric]["count"] += payload["count"]
-        
+
         for k, v in payload["histogram"].iteritems():
             agg1[metric]["histogram"][k] = agg1[metric]["histogram"].get(k, 0) + v
-        
+
     return agg1
-    
+
 
 def _map_ping_to_dimensions(ping):
     channel = ping["application"]["channel"]
@@ -136,5 +136,5 @@ def _map_ping_to_dimensions(ping):
     os_version = ping["environment"]["system"]["os"]["version"]
     if os == "Linux":
         os_version = str(os_version)[:3]
-    
+
     return ((channel, version, build_id, application, architecture, revision, os, os_version), ping)
