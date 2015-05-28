@@ -39,27 +39,27 @@ def _extract_histograms(state, payload, is_child=False):
     for name, histograms in keyed_histograms.iteritems():
         _extract_keyed_histograms(state, name, histograms, is_child)
 
-        
+
 def _extract_main_histograms(state, histograms, is_child):
     for histogram_name, histogram in histograms.iteritems():
         accessor = (histogram_name, u"", is_child)
         aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
         state[accessor]["count"] = state[accessor].get("count", 0) + 1
-        
+
         for k, v in histogram["values"].iteritems():
             aggregated_histogram[k] = aggregated_histogram.get(k, 0) + int(v)
-        
-        
+
+
 def _extract_keyed_histograms(state, histogram_name, histograms, is_child):
     for key, histogram in histograms.iteritems():
         accessor = (histogram_name, key, is_child)
         aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
         state[accessor]["count"] = state[accessor].get("count", 0) + 1
-        
+
         for k, v in histogram["values"].iteritems():
             aggregated_histogram[k] = aggregated_histogram.get(k, 0) + int(v)
-        
-        
+
+
 def _extract_simple_measures(state, simple):
     for name, value in simple.iteritems():
         if type(value) == dict:
