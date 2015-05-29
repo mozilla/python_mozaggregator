@@ -36,8 +36,8 @@ begin
     end loop;
     return acc;
 end
-$$ language plpgsql strict immutable;
 
+$$ language plpgsql strict immutable;
 drop aggregate if exists aggregate_histograms(bigint[]);
 create aggregate aggregate_histograms (bigint[]) (
     sfunc = aggregate_arrays, stype = bigint[], initcond = '{}'
@@ -56,7 +56,6 @@ begin
         execute 'create table ' || tablename || '(id serial primary key) inherits (telemetry_aggregates_buildid)';
         execute 'create index on ' || tablename || ' using GIN (dimensions jsonb_path_ops)';
     end if;
-
     -- Check if the document already exists and update it, if not create one
     execute 'with upsert as (update ' || tablename || ' as t
                              set histogram = (select aggregate_histograms(v) from (values (1, t.histogram), (2, $1)) as t (k, v))
@@ -69,7 +68,28 @@ begin
 end
 $$ language plpgsql strict;
 
+create or replace function get_buildid_metric(channel text, version text, buildid text, dimensions jsonb) returns table(label text, histogram bigint[]) as $$
+declare
+    tablename text;
+begin
+    if not dimensions ? 'metric' then
+        raise exception 'Missing metric field!';
+    end if;
+
+    tablename := channel || '_' || version || '_' || buildid;
+
+    return query execute E'select dimensions->>\'label\', aggregate_histograms(histogram) 
+            from ' || tablename || E'
+            where dimensions @> $1
+            group by dimensions->>\'label\''
+            using dimensions;
+end
+$$ language plpgsql strict immutable;
+
 create table if not exists telemetry_aggregates_buildid (dimensions jsonb, histogram bigint[]);
+
+-- Example usage:
+--select get_buildid_metric('nightly', '41', '20150527', '{"metric": "JS_TELEMETRY_ADDON_EXCEPTIONS"}'::jsonb);
     """
 
     cursor.execute(query)
@@ -119,7 +139,7 @@ def _commit_partial_aggregate_query(cursor, aggregate):
         except KeyError as e:  # TODO: use revision service once it's ready 
             continue
 
-        cursor.execute("select add_buildid_metric('{}', '{}', '{}', '{}', array[{}])".format(channel,
+        cursor.execute("select add_buildid_metric('{}', '{}', '{}', '{}', array{})".format(channel,
             version, build_id, json.dumps(dimensions),histogram))
 
 
