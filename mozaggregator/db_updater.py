@@ -90,11 +90,22 @@ $$ language plpgsql strict immutable;
 create or replace function list_buildids(channel text) returns table(version text, buildid text) as $$
 begin
     return query execute
-    E'select t.matches[2], t.matches[3] from 
+    E'select t.matches[2], t.matches[3] from
         (select regexp_matches(table_name::text, \'([^_]*)_([0-9]*)_([0-9]*)\')
          from information_schema.tables
          where table_schema=\'public\' and table_type=\'BASE TABLE\' and table_name like \'' || channel || E'%\'
          order by table_name desc) as t (matches)';
+end
+$$ language plpgsql strict;
+
+create or replace function list_channels() returns table(channel text) as $$
+begin
+    return query execute
+    E'select distinct t.matches[1] from
+      (select regexp_matches(table_name::text, \'([^_]*)_([0-9]*)_([0-9]*)\')
+       from information_schema.tables
+       where table_schema=\'public\' and table_type=\'BASE TABLE\'
+       order by table_name desc) as t (matches)';
 end
 $$ language plpgsql strict;
 
