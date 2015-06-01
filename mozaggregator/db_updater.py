@@ -10,6 +10,7 @@ import psycopg2
 import pandas as pd
 import ujson as json
 import argparse
+import boto.rds2
 
 from datetime import datetime
 from moztelemetry.spark import Histogram
@@ -98,8 +99,15 @@ create table if not exists telemetry_aggregates_buildid (dimensions jsonb, histo
 def _create_connection(autocommit=True):
     s3 = S3Connection()
     config = s3.get_bucket("telemetry-spark-emr").get_key("aggregator_credentials").get_contents_as_string()
-    config = json.loads(config)    
-    conn = psycopg2.connect(dbname=config["dbname"], user=config["user"], password=config["password"], host=config["host"])   
+    config = json.loads(config)
+
+    rds = boto.rds2.connect_to_region("us-west-2")
+    db = rds.describe_db_instances("telemetry-aggregates")["DescribeDBInstancesResponse"]["DescribeDBInstancesResult"]["DBInstances"][0]
+    host = db["Endpoint"]["Address"]
+    dbname = db["DBName"]
+    user = db["MasterUsername"]
+
+    conn = psycopg2.connect(dbname=dbname, user=user, password=config["password"], host=host)
 
     if autocommit:
         conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
