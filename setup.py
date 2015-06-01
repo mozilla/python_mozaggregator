@@ -19,5 +19,5 @@ setup(name='python_mozaggregator',
       url='https://github.com/vitillo/python_mozaggregator',
       packages=['mozaggregator'],
       package_dir={'mozaggregator': 'mozaggregator'},
-      install_requires=['python_moztelemetry', 'boto', 'ujson', 'psycopg2', 'pandas>=0.15.2'])
+      install_requires=['python_moztelemetry', 'Flask', 'boto', 'ujson', 'psycopg2', 'pandas>=0.15.2'])
 

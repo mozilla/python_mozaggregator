@@ -17,6 +17,25 @@ from moztelemetry.spark import Histogram
 from boto.s3.connection import S3Connection
 
 
+def create_connection(autocommit=True, host=None):
+    s3 = S3Connection()
+    config = s3.get_bucket("telemetry-spark-emr").get_key("aggregator_credentials").get_contents_as_string()
+    config = json.loads(config)
+
+    rds = boto.rds2.connect_to_region("us-west-2")
+    db = rds.describe_db_instances("telemetry-aggregates")["DescribeDBInstancesResponse"]["DescribeDBInstancesResult"]["DBInstances"][0]
+    host = host or db["Endpoint"]["Address"]
+    dbname = db["DBName"]
+    user = db["MasterUsername"]
+
+    conn = psycopg2.connect(dbname=dbname, user=user, password=config["password"], host=host)
+
+    if autocommit:
+        conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+
+    return conn
+
+
 def submit_aggregates(aggregates):
     _preparedb()
     aggregates.map(_update_partial_aggregate).count()
@@ -24,7 +43,7 @@ def submit_aggregates(aggregates):
 
 
 def _preparedb():
-    conn = _create_connection()
+    conn = create_connection()
     cursor = conn.cursor()
     query = """
 create or replace function aggregate_arrays(acc bigint[], x bigint[]) returns bigint[] as $$
@@ -118,25 +137,6 @@ create table if not exists telemetry_aggregates_buildid (dimensions jsonb, histo
     cursor.execute(query)
 
 
-def _create_connection(autocommit=True):
-    s3 = S3Connection()
-    config = s3.get_bucket("telemetry-spark-emr").get_key("aggregator_credentials").get_contents_as_string()
-    config = json.loads(config)
-
-    rds = boto.rds2.connect_to_region("us-west-2")
-    db = rds.describe_db_instances("telemetry-aggregates")["DescribeDBInstancesResponse"]["DescribeDBInstancesResult"]["DBInstances"][0]
-    host = db["Endpoint"]["Address"]
-    dbname = db["DBName"]
-    user = db["MasterUsername"]
-
-    conn = psycopg2.connect(dbname=dbname, user=user, password=config["password"], host=host)
-
-    if autocommit:
-        conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
-
-    return conn
-
-
 def _get_complete_histogram(metric, values):
     if metric.startswith("SIMPLE_"):
         histogram = values  # histogram is already complete
@@ -174,7 +174,7 @@ def _commit_partial_aggregate_query(cursor, aggregate):
 
 
 def _update_partial_aggregate(aggregate):
-    conn = _create_connection()
+    conn = create_connection()
     cursor = conn.cursor()
 
     try:
@@ -187,7 +187,7 @@ def _update_partial_aggregate(aggregate):
 
 
 def _vacuumdb():
-    conn = _create_connection()
+    conn = create_connection()
     old_isolation_level = conn.isolation_level
     conn.set_isolation_level(0)
     cursor = conn.cursor()
