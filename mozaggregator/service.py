@@ -1,10 +1,10 @@
 import ujson as json
+import argparse
 
 from flask import Flask, request, abort
 from db import create_connection
 
 app = Flask(__name__)
-db = create_connection(host="localhost")
 
 @app.route('/channel/')
 def get_channels():
@@ -40,4 +40,15 @@ def get_buildid(channel, version, buildid):
         abort(404)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    global db
+
+    parser = argparse.ArgumentParser(description="Aggregation REST service", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument("-d", "--debug", help="Debug mode", dest="debug", action="store_true")
+    parser.add_argument("-o", "--host", help="DB hostname", default=None)
+
+    parser.set_defaults(debug=False)
+    args = parser.parse_args()
+
+    db = create_connection(host=args.host)
+    app.run(debug=args.debug)
