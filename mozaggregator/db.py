@@ -38,7 +38,7 @@ def create_connection(autocommit=True, host=None):
 
 def submit_aggregates(aggregates):
     _preparedb()
-    aggregates.map(_update_partial_aggregate).count()
+    aggregates.groupBy(lambda x: x[0][:4]).map(_upsert_aggregates).count()
     _vacuumdb()
 
 
@@ -57,6 +57,8 @@ begin
     return acc;
 end
 $$ language plpgsql strict immutable;
+
+
 drop aggregate if exists aggregate_histograms(bigint[]);
 create aggregate aggregate_histograms (bigint[]) (
     sfunc = aggregate_arrays, stype = bigint[], initcond = '{}'
@@ -72,19 +74,48 @@ begin
     tablename := channel || '_' || version || '_' || buildid;
     -- Check if table exists and if not create one
     table_exists := (select exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = tablename));
+
     if not table_exists then
-        execute 'create table ' || tablename || '(id serial primary key) inherits (telemetry_aggregates_buildid)';
+        execute 'create table ' || tablename || '(id serial primary key, dimensions jsonb, histogram bigint[])';
         execute 'create index on ' || tablename || ' using GIN (dimensions jsonb_path_ops)';
     end if;
+
     -- Check if the document already exists and update it, if not create one
     execute 'with upsert as (update ' || tablename || ' as t
                              set histogram = (select aggregate_histograms(v) from (values (1, t.histogram), (2, $1)) as t (k, v))
                              where t.dimensions @> $2
                              returning t.*)
              insert into ' || tablename || ' (dimensions, histogram)
-                    select * from (values ($2, $1)) as t
-                    where not exists (select 1 from upsert)'
+             select * from (values ($2, $1)) as t
+             where not exists (select 1 from upsert)'
              using histogram, dimensions;
+end
+$$ language plpgsql strict;
+
+create or replace function was_buildid_processed(channel text, version text, buildid text, submission_date text) returns boolean as $$
+declare
+    table_name text;
+    was_processed boolean;
+begin
+    table_name := channel || '_' || version || '_' || buildid;
+    select exists(select 1
+                  from buildid_update_dates as t
+                  where t.tablename = table_name and submission_date = any(t.submission_dates))
+                  into was_processed;
+
+    if (was_processed) then
+        return was_processed;
+    end if;
+
+    with upsert as (update buildid_update_dates
+                    set submission_dates = submission_dates || submission_date
+                    where tablename = table_name
+                    returning *)
+         insert into buildid_update_dates
+         select * from (values (table_name, array[submission_date])) as t
+         where not exists(select 1 from upsert);
+
+    return was_processed;
 end
 $$ language plpgsql strict;
 
@@ -96,12 +127,15 @@ begin
     if not dimensions ? 'metric' then
         raise exception 'Missing metric field!';
     end if;
+
     tablename := channel || '_' || version || '_' || buildid;
-    return query execute E'select dimensions->>\\'label\\', aggregate_histograms(histogram) 
-            from ' || tablename || E'
-            where dimensions @> $1
-            group by dimensions->>\\'label\\''
-            using dimensions;
+
+    return query execute
+    E'select dimensions->>\\'label\\', aggregate_histograms(histogram)
+        from ' || tablename || E'
+        where dimensions @> $1
+        group by dimensions->>\\'label\\''
+        using dimensions;
 end
 $$ language plpgsql strict immutable;
 
@@ -121,15 +155,28 @@ create or replace function list_channels() returns table(channel text) as $$
 begin
     return query execute
     E'select distinct t.matches[1] from
-      (select regexp_matches(table_name::text, \\'([^_]*)_([0-9]*)_([0-9]*)\\')
-       from information_schema.tables
-       where table_schema=\\'public\\' and table_type=\\'BASE TABLE\\'
-       order by table_name desc) as t (matches)';
+        (select regexp_matches(table_name::text, \\'([^_]*)_([0-9]*)_([0-9]*)\\')
+         from information_schema.tables
+         where table_schema=\\'public\\' and table_type=\\'BASE TABLE\\'
+         order by table_name desc) as t (matches)';
 end
 $$ language plpgsql strict;
 
 
-create table if not exists telemetry_aggregates_buildid (dimensions jsonb, histogram bigint[]);
+create or replace function create_tables() returns void as $$
+declare
+    table_exists boolean;
+begin
+   table_exists := (select exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'buildid_update_dates'));
+   if (not table_exists) then
+       create table buildid_update_dates (tablename text primary key, submission_dates text[]);
+       create index on buildid_update_dates (tablename);
+   end if;
+end
+$$ language plpgsql strict;
+
+select create_tables();
+
 -- Example usage:
 -- select get_buildid_metric('nightly', '41', '20150527', '{"metric": "JS_TELEMETRY_ADDON_EXCEPTIONS"}'::jsonb);
     """
@@ -146,9 +193,9 @@ def _get_complete_histogram(metric, values):
     return map(int, list(histogram))
 
 
-def _commit_partial_aggregate_query(cursor, aggregate):
+def _upsert_aggregate(cursor, aggregate):
     key, metrics = aggregate
-    channel, version, build_id, application, architecture, revision, os, os_version = key
+    submission_date, channel, version, build_id, application, architecture, revision, os, os_version = key
 
     dimensions = {"application": application,
                   "architecture": architecture,
@@ -169,28 +216,28 @@ def _commit_partial_aggregate_query(cursor, aggregate):
         except KeyError as e:  # TODO: use revision service once it's ready
             continue
 
-        cursor.execute("select add_buildid_metric('{}', '{}', '{}', '{}', array{})".format(channel,
-            version, build_id, json.dumps(dimensions),histogram))
+        cursor.execute("select add_buildid_metric(%s, %s, %s, %s, %s)", (channel, version, build_id, json.dumps(dimensions), histogram))
 
 
-def _update_partial_aggregate(aggregate):
-    conn = create_connection()
+def _upsert_aggregates(aggregates):
+    conn = create_connection(autocommit=False)
     cursor = conn.cursor()
+    submission_date, channel, version, build_id = aggregates[0]
 
-    try:
-        _commit_partial_aggregate_query(cursor, aggregate)
-    except psycopg2.IntegrityError as e:
-        #see: http://www.postgresql.org/message-id/CA+TgmoZAdYVtwBfp1FL2sMZbiHCWT4UPrzRLNnX1Nb30Ku3-gg@mail.gmail.com
-        _commit_partial_aggregate_query(cursor, aggregate)
+    cursor.execute(u"select was_buildid_processed(%s, %s, %s, %s)", (channel, version, build_id, submission_date))
+    if cursor.fetchone()[0]:
+        # This aggregate has already been processed
+        return
 
-    conn.close()
+    for aggregate in aggregates[1]:
+        _upsert_aggregate(cursor, aggregate)
+
+    conn.commit()
 
 
 def _vacuumdb():
     conn = create_connection()
-    old_isolation_level = conn.isolation_level
     conn.set_isolation_level(0)
     cursor = conn.cursor()
     cursor.execute("vacuum")
-    conn.set_isolation_level(old_isolation_level)
     conn.close()
