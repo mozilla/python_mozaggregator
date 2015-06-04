@@ -57,11 +57,11 @@ begin
     return acc;
 end
 $$ language plpgsql strict immutable;
-
 drop aggregate if exists aggregate_histograms(bigint[]);
 create aggregate aggregate_histograms (bigint[]) (
     sfunc = aggregate_arrays, stype = bigint[], initcond = '{}'
 );
+
 
 create or replace function add_buildid_metric(channel text, version text, buildid text, dimensions jsonb, histogram bigint[]) returns void as $$
 declare
@@ -88,6 +88,7 @@ begin
 end
 $$ language plpgsql strict;
 
+
 create or replace function get_buildid_metric(channel text, version text, buildid text, dimensions jsonb) returns table(label text, histogram bigint[]) as $$
 declare
     tablename text;
@@ -95,43 +96,42 @@ begin
     if not dimensions ? 'metric' then
         raise exception 'Missing metric field!';
     end if;
-
     tablename := channel || '_' || version || '_' || buildid;
-
-    return query execute E'select dimensions->>\'label\', aggregate_histograms(histogram) 
+    return query execute E'select dimensions->>\\'label\\', aggregate_histograms(histogram) 
             from ' || tablename || E'
             where dimensions @> $1
-            group by dimensions->>\'label\''
+            group by dimensions->>\\'label\\''
             using dimensions;
 end
 $$ language plpgsql strict immutable;
+
 
 create or replace function list_buildids(channel text) returns table(version text, buildid text) as $$
 begin
     return query execute
     E'select t.matches[2], t.matches[3] from
-        (select regexp_matches(table_name::text, \'([^_]*)_([0-9]*)_([0-9]*)\')
+        (select regexp_matches(table_name::text, \\'([^_]*)_([0-9]*)_([0-9]*)\\')
          from information_schema.tables
-         where table_schema=\'public\' and table_type=\'BASE TABLE\' and table_name like \'' || channel || E'%\'
+         where table_schema=\\'public\\' and table_type=\\'BASE TABLE\\' and table_name like \'' || channel || E'%\'
          order by table_name desc) as t (matches)';
 end
-$$ language plpgsql strict;
 
+$$ language plpgsql strict;
 create or replace function list_channels() returns table(channel text) as $$
 begin
     return query execute
     E'select distinct t.matches[1] from
-      (select regexp_matches(table_name::text, \'([^_]*)_([0-9]*)_([0-9]*)\')
+      (select regexp_matches(table_name::text, \\'([^_]*)_([0-9]*)_([0-9]*)\\')
        from information_schema.tables
-       where table_schema=\'public\' and table_type=\'BASE TABLE\'
+       where table_schema=\\'public\\' and table_type=\\'BASE TABLE\\'
        order by table_name desc) as t (matches)';
 end
 $$ language plpgsql strict;
 
-create table if not exists telemetry_aggregates_buildid (dimensions jsonb, histogram bigint[]);
 
+create table if not exists telemetry_aggregates_buildid (dimensions jsonb, histogram bigint[]);
 -- Example usage:
---select get_buildid_metric('nightly', '41', '20150527', '{"metric": "JS_TELEMETRY_ADDON_EXCEPTIONS"}'::jsonb);
+-- select get_buildid_metric('nightly', '41', '20150527', '{"metric": "JS_TELEMETRY_ADDON_EXCEPTIONS"}'::jsonb);
     """
 
     cursor.execute(query)
