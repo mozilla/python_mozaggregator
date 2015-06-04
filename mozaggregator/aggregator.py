@@ -100,6 +100,7 @@ def _aggregate_ping(state, ping):
 def _trim_ping(ping):
     payload = {k: v for k, v in ping["payload"].iteritems() if k in ["histograms", "keyedHistograms", "info", "simpleMeasurements"]}
     return {"clientId": ping["clientId"],
+            "meta": ping["meta"],
             "environment": ping["environment"],
             "application": ping["application"],
             "payload": payload}
@@ -126,6 +127,7 @@ def _aggregate_aggregates(agg1, agg2):
 
 
 def _map_ping_to_dimensions(ping):
+    submission_date = ping["meta"]["submissionDate"]
     channel = ping["application"]["channel"]
     version = ping["application"]["version"].split('.')[0]
     build_id = ping["application"]["buildId"][:8]
@@ -137,4 +139,4 @@ def _map_ping_to_dimensions(ping):
     if os == "Linux":
         os_version = str(os_version)[:3]
 
-    return ((channel, version, build_id, application, architecture, revision, os, os_version), ping)
+    return ((submission_date, channel, version, build_id, application, architecture, revision, os, os_version), ping)

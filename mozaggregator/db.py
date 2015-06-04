@@ -166,7 +166,7 @@ def _commit_partial_aggregate_query(cursor, aggregate):
 
         try:
             histogram = _get_complete_histogram(metric, payload["histogram"]) + [payload["count"]]  # Append count at the end
-        except KeyError as e:  # TODO: use revision service once it's ready 
+        except KeyError as e:  # TODO: use revision service once it's ready
             continue
 
         cursor.execute("select add_buildid_metric('{}', '{}', '{}', '{}', array{})".format(channel,
