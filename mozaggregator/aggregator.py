@@ -20,7 +20,7 @@ def aggregate_metrics(sc, channel, submission_date, fraction=1):
     pings = get_pings(sc, channel=channel, submission_date=submission_date, doc_type="saved_session", schema="v4", fraction=fraction)
 
     trimmed = pings.filter(_sample_clients).map(_map_ping_to_dimensions)
-    return trimmed.aggregateByKey(defaultdict(dict), _aggregate_pings, _aggregate_aggregates)
+    return trimmed.aggregateByKey(defaultdict(dict), _aggregate_ping, _aggregate_aggregates)
 
 
 def _sample_clients(ping):
@@ -70,19 +70,21 @@ def _extract_simple_measures(state, simple):
             _extract_simple_measure(state, u"SIMPLE_MEASURES_{}".format(name.upper()), value)
 
 
-def _extract_simple_measure(state, name, value):    
+def _extract_simple_measure(state, name, value):
     accessor = (name, u"", False)
-    aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
-    state[accessor]["count"] = state[accessor].get("count", 0) + 1
+    aggregated_histogram = state[accessor]["histogram"] = {}
+    state[accessor]["count"] = 1
+    bucket_found = False
+    insert_bucket = _exponential_index[0]  # Initialized to underflow bucket
 
     for bucket in reversed(_exponential_index):
-        if value >= bucket:
-            aggregated_histogram[bucket] = aggregated_histogram.get(bucket, 0) + 1
-            return
+        if not bucket_found and value >= bucket:
+            insert_bucket = bucket
+            bucket_found = True
+        else:
+            aggregated_histogram[bucket] = 0
 
-    # Underflow
-    first_index = _exponential_index[0]
-    aggregated_histogram[first_index] = aggregated_histogram.get(first_index, 0) + 1
+    aggregated_histogram[insert_bucket] = 1
 
 
 def _extract_children_histograms(state, payload):
@@ -104,10 +106,6 @@ def _trim_ping(ping):
             "environment": ping["environment"],
             "application": ping["application"],
             "payload": payload}
-
-
-def _aggregate_pings(state, ping):
-    return _aggregate_ping(state, ping)
 
 
 def _aggregate_aggregates(agg1, agg2):
