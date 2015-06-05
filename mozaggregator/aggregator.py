@@ -42,6 +42,9 @@ def _extract_histograms(state, payload, is_child=False):
 
 def _extract_main_histograms(state, histograms, is_child):
     for histogram_name, histogram in histograms.iteritems():
+        if "values" not in histogram:  # Invalid histogram?
+            continue
+
         accessor = (histogram_name, u"", is_child)
         aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
         state[accessor]["count"] = state[accessor].get("count", 0) + 1
@@ -52,6 +55,9 @@ def _extract_main_histograms(state, histograms, is_child):
 
 def _extract_keyed_histograms(state, histogram_name, histograms, is_child):
     for key, histogram in histograms.iteritems():
+        if "values" not in histogram:  # Invalid histogram?
+            continue
+
         accessor = (histogram_name, key, is_child)
         aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
         state[accessor]["count"] = state[accessor].get("count", 0) + 1
