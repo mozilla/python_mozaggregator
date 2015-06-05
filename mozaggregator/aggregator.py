@@ -27,7 +27,8 @@ def _sample_clients(ping):
     client_id = ping.get("clientId", None)
     channel = ping["application"]["channel"]
     percentage = {"nightly": 100,
-                  "aurora": 100}
+                  "aurora": 100,
+                  "beta": 100}
     return client_id and ((binascii.crc32(client_id) % 100) < percentage[channel])
 
 
