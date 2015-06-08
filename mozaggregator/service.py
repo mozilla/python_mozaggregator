@@ -36,7 +36,7 @@ def get_buildids(channel):
 @app.route('/channel/<channel>/buildid/<version>_<buildid>', methods=["GET"])
 def get_buildid(channel, version, buildid):
     try:
-        dimensions = request.args.get("dimensions", "{}")
+        dimensions = json.dumps({k: v for k, v in request.args.iteritems()})
         result = execute_query("select * from get_buildid_metric(%s, %s, %s, %s)", (channel, version, buildid, dimensions))
         pretty_result = map(lambda r: {"label": r[0], "histogram": r[1]}, result)
         return json.dumps(pretty_result)
