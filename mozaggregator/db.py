@@ -157,7 +157,7 @@ begin
     E'select t.matches[2], t.matches[3] from
         (select regexp_matches(table_name::text, \\'([^_]*)_([0-9]*)_([0-9]*)\\')
          from information_schema.tables
-         where table_schema=\\'public\\' and table_type=\\'BASE TABLE\\' and table_name like \'' || channel || E'%\'
+         where table_schema=\\'public\\' and table_type=\\'BASE TABLE\\' and table_name like \'' || channel || E'%\\'
          order by table_name desc) as t (matches)';
 end
 
