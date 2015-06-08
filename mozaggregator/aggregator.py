@@ -16,8 +16,13 @@ from collections import defaultdict
 _exponential_index = cached_exponential_buckets(1, 30000, 50)
 
 
-def aggregate_metrics(sc, channel, submission_date, fraction=1):
-    pings = get_pings(sc, channel=channel, submission_date=submission_date, doc_type="saved_session", schema="v4", fraction=fraction)
+def aggregate_metrics(sc, channels, submission_date, fraction=1):
+    if not isinstance(channels, (tuple, list)):
+        channels = [channels]
+
+    channels = set(channels)
+    rdds = [get_pings(sc, channel=ch, submission_date=submission_date, doc_type="saved_session", schema="v4", fraction=fraction) for ch in channels]
+    pings = reduce(lambda x, y: x.union(y), rdds)
 
     trimmed = pings.filter(_sample_clients).map(_map_ping_to_dimensions)
     return trimmed.aggregateByKey(defaultdict(dict), _aggregate_ping, _aggregate_aggregates)
