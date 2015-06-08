@@ -5,7 +5,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import itertools
 import binascii
 
 from moztelemetry.spark import get_pings
@@ -17,6 +16,13 @@ _exponential_index = cached_exponential_buckets(1, 30000, 50)
 
 
 def aggregate_metrics(sc, channels, submission_date, fraction=1):
+    """ Aggregates metrics over build-ids for a given submission date.
+
+    :param sc: A SparkContext instance
+    :param channel: Either the name of a channel or a list/tuple of names
+    :param submission-date: The submission date for which the data will be aggregated
+    :param fraction: An approximative fraction of submissions to consider for aggregation
+    """
     if not isinstance(channels, (tuple, list)):
         channels = [channels]
 
@@ -51,6 +57,9 @@ def _extract_main_histograms(state, histograms, is_child):
         if "values" not in histogram:  # Invalid histogram?
             continue
 
+        # Note that some dimensions don't vary within a single submissions
+        # (e.g. channel) while some do (e.g. process type).
+        # The latter should appear within the key of a single metric.
         accessor = (histogram_name, u"", is_child)
         aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
         state[accessor]["count"] = state[accessor].get("count", 0) + 1
@@ -104,6 +113,7 @@ def _extract_children_histograms(state, payload):
     for child in child_payloads:
         _extract_histograms(state, child, True)
 
+
 def _aggregate_ping(state, ping):
     _extract_histograms(state, ping["payload"])
     _extract_simple_measures(state, ping["payload"].get("simpleMeasurements", {}))
@@ -149,4 +159,8 @@ def _map_ping_to_dimensions(ping):
     if os == "Linux":
         os_version = str(os_version)[:3]
 
+    # Note that some dimensions don't vary within a single submissions
+    # (e.g. channel) while some do (e.g. process type).
+    # Dimensions that don't vary should appear in the submission key, while
+    # the ones that do vary should appear within the key of a single metric.
     return ((submission_date, channel, version, build_id, application, architecture, revision, os, os_version), ping)
