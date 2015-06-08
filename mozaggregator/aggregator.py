@@ -65,7 +65,7 @@ def _extract_main_histograms(state, histograms, is_child):
         state[accessor]["count"] = state[accessor].get("count", 0) + 1
 
         for k, v in histogram["values"].iteritems():
-            aggregated_histogram[k] = aggregated_histogram.get(k, 0) + int(v)
+            aggregated_histogram[k] = aggregated_histogram.get(k, 0) + (int(v) if v else 0)  # Some submissions have a None value...
 
 
 def _extract_keyed_histograms(state, histogram_name, histograms, is_child):
