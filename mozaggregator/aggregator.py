@@ -169,6 +169,7 @@ def _map_ping_to_dimensions(ping):
     revision = ping["payload"]["info"]["revision"].split('/')[-1]
     os = ping["environment"]["system"]["os"]["name"]
     os_version = ping["environment"]["system"]["os"]["version"]
+    e10s = ping["environment"]["settings"]["e10sEnabled"]
     if os == "Linux":
         os_version = str(os_version)[:3]
 
@@ -176,4 +177,4 @@ def _map_ping_to_dimensions(ping):
     # (e.g. channel) while some do (e.g. process type).
     # Dimensions that don't vary should appear in the submission key, while
     # the ones that do vary should appear within the key of a single metric.
-    return ((submission_date, channel, version, build_id, application, architecture, revision, os, os_version), ping)
+    return ((submission_date, channel, version, build_id, application, architecture, revision, os, os_version, e10s), ping)

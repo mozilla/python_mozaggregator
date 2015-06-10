@@ -9,10 +9,8 @@
 import psycopg2
 import pandas as pd
 import ujson as json
-import argparse
 import boto.rds2
 
-from datetime import datetime
 from moztelemetry.spark import Histogram
 from boto.s3.connection import S3Connection
 
@@ -208,17 +206,18 @@ def _get_complete_histogram(channel, metric, values):
 
 def _upsert_aggregate(cursor, aggregate):
     key, metrics = aggregate
-    submission_date, channel, version, build_id, application, architecture, revision, os, os_version = key
+    submission_date, channel, version, build_id, application, architecture, revision, os, os_version, e10s = key
 
     dimensions = {"application": application,
                   "architecture": architecture,
                   "revision": revision,
                   "os": os,
-                  "os_version": os_version}
+                  "os_version": os_version,
+                  "e10sEnabled": e10s}
 
     for metric, payload in metrics.iteritems():
         metric, label, child = metric
-        label = label.replace("'", ""); # Postgres doesn't like quotes
+        label = label.replace("'", "")  # Postgres doesn't like quotes
 
         dimensions["metric"] = metric
         dimensions["label"] = label
@@ -226,7 +225,7 @@ def _upsert_aggregate(cursor, aggregate):
 
         try:
             histogram = _get_complete_histogram(channel, metric, payload["histogram"]) + [payload["count"]]  # Append count at the end
-        except KeyError as e:  # TODO: use revision service once it's ready
+        except KeyError:  # TODO: ignore expired histograms
             continue
 
         cursor.execute("select add_buildid_metric(%s, %s, %s, %s, %s)", (channel, version, build_id, json.dumps(dimensions), histogram))

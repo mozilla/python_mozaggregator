@@ -19,7 +19,8 @@ ping_dimensions = {"submission_date": [u"20150601", u"20150602"],
                    "revision": [u"https://hg.mozilla.org/mozilla-central/rev/ac277e615f8f",
                                 u"https://hg.mozilla.org/mozilla-central/rev/bc277e615f9f"],
                    "os": [u"Linux", u"Windows_NT"],
-                   "os_version": [u"6.1", u"3.1.12"]}
+                   "os_version": [u"6.1", u"3.1.12"],
+                   "e10s": [True, False]}
 
 histograms_template = {u"EVENTLOOP_UI_LAG_EXP_MS": {u'bucket_count': 20,
                                                     u'histogram_type': 0,
@@ -72,17 +73,19 @@ def generate_pings():
                             for revision in ping_dimensions["revision"]:
                                 for os in ping_dimensions["os"]:
                                     for os_version in ping_dimensions["os_version"]:
-                                        for i in range(NUM_PINGS_PER_DIMENSIONS):
-                                            dimensions = {u"submission_date": submission_date,
-                                                          u"channel": channel,
-                                                          u"version": version,
-                                                          u"build_id": build_id,
-                                                          u"application": application,
-                                                          u"arch": arch,
-                                                          u"revision": revision,
-                                                          u"os": os,
-                                                          u"os_version": os_version}
-                                            yield generate_payload(dimensions)
+                                        for e10s in ping_dimensions["e10s"]:
+                                            for i in range(NUM_PINGS_PER_DIMENSIONS):
+                                                dimensions = {u"submission_date": submission_date,
+                                                              u"channel": channel,
+                                                              u"version": version,
+                                                              u"build_id": build_id,
+                                                              u"application": application,
+                                                              u"arch": arch,
+                                                              u"revision": revision,
+                                                              u"os": os,
+                                                              u"os_version": os_version,
+                                                              u"e10s": e10s}
+                                                yield generate_payload(dimensions)
 
 
 def generate_payload(dimensions):
@@ -103,7 +106,8 @@ def generate_payload(dimensions):
                u"keyedHistograms": keyed_histograms_template,
                u"childPayloads": child_payloads}
     environment = {u"system": {u"os": {u"name": dimensions["os"],
-                                       u"version": dimensions["os_version"]}}}
+                                       u"version": dimensions["os_version"]}},
+                   u"settings": {u"e10sEnabled": dimensions["e10s"]}}
 
     return {u"clientId": str(uuid.uuid4()),
             u"meta": meta,
@@ -130,7 +134,7 @@ def test_count():
 
 def test_keys():
     for aggregate in aggregates:
-        submission_date, channel, version, build_id, app, arch, revision, os, os_version = aggregate[0]
+        submission_date, channel, version, build_id, app, arch, revision, os, os_version, e10s = aggregate[0]
 
         assert(submission_date in ping_dimensions["submission_date"])
         assert(channel in ping_dimensions["channel"])
