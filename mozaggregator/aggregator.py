@@ -11,7 +11,7 @@ from moztelemetry.spark import get_pings
 from moztelemetry.histogram import cached_exponential_buckets
 from collections import defaultdict
 
-
+# Simple measurement histogram
 _exponential_index = cached_exponential_buckets(1, 30000, 50)
 
 
@@ -29,17 +29,29 @@ def aggregate_metrics(sc, channels, submission_date, fraction=1):
     channels = set(channels)
     rdds = [get_pings(sc, channel=ch, submission_date=submission_date, doc_type="saved_session", schema="v4", fraction=fraction) for ch in channels]
     pings = reduce(lambda x, y: x.union(y), rdds)
+    return _aggregate_metrics(pings)
 
+
+def _aggregate_metrics(pings):
     trimmed = pings.filter(_sample_clients).map(_map_ping_to_dimensions)
     return trimmed.aggregateByKey(defaultdict(dict), _aggregate_ping, _aggregate_aggregates)
 
 
 def _sample_clients(ping):
     client_id = ping.get("clientId", None)
+
+    if not client_id:
+        return False
+
     channel = ping["application"]["channel"]
     percentage = {"nightly": 100,
                   "aurora": 100,
-                  "beta": 100}
+                  "beta": 100,
+                  "release": 100}
+
+    if channel not in percentage:
+        return False
+
     return client_id and ((binascii.crc32(client_id) % 100) < percentage[channel])
 
 
@@ -93,19 +105,20 @@ def _extract_simple_measures(state, simple):
 
 def _extract_simple_measure(state, name, value):
     accessor = (name, u"", False)
-    aggregated_histogram = state[accessor]["histogram"] = {}
-    state[accessor]["count"] = 1
-    bucket_found = False
+    aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
+    state[accessor]["count"] = state[accessor].get("count", 0) + 1
+
+    if not aggregated_histogram:  # First time initialization
+        for bucket in _exponential_index:
+            aggregated_histogram[unicode(bucket)] = 0
+
     insert_bucket = _exponential_index[0]  # Initialized to underflow bucket
-
     for bucket in reversed(_exponential_index):
-        if not bucket_found and value >= bucket:
+        if value >= bucket:
             insert_bucket = bucket
-            bucket_found = True
-        else:
-            aggregated_histogram[bucket] = 0
+            break
 
-    aggregated_histogram[insert_bucket] = 1
+    aggregated_histogram[unicode(insert_bucket)] += 1
 
 
 def _extract_children_histograms(state, payload):
