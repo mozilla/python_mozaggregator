@@ -66,31 +66,47 @@ def _extract_histograms(state, payload, is_child=False):
 
 def _extract_main_histograms(state, histograms, is_child):
     for histogram_name, histogram in histograms.iteritems():
-        if "values" not in histogram:  # Invalid histogram?
-            continue
-
         # Note that some dimensions don't vary within a single submissions
         # (e.g. channel) while some do (e.g. process type).
         # The latter should appear within the key of a single metric.
         accessor = (histogram_name, u"", is_child)
         aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
-        state[accessor]["count"] = state[accessor].get("count", 0) + 1
 
-        for k, v in histogram["values"].iteritems():
-            aggregated_histogram[k] = aggregated_histogram.get(k, 0) + (int(v) if v else 0)  # Some submissions have a None value...
+        try:
+            tmp_histogram = {}
+            for k, v in histogram["values"].iteritems():
+                tmp_histogram[k] = int(v)
+        except:
+            # Things that can go wrong (and shouldn't!):
+            # 1. Missing "values" dict
+            # 2. None value in bucket
+            # 3. Non-integer value in bucket
+            continue
+
+        state[accessor]["count"] = state[accessor].get("count", 0) + 1
+        for k, v in tmp_histogram.iteritems():
+            aggregated_histogram[k] = aggregated_histogram.get(k, 0) + v
 
 
 def _extract_keyed_histograms(state, histogram_name, histograms, is_child):
     for key, histogram in histograms.iteritems():
-        if "values" not in histogram:  # Invalid histogram?
-            continue
-
         accessor = (histogram_name, key, is_child)
         aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
-        state[accessor]["count"] = state[accessor].get("count", 0) + 1
 
-        for k, v in histogram["values"].iteritems():
-            aggregated_histogram[k] = aggregated_histogram.get(k, 0) + (int(v) if v else 0) # Some submissions have a None value...
+        try:
+            tmp_histogram = {}
+            for k, v in histogram["values"].iteritems():
+                tmp_histogram[k] = int(v)
+        except:
+            # Things that can go wrong (and shouldn't!):
+            # 1. Missing "values" dict
+            # 2. None value in bucket
+            # 3. Non-integer value in bucket
+            continue
+
+        state[accessor]["count"] = state[accessor].get("count", 0) + 1
+        for k, v in tmp_histogram.iteritems():
+            aggregated_histogram[k] = aggregated_histogram.get(k, 0) + v
 
 
 def _extract_simple_measures(state, simple):
