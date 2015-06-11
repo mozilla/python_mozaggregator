@@ -16,8 +16,6 @@ ping_dimensions = {"submission_date": [u"20150601", u"20150602"],
                    "build_id": [u"20150601000000", u"20150602000000"],
                    "application": [u"Firefox", u"Fennec"],
                    "arch": [u"x86", u"x86-64"],
-                   "revision": [u"https://hg.mozilla.org/mozilla-central/rev/ac277e615f8f",
-                                u"https://hg.mozilla.org/mozilla-central/rev/bc277e615f9f"],
                    "os": [u"Linux", u"Windows_NT"],
                    "os_version": [u"6.1", u"3.1.12"],
                    "e10s": [True, False]}
@@ -77,22 +75,20 @@ def generate_pings():
                 for build_id in ping_dimensions["build_id"]:
                     for application in ping_dimensions["application"]:
                         for arch in ping_dimensions["arch"]:
-                            for revision in ping_dimensions["revision"]:
-                                for os in ping_dimensions["os"]:
-                                    for os_version in ping_dimensions["os_version"]:
-                                        for e10s in ping_dimensions["e10s"]:
-                                            for i in range(NUM_PINGS_PER_DIMENSIONS):
-                                                dimensions = {u"submission_date": submission_date,
-                                                              u"channel": channel,
-                                                              u"version": version,
-                                                              u"build_id": build_id,
-                                                              u"application": application,
-                                                              u"arch": arch,
-                                                              u"revision": revision,
-                                                              u"os": os,
-                                                              u"os_version": os_version,
-                                                              u"e10s": e10s}
-                                                yield generate_payload(dimensions)
+                            for os in ping_dimensions["os"]:
+                                for os_version in ping_dimensions["os_version"]:
+                                    for e10s in ping_dimensions["e10s"]:
+                                        for i in range(NUM_PINGS_PER_DIMENSIONS):
+                                            dimensions = {u"submission_date": submission_date,
+                                                            u"channel": channel,
+                                                            u"version": version,
+                                                            u"build_id": build_id,
+                                                            u"application": application,
+                                                            u"arch": arch,
+                                                            u"os": os,
+                                                            u"os_version": os_version,
+                                                            u"e10s": e10s}
+                                            yield generate_payload(dimensions)
 
 
 def generate_payload(dimensions):
@@ -107,8 +103,7 @@ def generate_payload(dimensions):
                        "keyedHistograms": keyed_histograms_template}
                       for i in range(NUM_CHILDREN_PER_PING)]
 
-    payload = {u"info": {u"revision": dimensions["revision"]},
-               u"simpleMeasurements": simple_measurements_template,
+    payload = {u"simpleMeasurements": simple_measurements_template,
                u"histograms": histograms_template,
                u"keyedHistograms": keyed_histograms_template,
                u"childPayloads": child_payloads}
@@ -141,7 +136,7 @@ def test_count():
 
 def test_keys():
     for aggregate in aggregates:
-        submission_date, channel, version, build_id, app, arch, revision, os, os_version, e10s = aggregate[0]
+        submission_date, channel, version, build_id, app, arch, os, os_version, e10s = aggregate[0]
 
         assert(submission_date in ping_dimensions["submission_date"])
         assert(channel in ping_dimensions["channel"])
@@ -149,7 +144,6 @@ def test_keys():
         assert(build_id in [x[:8] for x in ping_dimensions["build_id"]])
         assert(app in ping_dimensions["application"])
         assert(arch in ping_dimensions["arch"])
-        assert(revision in [x[-12:] for x in ping_dimensions["revision"]])
         assert(os in ping_dimensions["os"])
         if os == "Linux":
             assert(os_version in [x[:3] for x in ping_dimensions["os_version"]])

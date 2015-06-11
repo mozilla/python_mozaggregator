@@ -206,11 +206,10 @@ def _get_complete_histogram(channel, metric, values):
 
 def _upsert_aggregate(cursor, aggregate):
     key, metrics = aggregate
-    submission_date, channel, version, build_id, application, architecture, revision, os, os_version, e10s = key
+    submission_date, channel, version, build_id, application, architecture, os, os_version, e10s = key
 
     dimensions = {"application": application,
                   "architecture": architecture,
-                  "revision": revision,
                   "os": os,
                   "os_version": os_version,
                   "e10sEnabled": e10s}
