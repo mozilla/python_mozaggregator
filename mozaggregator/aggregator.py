@@ -11,8 +11,8 @@ from moztelemetry.spark import get_pings
 from moztelemetry.histogram import cached_exponential_buckets
 from collections import defaultdict
 
-# Simple measurement histogram
-_exponential_index = cached_exponential_buckets(1, 30000, 50)
+# Simple measurement and count histogram labels
+scalar_histogram_labels = cached_exponential_buckets(1, 30000, 50)
 
 
 def aggregate_metrics(sc, channels, submission_date, fraction=1):
@@ -64,49 +64,40 @@ def _extract_histograms(state, payload, is_child=False):
         _extract_keyed_histograms(state, name, histograms, is_child)
 
 
+def _extract_histogram(state, histogram, histogram_name, label, is_child):
+    try:
+        if histogram["histogram_type"] == 4:  # Count histogram
+            return _extract_scalar_value(state, histogram_name, histogram["values"]["0"], is_child)
+
+        tmp_histogram = {}
+        for k, v in histogram["values"].iteritems():
+            tmp_histogram[k] = int(v)
+    except:
+        # Things that can go wrong (and shouldn't!):
+        # 1. Missing "values" dict
+        # 2. None value in bucket
+        # 3. Non-integer value in bucket
+        return
+
+    # Note that some dimensions don't vary within a single submissions
+    # (e.g. channel) while some do (e.g. process type).
+    # The latter should appear within the key of a single metric.
+    accessor = (histogram_name, label, is_child)
+    aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
+
+    state[accessor]["count"] = state[accessor].get("count", 0) + 1
+    for k, v in tmp_histogram.iteritems():
+        aggregated_histogram[k] = aggregated_histogram.get(k, 0) + v
+
+
 def _extract_main_histograms(state, histograms, is_child):
     for histogram_name, histogram in histograms.iteritems():
-        # Note that some dimensions don't vary within a single submissions
-        # (e.g. channel) while some do (e.g. process type).
-        # The latter should appear within the key of a single metric.
-        accessor = (histogram_name, u"", is_child)
-        aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
-
-        try:
-            tmp_histogram = {}
-            for k, v in histogram["values"].iteritems():
-                tmp_histogram[k] = int(v)
-        except:
-            # Things that can go wrong (and shouldn't!):
-            # 1. Missing "values" dict
-            # 2. None value in bucket
-            # 3. Non-integer value in bucket
-            continue
-
-        state[accessor]["count"] = state[accessor].get("count", 0) + 1
-        for k, v in tmp_histogram.iteritems():
-            aggregated_histogram[k] = aggregated_histogram.get(k, 0) + v
+        _extract_histogram(state, histogram, histogram_name, u"", is_child)
 
 
 def _extract_keyed_histograms(state, histogram_name, histograms, is_child):
     for key, histogram in histograms.iteritems():
-        accessor = (histogram_name, key, is_child)
-        aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
-
-        try:
-            tmp_histogram = {}
-            for k, v in histogram["values"].iteritems():
-                tmp_histogram[k] = int(v)
-        except:
-            # Things that can go wrong (and shouldn't!):
-            # 1. Missing "values" dict
-            # 2. None value in bucket
-            # 3. Non-integer value in bucket
-            continue
-
-        state[accessor]["count"] = state[accessor].get("count", 0) + 1
-        for k, v in tmp_histogram.iteritems():
-            aggregated_histogram[k] = aggregated_histogram.get(k, 0) + v
+        _extract_histogram(state, histogram, histogram_name, key, is_child)
 
 
 def _extract_simple_measures(state, simple):
@@ -114,22 +105,22 @@ def _extract_simple_measures(state, simple):
         if type(value) == dict:
             for sub_name, sub_value in value.iteritems():
                 if type(sub_value) in (int, float, long):
-                    _extract_simple_measure(state, u"SIMPLE_MEASURES_{}_{}".format(name.upper(), sub_name.upper()), sub_value)
+                    _extract_scalar_value(state, u"SIMPLE_MEASURES_{}_{}".format(name.upper(), sub_name.upper()), sub_value)
         elif type(value) in (int, float, long):
-            _extract_simple_measure(state, u"SIMPLE_MEASURES_{}".format(name.upper()), value)
+            _extract_scalar_value(state, u"SIMPLE_MEASURES_{}".format(name.upper()), value)
 
 
-def _extract_simple_measure(state, name, value):
-    accessor = (name, u"", False)
+def _extract_scalar_value(state, name, value, is_child=False):
+    accessor = ("{}_SCALAR".format(name), u"", is_child)
     aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
     state[accessor]["count"] = state[accessor].get("count", 0) + 1
 
     if not aggregated_histogram:  # First time initialization
-        for bucket in _exponential_index:
+        for bucket in scalar_histogram_labels:
             aggregated_histogram[unicode(bucket)] = 0
 
-    insert_bucket = _exponential_index[0]  # Initialized to underflow bucket
-    for bucket in reversed(_exponential_index):
+    insert_bucket = scalar_histogram_labels[0]  # Initialized to underflow bucket
+    for bucket in reversed(scalar_histogram_labels):
         if value >= bucket:
             insert_bucket = bucket
             break

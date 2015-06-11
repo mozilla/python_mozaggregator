@@ -2,10 +2,10 @@ import pyspark
 import uuid
 import logging
 import pandas as pd
+import re
 
 from collections import defaultdict
-from mozaggregator.aggregator import _aggregate_metrics
-from moztelemetry.histogram import cached_exponential_buckets
+from mozaggregator.aggregator import _aggregate_metrics, scalar_histogram_labels
 
 NUM_CHILDREN_PER_PING = 3
 NUM_PINGS_PER_DIMENSIONS = 2
@@ -36,7 +36,14 @@ histograms_template = {u"EVENTLOOP_UI_LAG_EXP_MS": {u'bucket_count': 20,
                                                                 u'359': 2,
                                                                 u'50': 18,
                                                                 u'74': 16,
-                                                                u'789': 1}}}
+                                                                u'789': 1}},
+                       u"UPDATE_PING_COUNT_EXTERNAL": {u'bucket_count': 3,
+                                                       u'histogram_type': 4,
+                                                       u'range': [1, 2],
+                                                       u'sum': 42,
+                                                       u'sum_squares_hi': 0,
+                                                       u'sum_squares_lo': 1,
+                                                       u'values': {u'0': 42, u'1': 0}}}
 
 keyed_histograms_template = {u'BLOCKED_ON_PLUGIN_INSTANCE_DESTROY_MS':
                              {u'Shockwave Flash17.0.0.188': {u'bucket_count': 20,
@@ -152,19 +159,19 @@ def test_keys():
 
 def test_simple_measurements():
     metric_count = defaultdict(int)
-    exponential_index = set([unicode(x) for x in cached_exponential_buckets(1, 30000, 50)])
+    labels = set([unicode(x) for x in scalar_histogram_labels])
 
     for aggregate in aggregates:
         for key, value in aggregate[1].iteritems():
             metric, label, child = key
 
-            if metric.startswith("SIMPLE_MEASURES"):
+            if re.match("^SIMPLE_MEASURES.*_SCALAR$", metric):
                 metric_count[metric] += 1
                 assert(label == "")
                 assert(child is False)
                 assert(value["count"] == NUM_PINGS_PER_DIMENSIONS)
-                assert(set(value["histogram"].keys()) == exponential_index)
-                assert(value["histogram"]["35"] == NUM_PINGS_PER_DIMENSIONS)
+                assert(set(value["histogram"].keys()) == labels)
+                assert(value["histogram"]["35"] == value["count"])
 
     assert len(metric_count) == len(simple_measurements_template)
     for v in metric_count.values():
@@ -173,21 +180,43 @@ def test_simple_measurements():
 
 def test_classic_histograms():
     metric_count = defaultdict(int)
+    histograms = {k: v for k, v in histograms_template.iteritems() if v["histogram_type"] != 4}
 
     for aggregate in aggregates:
         for key, value in aggregate[1].iteritems():
             metric, label, child = key
+            histogram = histograms.get(metric, None)
 
-            if metric in histograms_template.keys():
+            if histogram:
                 metric_count[metric] += 1
                 assert(label == "")
                 assert(value["count"] == NUM_PINGS_PER_DIMENSIONS*(NUM_CHILDREN_PER_PING if child else 1))
+                assert(set(histogram["values"].keys()) == set(value["histogram"].keys()))
+                assert((pd.Series(histogram["values"])*value["count"] == pd.Series(value["histogram"])).all())
 
-                histogram_template = histograms_template[metric]["values"]
-                assert(set(histogram_template.keys()) == set(value["histogram"].keys()))
-                assert((pd.Series(histogram_template)*value["count"] == pd.Series(value["histogram"])).all())
+    assert(len(metric_count) == len(histograms))
+    for v in metric_count.values():
+        assert(v == 2*len(aggregates))  # Count both child and parent metrics
 
-    assert(len(metric_count) == len(histograms_template))
+
+def test_count_histograms():
+    metric_count = defaultdict(int)
+    labels = set([unicode(x) for x in scalar_histogram_labels])
+    histograms = {"{}_SCALAR".format(k): v for k, v in histograms_template.iteritems() if v["histogram_type"] == 4}
+
+    for aggregate in aggregates:
+        for key, value in aggregate[1].iteritems():
+            metric, label, child = key
+            histogram = histograms.get(metric, None)
+
+            if histogram:
+                metric_count[metric] += 1
+                assert(label == "")
+                assert(value["count"] == NUM_PINGS_PER_DIMENSIONS*(NUM_CHILDREN_PER_PING if child else 1))
+                assert(set(value["histogram"].keys()) == labels)
+                assert(value["histogram"]["35"] == value["count"])
+
+    assert len(metric_count) == len(histograms)
     for v in metric_count.values():
         assert(v == 2*len(aggregates))  # Count both child and parent metrics
 

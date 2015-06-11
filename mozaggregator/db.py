@@ -196,7 +196,7 @@ select create_tables();
 def _get_complete_histogram(channel, metric, values):
     revision = _revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
 
-    if metric.startswith("SIMPLE_"):
+    if metric.endswith("_SCALAR"):
         histogram = pd.Series(values).values  # histogram is already complete
     else:
         histogram = Histogram(metric, {"values": values}, revision=revision).get_value(autocast=False).values
