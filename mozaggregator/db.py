@@ -138,8 +138,8 @@ begin
                   where stage.dimensions @> merge.dimensions';
 
     -- Insert new tuples
-    execute 'insert into ' || tablename || '
-             select * from ' || stage_table;
+    execute 'insert into ' || tablename || ' (dimensions, histogram)
+             select dimensions, histogram from ' || stage_table;
 end
 $$ language plpgsql strict;
 
