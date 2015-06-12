@@ -10,9 +10,11 @@ import pandas as pd
 import ujson as json
 import boto.rds2
 import os
+import uuid
 
 from moztelemetry.spark import Histogram
 from boto.s3.connection import S3Connection
+from cStringIO import StringIO
 
 # Use latest revision, we don't really care about histograms that have
 # been removed. This only works though if histogram definitions are
@@ -52,7 +54,7 @@ def submit_aggregates(aggregates, dry_run=False):
     _preparedb()
 
     count = aggregates.groupBy(lambda x: x[0][:4]).\
-               map(lambda x: _upsert_aggregates(x, dry_run=dry_run)).\
+               map(lambda x: _upsert_aggregates_fast(x, dry_run=dry_run)).\
                count()
 
     _vacuumdb()
@@ -106,6 +108,49 @@ begin
              select * from (values ($2, $1)) as t
              where not exists (select 1 from upsert)'
              using histogram, dimensions;
+end
+$$ language plpgsql strict;
+
+
+create or replace function merge_buildid_table(channel text, version text, buildid text, stage_table regclass) returns void as $$
+declare
+    tablename text;
+    table_exists bool;
+begin
+    tablename := channel || '_' || version || '_' || buildid;
+    -- Check if table exists and if not create one
+    table_exists := (select exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = tablename));
+
+    if not table_exists then
+        execute format('create table %s as table %s', tablename, stage_table);
+        execute format('create index on %s using GIN (dimensions jsonb_path_ops)', stage_table);
+        return;
+    end if;
+
+    -- Update existing tuples and delete matching rows from the staging table
+    execute 'with merge as (update ' || tablename || ' as dest
+	                    set histogram = (select aggregate_histograms(v) from (values (1, dest.histogram), (2, src.histogram)) as t (k, v))
+	                    from ' || stage_table || ' as src
+                            where dest.dimensions @> src.dimensions
+                            returning dest.*)
+                  delete from ' || stage_table || ' as stage
+                  using merge
+                  where stage.dimensions @> merge.dimensions';
+
+    -- Insert new tuples
+    execute 'insert into ' || tablename || '
+             select * from ' || stage_table;
+end
+$$ language plpgsql strict;
+
+
+create or replace function create_temporary_buildid_table(channel text, version text, buildid text) returns text as $$
+declare
+    tablename text;
+begin
+    tablename := format('%s_%s_%s_staging', channel, version,  buildid);
+    execute 'create temporary table ' || tablename || ' (id serial primary key, dimensions jsonb, histogram bigint[]) on commit drop';
+    return tablename;
 end
 $$ language plpgsql strict;
 
@@ -213,6 +258,33 @@ def _get_complete_histogram(channel, metric, values):
     return metric, map(int, list(histogram))
 
 
+def _upsert_aggregate_fast(stage_table, aggregate):
+    key, metrics = aggregate
+    submission_date, channel, version, build_id, application, architecture, os, os_version, e10s = key
+    dimensions = {"application": application,
+                  "architecture": architecture,
+                  "os": os,
+                  "os_version": os_version,
+                  "e10sEnabled": e10s}
+
+    for metric, payload in metrics.iteritems():
+        metric, label, child = metric
+        label = label.replace("'", "")  # Postgres doesn't like quotes
+
+        try:
+            metric, histogram = _get_complete_histogram(channel, metric, payload["histogram"])
+            histogram += [payload["count"]]
+        except KeyError:  # TODO: ignore expired histograms
+            continue
+
+        dimensions["metric"] = metric
+        dimensions["label"] = label
+        dimensions["child"] = child
+
+        # TODO: remove separator from input data...
+        stage_table.write("{}\t{}\n".format(json.dumps(dimensions), "{" + repr(histogram)[1:-1] + "}"))
+
+
 def _upsert_aggregate(cursor, aggregate):
     key, metrics = aggregate
     submission_date, channel, version, build_id, application, architecture, os, os_version, e10s = key
@@ -238,6 +310,39 @@ def _upsert_aggregate(cursor, aggregate):
         dimensions["child"] = child
 
         cursor.execute("select add_buildid_metric(%s, %s, %s, %s, %s)", (channel, version, build_id, json.dumps(dimensions), histogram))
+
+def _upsert_aggregates_fast(aggregates, dry_run=False):
+    conn = create_connection(autocommit=False)
+    cursor = conn.cursor()
+    submission_date, channel, version, build_id = aggregates[0]
+
+    while(True):
+        try:
+            cursor.execute(u"select was_buildid_processed(%s, %s, %s, %s)", (channel, version, build_id, submission_date))
+            if cursor.fetchone()[0]:
+                # This aggregate has already been processed
+                return
+            else:
+                break
+        except psycopg2.IntegrityError:  # Multiple aggregates from different submission dates might try to insert at the same time
+            conn.rollback()  # Transaction is aborted after an error
+            continue
+
+    stage_table = StringIO()
+    cursor.execute("select create_temporary_buildid_table(%s, %s, %s)", (channel, version, build_id))
+    stage_table_name = cursor.fetchone()[0]
+
+    for aggregate in aggregates[1]:
+        _upsert_aggregate_fast(stage_table, aggregate)
+
+    stage_table.seek(0)
+    cursor.copy_from(stage_table, stage_table_name, columns=("dimensions", "histogram"))
+    cursor.execute("select merge_buildid_table(%s, %s, %s, %s)", (channel, version, build_id, stage_table_name))
+
+    if dry_run:
+        conn.rollback()
+    else:
+        conn.commit()
 
 
 def _upsert_aggregates(aggregates, dry_run=False):
