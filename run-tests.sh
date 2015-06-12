@@ -39,4 +39,9 @@ ${PGSQL_PATH}/postgres -F -k ${PGSQL_DATA} -D ${PGSQL_DATA} &> ${PGSQL_DATA}/out
 wait_for_line "database system is ready to accept connections" ${PGSQL_DATA}/out
 export DB_TEST_URL="postgresql:///?host=${PGSQL_DATA}&dbname=template1"
 
+# Launch db service
+mkfifo ${PGSQL_DATA}/out_service
+python ./mozaggregator/service.py -d &> ${PGSQL_DATA}/out_service &
+wait_for_line "* Restarting with reloader" ${PGSQL_DATA}/out_service
+
 nosetests ./tests/test_db.py

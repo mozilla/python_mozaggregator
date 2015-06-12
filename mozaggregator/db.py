@@ -5,39 +5,42 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-
 import psycopg2
 import pandas as pd
 import ujson as json
 import boto.rds2
+import os
 
 from moztelemetry.spark import Histogram
 from boto.s3.connection import S3Connection
 
-
 # Use latest revision, we don't really care about histograms that have
 # been removed. This only works though if histogram definitions are
 # immutable, which has been the case so far.
-_revision_map = {"nightly": "https://hg.mozilla.org/mozilla-central/rev/tip",
-                 "aurora": "https://hg.mozilla.org/releases/mozilla-aurora/rev/tip",
-                 "beta": "https://hg.mozilla.org/releases/mozilla-beta/rev/tip",
-                 "release": "https://hg.mozilla.org/releases/mozilla-release/rev/tip"}
+histogram_revision_map = {"nightly": "https://hg.mozilla.org/mozilla-central/rev/tip",
+                          "aurora": "https://hg.mozilla.org/releases/mozilla-aurora/rev/tip",
+                          "beta": "https://hg.mozilla.org/releases/mozilla-beta/rev/tip",
+                          "release": "https://hg.mozilla.org/releases/mozilla-release/rev/tip"}
 
 
-def create_connection(autocommit=True, host=None):
+def create_connection(autocommit=True, host_override=None):
     # import boto.rds2  # The serializer doesn't pick this one up for some reason when using emacs...
 
-    s3 = S3Connection()
-    config = s3.get_bucket("telemetry-spark-emr").get_key("aggregator_credentials").get_contents_as_string()
-    config = json.loads(config)
+    connection_string = os.getenv("DB_TEST_URL")  # Used only for testing
+    if connection_string:
+        conn = psycopg2.connect(connection_string)
+    else:
+        s3 = S3Connection()
+        config = s3.get_bucket("telemetry-spark-emr").get_key("aggregator_credentials").get_contents_as_string()
+        config = json.loads(config)
 
-    rds = boto.rds2.connect_to_region("us-west-2")
-    db = rds.describe_db_instances("telemetry-aggregates")["DescribeDBInstancesResponse"]["DescribeDBInstancesResult"]["DBInstances"][0]
-    host = host or db["Endpoint"]["Address"]
-    dbname = db["DBName"]
-    user = db["MasterUsername"]
+        rds = boto.rds2.connect_to_region("us-west-2")
+        db = rds.describe_db_instances("telemetry-aggregates")["DescribeDBInstancesResponse"]["DescribeDBInstancesResult"]["DBInstances"][0]
+        host = host_override or db["Endpoint"]["Address"]
+        dbname = db["DBName"]
+        user = db["MasterUsername"]
 
-    conn = psycopg2.connect(dbname=dbname, user=user, password=config["password"], host=host)
+        conn = psycopg2.connect(dbname=dbname, user=user, password=config["password"], host=host)
 
     if autocommit:
         conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
@@ -47,8 +50,13 @@ def create_connection(autocommit=True, host=None):
 
 def submit_aggregates(aggregates, dry_run=False):
     _preparedb()
-    aggregates.groupBy(lambda x: x[0][:4]).map(lambda x: _upsert_aggregates(x, dry_run)).count()
+
+    count = aggregates.groupBy(lambda x: x[0][:4]).\
+               map(lambda x: _upsert_aggregates(x, dry_run=dry_run)).\
+               count()
+
     _vacuumdb()
+    return count
 
 
 def _preparedb():
@@ -155,11 +163,11 @@ begin
     E'select t.matches[2], t.matches[3] from
         (select regexp_matches(table_name::text, \\'([^_]*)_([0-9]*)_([0-9]*)\\')
          from information_schema.tables
-         where table_schema=\\'public\\' and table_type=\\'BASE TABLE\\' and table_name like \'' || channel || E'%\\'
+         where table_schema=\\'public\\' and table_type=\\'BASE TABLE\\' and table_name like \\'' || channel || E'%\\'
          order by table_name desc) as t (matches)';
 end
-
 $$ language plpgsql strict;
+
 create or replace function list_channels() returns table(channel text) as $$
 begin
     return query execute
@@ -194,14 +202,15 @@ select create_tables();
 
 
 def _get_complete_histogram(channel, metric, values):
-    revision = _revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
+    revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
 
     if metric.endswith("_SCALAR"):
         histogram = pd.Series(values).values  # histogram is already complete
+        metric = metric[:-7]
     else:
         histogram = Histogram(metric, {"values": values}, revision=revision).get_value(autocast=False).values
 
-    return map(int, list(histogram))
+    return metric, map(int, list(histogram))
 
 
 def _upsert_aggregate(cursor, aggregate):
@@ -218,14 +227,15 @@ def _upsert_aggregate(cursor, aggregate):
         metric, label, child = metric
         label = label.replace("'", "")  # Postgres doesn't like quotes
 
+        try:
+            metric, histogram = _get_complete_histogram(channel, metric, payload["histogram"])
+            histogram += [payload["count"]]
+        except KeyError:  # TODO: ignore expired histograms
+            continue
+
         dimensions["metric"] = metric
         dimensions["label"] = label
         dimensions["child"] = child
-
-        try:
-            histogram = _get_complete_histogram(channel, metric, payload["histogram"]) + [payload["count"]]  # Append count at the end
-        except KeyError:  # TODO: ignore expired histograms
-            continue
 
         cursor.execute("select add_buildid_metric(%s, %s, %s, %s, %s)", (channel, version, build_id, json.dumps(dimensions), histogram))
 
@@ -235,10 +245,17 @@ def _upsert_aggregates(aggregates, dry_run=False):
     cursor = conn.cursor()
     submission_date, channel, version, build_id = aggregates[0]
 
-    cursor.execute(u"select was_buildid_processed(%s, %s, %s, %s)", (channel, version, build_id, submission_date))
-    if cursor.fetchone()[0]:
-        # This aggregate has already been processed
-        return
+    while(True):
+        try:
+            cursor.execute(u"select was_buildid_processed(%s, %s, %s, %s)", (channel, version, build_id, submission_date))
+            if cursor.fetchone()[0]:
+                # This aggregate has already been processed
+                return
+            else:
+                break
+        except psycopg2.IntegrityError:  # Multiple aggregates from different submission dates might try to insert at the same time
+            conn.rollback()  # Transaction is aborted after an error
+            continue
 
     for aggregate in aggregates[1]:
         _upsert_aggregate(cursor, aggregate)

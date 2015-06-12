@@ -1,14 +1,16 @@
-import ujson as json
 import argparse
+import ujson as json
 
 from flask import Flask, request, abort
-from db import create_connection
+from db import create_connection, histogram_revision_map
+from moztelemetry.histogram import Histogram
+from aggregator import scalar_histogram_labels
 
 app = Flask(__name__)
 
 
 def execute_query(query, params=tuple()):
-    db = create_connection(host=host)
+    db = create_connection(host_override=host)
     cursor = db.cursor()
     cursor.execute(query, params)
     return cursor.fetchall()
@@ -38,8 +40,29 @@ def get_buildid(channel, version, buildid):
     try:
         dimensions = json.dumps({k: v for k, v in request.args.iteritems()})
         result = execute_query("select * from get_buildid_metric(%s, %s, %s, %s)", (channel, version, buildid, dimensions))
-        pretty_result = map(lambda r: {"label": r[0], "histogram": r[1]}, result)
+
+        if not result:  # Metric not found
+            abort(404)
+
+        pretty_result = []
+        for row in result:
+            label = row[0]
+            histogram = row[1][:-1]
+            count = row[1][-1]
+
+            # Retrieve labels for histogram
+            revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
+            try:
+                labels = Histogram(request.args["metric"], histogram, revision=revision).get_value().keys().tolist()
+            except Exception as e:
+                # Count histogram or simple measurement
+                # TODO: deal properly with those
+                labels = scalar_histogram_labels
+
+            pretty_result.append({"label": label, "histogram": dict(zip(labels, histogram)), "count": count})
+
         return json.dumps(pretty_result)
+
     except:
         abort(404)
 
