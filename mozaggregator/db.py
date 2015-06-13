@@ -10,11 +10,11 @@ import pandas as pd
 import ujson as json
 import boto.rds2
 import os
-import uuid
 
 from moztelemetry.spark import Histogram
 from boto.s3.connection import S3Connection
 from cStringIO import StringIO
+from mozaggregator.aggregator import scalar_histogram_labels
 
 # Use latest revision, we don't really care about histograms that have
 # been removed. This only works though if histogram definitions are
@@ -172,6 +172,7 @@ begin
 end
 $$ language plpgsql strict;
 
+
 create or replace function was_buildid_processed(channel text, version text, buildid text, submission_date text) returns boolean as $$
 declare
     table_name text;
@@ -231,6 +232,7 @@ begin
 end
 $$ language plpgsql strict;
 
+
 create or replace function list_channels() returns table(channel text) as $$
 begin
     return query execute
@@ -255,6 +257,7 @@ begin
 end
 $$ language plpgsql strict;
 
+
 select create_tables();
 
 -- Example usage:
@@ -267,9 +270,9 @@ select create_tables();
 def _get_complete_histogram(channel, metric, values):
     revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
 
-    if metric.endswith("_SCALAR"):
-        histogram = pd.Series({int(k): v for k, v in values.iteritems()}).values  # histogram is already complete
-        metric = metric[:-7]
+    if metric.startswith("[[SCALAR]]_"):
+        histogram = pd.Series({int(k): v for k, v in values.iteritems()}, index=scalar_histogram_labels).fillna(0).values
+        metric = metric[11:]
     else:
         histogram = Histogram(metric, {"values": values}, revision=revision).get_value(autocast=False).values
 
@@ -303,38 +306,12 @@ def _upsert_aggregate_fast(stage_table, aggregate):
         stage_table.write("{}\t{}\n".format(json.dumps(dimensions), "{" + repr(histogram)[1:-1] + "}"))
 
 
-def _upsert_aggregate(cursor, aggregate):
-    key, metrics = aggregate
-    submission_date, channel, version, build_id, application, architecture, os, os_version, e10s = key
-
-    dimensions = {"application": application,
-                  "architecture": architecture,
-                  "os": os,
-                  "os_version": os_version,
-                  "e10sEnabled": e10s}
-
-    for metric, payload in metrics.iteritems():
-        metric, label, child = metric
-        label = label.replace("'", "")  # Postgres doesn't like quotes
-
-        try:
-            metric, histogram = _get_complete_histogram(channel, metric, payload["histogram"])
-            histogram += [payload["count"]]
-        except KeyError:  # TODO: ignore expired histograms
-            continue
-
-        dimensions["metric"] = metric
-        dimensions["label"] = label
-        dimensions["child"] = child
-
-        cursor.execute("select add_buildid_metric(%s, %s, %s, %s, %s)", (channel, version, build_id, json.dumps(dimensions), histogram))
-
 def _upsert_aggregates_fast(aggregates, dry_run=False):
     conn = create_connection(autocommit=False)
     cursor = conn.cursor()
     submission_date, channel, version, build_id = aggregates[0]
 
-    # Aggregates with different submisssion_dates write to the same tables
+    # Aggregates with different submisssion_dates write to the same tables, we need a lock
     cursor.execute("select lock_buildid_transaction(%s, %s, %s)", (channel, version, build_id))
 
     cursor.execute("select was_buildid_processed(%s, %s, %s, %s)", (channel, version, build_id, submission_date))
@@ -353,32 +330,6 @@ def _upsert_aggregates_fast(aggregates, dry_run=False):
     stage_table.seek(0)
     cursor.copy_from(stage_table, stage_table_name, columns=("dimensions", "histogram"))
     cursor.execute("select merge_buildid_table(%s, %s, %s, %s)", (channel, version, build_id, stage_table_name))
-
-    if dry_run:
-        conn.rollback()
-    else:
-        conn.commit()
-
-
-def _upsert_aggregates(aggregates, dry_run=False):
-    conn = create_connection(autocommit=False)
-    cursor = conn.cursor()
-    submission_date, channel, version, build_id = aggregates[0]
-
-    while(True):
-        try:
-            cursor.execute(u"select was_buildid_processed(%s, %s, %s, %s)", (channel, version, build_id, submission_date))
-            if cursor.fetchone()[0]:
-                # This aggregate has already been processed
-                return
-            else:
-                break
-        except psycopg2.IntegrityError:  # Multiple aggregates from different submission dates might try to insert at the same time
-            conn.rollback()  # Transaction is aborted after an error
-            continue
-
-    for aggregate in aggregates[1]:
-        _upsert_aggregate(cursor, aggregate)
 
     if dry_run:
         conn.rollback()

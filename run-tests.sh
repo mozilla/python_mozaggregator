@@ -47,4 +47,4 @@ mkfifo ${PGSQL_DATA}/out_service
 python ./mozaggregator/service.py -d &> ${PGSQL_DATA}/out_service &
 wait_for_line "* Restarting with reloader" ${PGSQL_DATA}/out_service
 
-nosetests ./tests/test_db.py
+nosetests ./tests/

@@ -110,13 +110,9 @@ def _extract_simple_measures(state, simple):
 
 
 def _extract_scalar_value(state, name, value, is_child=False):
-    accessor = ("{}_SCALAR".format(name), u"", is_child)
+    accessor = ("[[SCALAR]]_{}".format(name), u"", is_child)
     aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
     state[accessor]["count"] = state[accessor].get("count", 0) + 1
-
-    if not aggregated_histogram:  # First time initialization
-        for bucket in scalar_histogram_labels:
-            aggregated_histogram[unicode(bucket)] = 0
 
     insert_bucket = scalar_histogram_labels[0]  # Initialized to underflow bucket
     for bucket in reversed(scalar_histogram_labels):
@@ -124,7 +120,7 @@ def _extract_scalar_value(state, name, value, is_child=False):
             insert_bucket = bucket
             break
 
-    aggregated_histogram[unicode(insert_bucket)] += 1
+    aggregated_histogram[unicode(insert_bucket)] = aggregated_histogram.get(unicode(insert_bucket), 0) + 1
 
 
 def _extract_children_histograms(state, payload):

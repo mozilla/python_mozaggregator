@@ -4,7 +4,7 @@ import pandas as pd
 import re
 
 from collections import defaultdict
-from mozaggregator.aggregator import _aggregate_metrics, scalar_histogram_labels
+from mozaggregator.aggregator import _aggregate_metrics
 from dataset import *
 
 
@@ -43,18 +43,16 @@ def test_keys():
 
 def test_simple_measurements():
     metric_count = defaultdict(int)
-    labels = set([unicode(x) for x in scalar_histogram_labels])
 
     for aggregate in aggregates:
         for key, value in aggregate[1].iteritems():
             metric, label, child = key
 
-            if re.match("^SIMPLE_MEASURES.*_SCALAR$", metric):
+            if re.match("^\[\[SCALAR\]\]_SIMPLE_MEASURES.*$", metric):
                 metric_count[metric] += 1
                 assert(label == "")
                 assert(child is False)
                 assert(value["count"] == NUM_PINGS_PER_DIMENSIONS)
-                assert(set(value["histogram"].keys()) == labels)
                 assert(value["histogram"]["35"] == value["count"])
 
     assert len(metric_count) == len(simple_measurements_template)
@@ -85,8 +83,7 @@ def test_classic_histograms():
 
 def test_count_histograms():
     metric_count = defaultdict(int)
-    labels = set([unicode(x) for x in scalar_histogram_labels])
-    histograms = {"{}_SCALAR".format(k): v for k, v in histograms_template.iteritems() if v["histogram_type"] == 4}
+    histograms = {"[[SCALAR]]_{}".format(k): v for k, v in histograms_template.iteritems() if v["histogram_type"] == 4}
 
     for aggregate in aggregates:
         for key, value in aggregate[1].iteritems():
@@ -97,7 +94,6 @@ def test_count_histograms():
                 metric_count[metric] += 1
                 assert(label == "")
                 assert(value["count"] == NUM_PINGS_PER_DIMENSIONS*(NUM_CHILDREN_PER_PING if child else 1))
-                assert(set(value["histogram"].keys()) == labels)
                 assert(value["histogram"]["35"] == value["count"])
 
     assert len(metric_count) == len(histograms)
