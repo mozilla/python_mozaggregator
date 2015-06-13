@@ -144,12 +144,15 @@ end
 $$ language plpgsql strict;
 
 
-create or replace function lock_buildid_transaction(channel text, version text, buildid text) returns void as $$
+create or replace function lock_buildid_transaction(channel text, version text, buildid text) returns bigint as $$
 declare
     table_name text;
+    lock bigint;
 begin
     table_name := channel || '_' || version || '_' || buildid;
-    execute 'select pg_advisory_lock($1)' using (select h_bigint(table_name));
+    lock := (select h_bigint(table_name));
+    execute 'select pg_advisory_xact_lock($1)' using lock;
+    return lock;
 end
 $$ language plpgsql strict;
 

@@ -3,7 +3,10 @@ set -e
 
 clean_exit() {
     local error_code="$?"
-    kill -9 $(jobs -p) >/dev/null 2>&1 || true
+    for job in $(jobs -p); do
+	pkill -9 -P $job >/dev/null 2>&1 || true
+	kill -9 $job >/dev/null 2>&1 || true
+    done
     rm -rf "PGSQL_DATA"
     return $error_code
 }
