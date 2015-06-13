@@ -268,7 +268,7 @@ def _get_complete_histogram(channel, metric, values):
     revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
 
     if metric.endswith("_SCALAR"):
-        histogram = pd.Series(values).values  # histogram is already complete
+        histogram = pd.Series({int(k): v for k, v in values.iteritems()}).values  # histogram is already complete
         metric = metric[:-7]
     else:
         histogram = Histogram(metric, {"values": values}, revision=revision).get_value(autocast=False).values
