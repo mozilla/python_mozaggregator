@@ -144,6 +144,21 @@ end
 $$ language plpgsql strict;
 
 
+create or replace function lock_buildid_transaction(channel text, version text, buildid text) returns void as $$
+declare
+    table_name text;
+begin
+    table_name := channel || '_' || version || '_' || buildid;
+    execute 'select pg_advisory_lock($1)' using (select h_bigint(table_name));
+end
+$$ language plpgsql strict;
+
+
+create function h_bigint(text) returns bigint as $$
+    select ('x'||substr(md5($1),1,16))::bit(64)::bigint;
+$$ language sql;
+
+
 create or replace function create_temporary_buildid_table(channel text, version text, buildid text) returns text as $$
 declare
     tablename text;
@@ -270,6 +285,7 @@ def _upsert_aggregate_fast(stage_table, aggregate):
     for metric, payload in metrics.iteritems():
         metric, label, child = metric
         label = label.replace("'", "")  # Postgres doesn't like quotes
+        label = label.replace("\t", "")  # Tab is used as separator in the table
 
         try:
             metric, histogram = _get_complete_histogram(channel, metric, payload["histogram"])
@@ -281,7 +297,6 @@ def _upsert_aggregate_fast(stage_table, aggregate):
         dimensions["label"] = label
         dimensions["child"] = child
 
-        # TODO: remove separator from input data...
         stage_table.write("{}\t{}\n".format(json.dumps(dimensions), "{" + repr(histogram)[1:-1] + "}"))
 
 
@@ -316,17 +331,14 @@ def _upsert_aggregates_fast(aggregates, dry_run=False):
     cursor = conn.cursor()
     submission_date, channel, version, build_id = aggregates[0]
 
-    while(True):
-        try:
-            cursor.execute(u"select was_buildid_processed(%s, %s, %s, %s)", (channel, version, build_id, submission_date))
-            if cursor.fetchone()[0]:
-                # This aggregate has already been processed
-                return
-            else:
-                break
-        except psycopg2.IntegrityError:  # Multiple aggregates from different submission dates might try to insert at the same time
-            conn.rollback()  # Transaction is aborted after an error
-            continue
+    # Aggregates with different submisssion_dates write to the same tables
+    cursor.execute("select lock_buildid_transaction(%s, %s, %s)", (channel, version, build_id))
+
+    cursor.execute("select was_buildid_processed(%s, %s, %s, %s)", (channel, version, build_id, submission_date))
+    if cursor.fetchone()[0]:
+        # This aggregate has already been processed
+        conn.rollback()
+        return
 
     stage_table = StringIO()
     cursor.execute("select create_temporary_buildid_table(%s, %s, %s)", (channel, version, build_id))
