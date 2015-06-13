@@ -157,7 +157,7 @@ end
 $$ language plpgsql strict;
 
 
-create function h_bigint(text) returns bigint as $$
+create or replace function h_bigint(text) returns bigint as $$
     select ('x'||substr(md5($1),1,16))::bit(64)::bigint;
 $$ language sql;
 
