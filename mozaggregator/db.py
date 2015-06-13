@@ -290,8 +290,8 @@ def _upsert_aggregate(stage_table, aggregate):
 
     for metric, payload in metrics.iteritems():
         metric, label, child = metric
-        label = label.replace("'", "")  # Postgres doesn't like quotes
-        label = label.replace("\t", "")  # Tab is used as separator in the table
+        # Postgres doesn't like quotes and tab is used as a separator in the staging table
+        label = label.encode('utf-8').translate(None, "'\"\t\\")
 
         try:
             metric, histogram = _get_complete_histogram(channel, metric, payload["histogram"])
