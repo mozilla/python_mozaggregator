@@ -52,6 +52,7 @@ def _sample_clients(ping):
     if channel not in percentage:
         return False
 
+    # Use meta/sampleid once Heka spits it out correctly
     return client_id and ((binascii.crc32(client_id) % 100) < percentage[channel])
 
 
@@ -65,19 +66,16 @@ def _extract_histograms(state, payload, is_child=False):
 
 
 def _extract_histogram(state, histogram, histogram_name, label, is_child):
-    try:
-        if histogram["histogram_type"] == 4:  # Count histogram
-            return _extract_scalar_value(state, histogram_name, histogram["values"]["0"], is_child)
-
-        tmp_histogram = {}
-        for k, v in histogram["values"].iteritems():
-            tmp_histogram[k] = int(v)
-    except:
-        # Things that can go wrong (and shouldn't!):
-        # 1. Missing "values" dict
-        # 2. None value in bucket
-        # 3. Non-integer value in bucket
+    # Things that can go wrong (and shouldn't!):
+    # 1. Missing "values" dict
+    # 2. None value in bucket
+    # 3. Non-integer value in bucket
+    if "values" not in histogram:
         return
+
+    if histogram["histogram_type"] == 4:  # Count histogram
+        count = histogram["values"].get("0", 0)
+        return _extract_scalar_value(state, histogram_name, count, is_child)
 
     # Note that some dimensions don't vary within a single submissions
     # (e.g. channel) while some do (e.g. process type).
@@ -86,7 +84,8 @@ def _extract_histogram(state, histogram, histogram_name, label, is_child):
     aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
 
     state[accessor]["count"] = state[accessor].get("count", 0) + 1
-    for k, v in tmp_histogram.iteritems():
+    for k, v in histogram["values"].iteritems():
+        v = v if isinstance(v, (int, long)) else 0
         aggregated_histogram[k] = aggregated_histogram.get(k, 0) + v
 
 

@@ -4,7 +4,7 @@ NUM_CHILDREN_PER_PING = 3
 NUM_PINGS_PER_DIMENSIONS = 2
 
 ping_dimensions = {"submission_date": [u"20150601", u"20150602"],
-                   "channel": [u"nightly", u"aurora", u"beta", u"release"],
+                   "channel": [u"nightly", u"aurora"],
                    "version": [u"40.0a1", u"41"],
                    "build_id": [u"20150601000000", u"20150602000000"],
                    "application": [u"Firefox", u"Fennec"],
