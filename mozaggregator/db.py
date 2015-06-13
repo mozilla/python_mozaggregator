@@ -54,7 +54,7 @@ def submit_aggregates(aggregates, dry_run=False):
     _preparedb()
 
     count = aggregates.groupBy(lambda x: x[0][:4]).\
-               map(lambda x: _upsert_aggregates_fast(x, dry_run=dry_run)).\
+               map(lambda x: _upsert_aggregates(x, dry_run=dry_run)).\
                count()
 
     _vacuumdb()
@@ -279,7 +279,7 @@ def _get_complete_histogram(channel, metric, values):
     return metric, map(int, list(histogram))
 
 
-def _upsert_aggregate_fast(stage_table, aggregate):
+def _upsert_aggregate(stage_table, aggregate):
     key, metrics = aggregate
     submission_date, channel, version, build_id, application, architecture, os, os_version, e10s = key
     dimensions = {"application": application,
@@ -306,7 +306,7 @@ def _upsert_aggregate_fast(stage_table, aggregate):
         stage_table.write("{}\t{}\n".format(json.dumps(dimensions), "{" + repr(histogram)[1:-1] + "}"))
 
 
-def _upsert_aggregates_fast(aggregates, dry_run=False):
+def _upsert_aggregates(aggregates, dry_run=False):
     conn = create_connection(autocommit=False)
     cursor = conn.cursor()
     submission_date, channel, version, build_id = aggregates[0]
@@ -325,7 +325,7 @@ def _upsert_aggregates_fast(aggregates, dry_run=False):
     stage_table_name = cursor.fetchone()[0]
 
     for aggregate in aggregates[1]:
-        _upsert_aggregate_fast(stage_table, aggregate)
+        _upsert_aggregate(stage_table, aggregate)
 
     stage_table.seek(0)
     cursor.copy_from(stage_table, stage_table_name, columns=("dimensions", "histogram"))
