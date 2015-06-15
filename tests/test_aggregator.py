@@ -53,7 +53,7 @@ def test_simple_measurements():
                 assert(label == "")
                 assert(child is False)
                 assert(value["count"] == NUM_PINGS_PER_DIMENSIONS)
-                assert(value["histogram"]["35"] == value["count"])
+                assert(value["histogram"][str(SCALAR_BUCKET)] == value["count"])
 
     assert len(metric_count) == len(simple_measurements_template)
     for v in metric_count.values():
@@ -94,7 +94,7 @@ def test_count_histograms():
                 metric_count[metric] += 1
                 assert(label == "")
                 assert(value["count"] == NUM_PINGS_PER_DIMENSIONS*(NUM_CHILDREN_PER_PING if child else 1))
-                assert(value["histogram"]["35"] == value["count"])
+                assert(value["histogram"][str(SCALAR_BUCKET)] == value["count"])
 
     assert len(metric_count) == len(histograms)
     for v in metric_count.values():

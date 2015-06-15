@@ -2,6 +2,8 @@ import uuid
 
 NUM_CHILDREN_PER_PING = 3
 NUM_PINGS_PER_DIMENSIONS = 2
+SCALAR_VALUE = 42
+SCALAR_BUCKET = 35
 
 ping_dimensions = {"submission_date": [u"20150601", u"20150602"],
                    "channel": [u"nightly", u"aurora"],
@@ -31,10 +33,10 @@ histograms_template = {u"EVENTLOOP_UI_LAG_EXP_MS": {u'bucket_count': 20,
                        u"UPDATE_PING_COUNT_EXTERNAL": {u'bucket_count': 3,
                                                        u'histogram_type': 4,
                                                        u'range': [1, 2],
-                                                       u'sum': 42,
+                                                       u'sum': SCALAR_VALUE,
                                                        u'sum_squares_hi': 0,
                                                        u'sum_squares_lo': 1,
-                                                       u'values': {u'0': 42, u'1': 0}}}
+                                                       u'values': {u'0': SCALAR_VALUE, u'1': 0}}}
 
 keyed_histograms_template = {u'BLOCKED_ON_PLUGIN_INSTANCE_DESTROY_MS':
                              {u'Shockwave Flash17.0.0.188': {u'bucket_count': 20,
@@ -58,7 +60,7 @@ keyed_histograms_template = {u'BLOCKED_ON_PLUGIN_INSTANCE_DESTROY_MS':
                                                                          u'785': 1,
                                                                          u'8': 8}}}}
 
-simple_measurements_template = {"uptime": 42, "addonManager": {u'XPIDB_parseDB_MS': 42}}
+simple_measurements_template = {"uptime": SCALAR_VALUE, "addonManager": {u'XPIDB_parseDB_MS': SCALAR_VALUE}}
 
 
 def generate_pings():
