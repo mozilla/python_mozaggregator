@@ -22,8 +22,7 @@ def setup_module():
 
     sc = pyspark.SparkContext(master="local[*]")
     raw_pings = list(generate_pings())
-    build_id_aggregates, submission_date_aggregates = _aggregate_metrics(sc.parallelize(raw_pings))
-    aggregates = build_id_aggregates
+    aggregates = _aggregate_metrics(sc.parallelize(raw_pings))
 
 
 def teardown_module():
@@ -36,26 +35,33 @@ def test_connection():
 
 
 def test_submit():
-    count = submit_aggregates(aggregates)
+    # Multiple submissions should not alter the aggregates in the db
+    submit_aggregates(aggregates)
+    build_id_count, submission_date_count = submit_aggregates(aggregates)
+
     n_submission_dates = len(ping_dimensions["submission_date"])
     n_channels = len(ping_dimensions["channel"])
     n_versions = len(ping_dimensions["version"])
     n_build_ids = len(ping_dimensions["build_id"])
-    assert(count == n_submission_dates*n_channels*n_versions*n_build_ids)
+    assert(build_id_count == n_submission_dates*n_channels*n_versions*n_build_ids)
+    assert(submission_date_count == n_submission_dates*n_channels*n_versions)
 
 
 def test_channels():
-    channels = requests.get("{}/build_id/channels/".format(SERVICE_URI)).json()
+    channels = requests.get("{}/aggregates_by/build_id/channels/".format(SERVICE_URI)).json()
+    assert(set(channels) == set(ping_dimensions["channel"]))
+
+    channels = requests.get("{}/aggregates_by/submission_date/channels/".format(SERVICE_URI)).json()
     assert(set(channels) == set(ping_dimensions["channel"]))
 
 
-def test_buildids():
+def test_build_ids():
     template_channel = ping_dimensions["channel"]
     template_version = ping_dimensions["version"]
     template_build_id = ping_dimensions["build_id"]
 
     for channel in template_channel:
-        buildids = requests.get("{}/build_id/channels/{}/dates/".format(SERVICE_URI, channel)).json()
+        buildids = requests.get("{}/aggregates_by/build_id/channels/{}/dates/".format(SERVICE_URI, channel)).json()
         assert(len(buildids) == len(template_version)*len(template_build_id))
 
         for buildid in buildids:
@@ -64,7 +70,22 @@ def test_buildids():
             assert(buildid["version"] in [x.split('.')[0] for x in template_version])
 
 
-def test_metrics():
+def test_submission_dates():
+    template_channel = ping_dimensions["channel"]
+    template_version = ping_dimensions["version"]
+    template_submission_date = ping_dimensions["submission_date"]
+
+    for channel in template_channel:
+        submission_dates = requests.get("{}/aggregates_by/submission_date/channels/{}/dates/".format(SERVICE_URI, channel)).json()
+        assert(len(submission_dates) == len(template_version)*len(template_submission_date))
+
+        for submission_date in submission_dates:
+            assert(set(submission_date.keys()) == set(["date", "version"]))
+            assert(submission_date["date"] in template_submission_date)
+            assert(submission_date["version"] in [x.split('.')[0] for x in template_version])
+
+
+def test_build_id_metrics():
     template_channel = ping_dimensions["channel"]
     template_version = [x.split('.')[0] for x in ping_dimensions["version"]]
     template_build_id = [x[:-6] for x in ping_dimensions["build_id"]]
@@ -78,22 +99,49 @@ def test_metrics():
         for version in template_version:
             for buildid in template_build_id:
                 for metric, value in histograms_template.iteritems():
-                    test_histogram(channel, version, buildid, metric, value, expected_count)
+                    test_histogram("build_id", channel, version, buildid, metric, value, expected_count)
 
                 for simple_measure, value in simple_measurements_template.iteritems():
                     if not isinstance(value, int):
                         continue
 
                     metric = "SIMPLE_MEASURES_{}".format(simple_measure.upper())
-                    test_simple_measure(channel, version, buildid, metric, value, expected_count)
+                    test_simple_measure("build_id", channel, version, buildid, metric, value, expected_count)
 
                 for metric, histograms in keyed_histograms_template.iteritems():
-                    test_keyed_histogram(channel, version, buildid, metric, histograms, expected_count)
+                    test_keyed_histogram("build_id", channel, version, buildid, metric, histograms, expected_count)
 
 
-@nottest  # Invoked by test_metrics
-def test_histogram(channel, version, buildid, metric, value, expected_count):
-    res = requests.get("{}/build_id/channels/{}/dates/{}_{}?metric={}".format(SERVICE_URI, channel, version, buildid, metric)).json()
+def test_submission_dates_metrics():
+    template_channel = ping_dimensions["channel"]
+    template_version = [x.split('.')[0] for x in ping_dimensions["version"]]
+    template_submission_date = ping_dimensions["submission_date"]
+
+    expected_count = NUM_PINGS_PER_DIMENSIONS
+    for dimension, values in ping_dimensions.iteritems():
+        if dimension not in ["channel", "version", "submission_date"]:
+            expected_count *= len(values)
+
+    for channel in template_channel:
+        for version in template_version:
+            for submission_date in template_submission_date:
+                for metric, value in histograms_template.iteritems():
+                    test_histogram("submission_date", channel, version, submission_date, metric, value, expected_count)
+
+                for simple_measure, value in simple_measurements_template.iteritems():
+                    if not isinstance(value, int):
+                        continue
+
+                    metric = "SIMPLE_MEASURES_{}".format(simple_measure.upper())
+                    test_simple_measure("submission_date", channel, version, submission_date, metric, value, expected_count)
+
+                for metric, histograms in keyed_histograms_template.iteritems():
+                    test_keyed_histogram("submission_date", channel, version, submission_date, metric, histograms, expected_count)
+
+
+@nottest
+def test_histogram(prefix, channel, version, date, metric, value, expected_count):
+    res = requests.get("{}/aggregates_by/{}/channels/{}/dates/{}_{}?metric={}".format(SERVICE_URI, prefix, channel, version, date, metric)).json()
     assert(len(res) == 1)
 
     res = res[0]
@@ -112,9 +160,9 @@ def test_histogram(channel, version, buildid, metric, value, expected_count):
         assert((current == expected).all())
 
 
-@nottest  # Invoked by test_metrics
-def test_simple_measure(channel, version, buildid, metric, value, expected_count):
-    res = requests.get("{}/build_id/channels/{}/dates/{}_{}?metric={}".format(SERVICE_URI, channel, version, buildid, metric)).json()
+@nottest
+def test_simple_measure(prefix, channel, version, date, metric, value, expected_count):
+    res = requests.get("{}/aggregates_by/{}/channels/{}/dates/{}_{}?metric={}".format(SERVICE_URI, prefix, channel, version, date, metric)).json()
     assert(len(res) == 1)
 
     res = res[0]
@@ -128,13 +176,13 @@ def test_simple_measure(channel, version, buildid, metric, value, expected_count
     assert((current == expected).all())
 
 
-@nottest  # Invoked by test_metrics
-def test_keyed_histogram(channel, version, buildid, metric, histograms, expected_count):
-    res = requests.get("{}/build_id/channels/{}/dates/{}_{}?metric={}".format(SERVICE_URI, channel, version, buildid, metric)).json()
+@nottest
+def test_keyed_histogram(prefix, channel, version, date, metric, histograms, expected_count):
+    res = requests.get("{}/aggregates_by/{}/channels/{}/dates/{}_{}?metric={}".format(SERVICE_URI, prefix, channel, version, date, metric)).json()
     assert(len(res) == len(histograms))
 
     for label, value in histograms.iteritems():
-        res = requests.get("{}/build_id/channels/{}/dates/{}_{}?metric={}&label={}".format(SERVICE_URI, channel, version, buildid, metric, label)).json()
+        res = requests.get("{}/aggregates_by/{}/channels/{}/dates/{}_{}?metric={}&label={}".format(SERVICE_URI, prefix, channel, version, date, metric, label)).json()
         assert(len(res) == 1)
 
         res = res[0]

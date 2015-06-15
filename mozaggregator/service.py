@@ -16,7 +16,7 @@ def execute_query(query, params=tuple()):
     return cursor.fetchall()
 
 
-@app.route('/<prefix>/channels/')
+@app.route('/aggregates_by/<prefix>/channels/')
 def get_channels(prefix):
     try:
         channels = execute_query("select * from list_channels(%s)", (prefix, ))
@@ -28,7 +28,7 @@ def get_channels(prefix):
         abort(404)
 
 
-@app.route('/<prefix>/channels/<channel>/dates/')
+@app.route('/aggregates_by/<prefix>/channels/<channel>/dates/')
 def get_dates(prefix, channel):
     try:
         result = execute_query("select * from list_buildids(%s, %s)", (prefix, channel))
@@ -41,7 +41,7 @@ def get_dates(prefix, channel):
         abort(404)
 
 
-@app.route('/<prefix>/channels/<channel>/dates/<version>_<date>', methods=["GET"])
+@app.route('/aggregates_by/<prefix>/channels/<channel>/dates/<version>_<date>', methods=["GET"])
 def get_date(prefix, channel, version, date):
     try:
         dimensions = json.dumps({k: v for k, v in request.args.iteritems()})

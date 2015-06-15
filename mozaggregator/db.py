@@ -53,12 +53,16 @@ def create_connection(autocommit=True, host_override=None):
 def submit_aggregates(aggregates, dry_run=False):
     _preparedb()
 
-    count = aggregates.groupBy(lambda x: x[0][:4]).\
-               map(lambda x: _upsert_aggregates(x, dry_run=dry_run)).\
-               count()
+    build_id_count = aggregates[0].groupBy(lambda x: x[0][:4]).\
+                                   map(lambda x: _upsert_build_id_aggregates(x, dry_run=dry_run)).\
+                                   count()
+
+    submission_date_count = aggregates[1].groupBy(lambda x: x[0][:3]).\
+                                          map(lambda x: _upsert_submission_date_aggregates(x, dry_run=dry_run)).\
+                                          count()
 
     _vacuumdb()
-    return count
+    return build_id_count, submission_date_count
 
 
 def _preparedb():
@@ -159,7 +163,7 @@ declare
 begin
     table_name := aggregate_table_name(prefix, channel, version, date);
     select exists(select 1
-                  from buildid_update_dates as t
+                  from table_update_dates as t
                   where t.tablename = table_name and submission_date = any(t.submission_dates))
                   into was_processed;
 
@@ -167,11 +171,11 @@ begin
         return was_processed;
     end if;
 
-    with upsert as (update buildid_update_dates
+    with upsert as (update table_update_dates
                     set submission_dates = submission_dates || submission_date
                     where tablename = table_name
                     returning *)
-         insert into buildid_update_dates
+         insert into table_update_dates
          select * from (values (table_name, array[submission_date])) as t
          where not exists(select 1 from upsert);
 
@@ -230,10 +234,10 @@ create or replace function create_tables() returns void as $$
 declare
     table_exists boolean;
 begin
-   table_exists := (select exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'buildid_update_dates'));
+   table_exists := (select exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'table_update_dates'));
    if (not table_exists) then
-       create table buildid_update_dates (tablename text primary key, submission_dates text[]);
-       create index on buildid_update_dates (tablename);
+       create table table_update_dates (tablename text primary key, submission_dates text[]);
+       create index on table_update_dates (tablename);
    end if;
 end
 $$ language plpgsql strict;
@@ -259,7 +263,7 @@ def _get_complete_histogram(channel, metric, values):
 
 def _upsert_aggregate(stage_table, aggregate):
     key, metrics = aggregate
-    submission_date, channel, version, build_id, application, architecture, os, os_version, e10s = key
+    submission_date, channel, version, application, architecture, os, os_version, e10s = key[:3] + key[-5:]
     dimensions = {"application": application,
                   "architecture": architecture,
                   "os": os,
@@ -284,7 +288,7 @@ def _upsert_aggregate(stage_table, aggregate):
         stage_table.write("{}\t{}\n".format(json.dumps(dimensions), "{" + repr(histogram)[1:-1] + "}"))
 
 
-def _upsert_aggregates(aggregates, dry_run=False):
+def _upsert_build_id_aggregates(aggregates, dry_run=False):
     conn = create_connection(autocommit=False)
     cursor = conn.cursor()
     submission_date, channel, version, build_id = aggregates[0]
@@ -308,6 +312,34 @@ def _upsert_aggregates(aggregates, dry_run=False):
     stage_table.seek(0)
     cursor.copy_from(stage_table, stage_table_name, columns=("dimensions", "histogram"))
     cursor.execute("select merge_table(%s, %s, %s, %s, %s)", ('build_id', channel, version, build_id, stage_table_name))
+
+    if dry_run:
+        conn.rollback()
+    else:
+        conn.commit()
+
+
+def _upsert_submission_date_aggregates(aggregates, dry_run=False):
+    conn = create_connection(autocommit=False)
+    cursor = conn.cursor()
+    submission_date, channel, version = aggregates[0]
+
+    cursor.execute("select was_processed(%s, %s, %s, %s, %s)", ("submission_date", channel, version, submission_date, submission_date))
+    if cursor.fetchone()[0]:
+        # This aggregate has already been processed
+        conn.rollback()
+        return
+
+    stage_table = StringIO()
+    cursor.execute("select create_temporary_table(%s, %s, %s, %s)", ("submission_date", channel, version, submission_date))
+    stage_table_name = cursor.fetchone()[0]
+
+    for aggregate in aggregates[1]:
+        _upsert_aggregate(stage_table, aggregate)
+
+    stage_table.seek(0)
+    cursor.copy_from(stage_table, stage_table_name, columns=("dimensions", "histogram"))
+    cursor.execute("select merge_table(%s, %s, %s, %s, %s)", ("submission_date", channel, version, submission_date, stage_table_name))
 
     if dry_run:
         conn.rollback()
