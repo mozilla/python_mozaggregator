@@ -45,7 +45,7 @@ def test_submit():
 
 
 def test_channels():
-    channels = requests.get("{}/channel/".format(SERVICE_URI)).json()
+    channels = requests.get("{}/build_id/channels/".format(SERVICE_URI)).json()
     assert(set(channels) == set(ping_dimensions["channel"]))
 
 
@@ -55,12 +55,12 @@ def test_buildids():
     template_build_id = ping_dimensions["build_id"]
 
     for channel in template_channel:
-        buildids = requests.get("{}/channel/{}/buildid/".format(SERVICE_URI, channel)).json()
+        buildids = requests.get("{}/build_id/channels/{}/dates/".format(SERVICE_URI, channel)).json()
         assert(len(buildids) == len(template_version)*len(template_build_id))
 
         for buildid in buildids:
-            assert(set(buildid.keys()) == set(["buildid", "version"]))
-            assert(buildid["buildid"] in [x[:-6] for x in template_build_id])
+            assert(set(buildid.keys()) == set(["date", "version"]))
+            assert(buildid["date"] in [x[:-6] for x in template_build_id])
             assert(buildid["version"] in [x.split('.')[0] for x in template_version])
 
 
@@ -93,7 +93,7 @@ def test_metrics():
 
 @nottest  # Invoked by test_metrics
 def test_histogram(channel, version, buildid, metric, value, expected_count):
-    res = requests.get("{}/channel/{}/buildid/{}_{}?metric={}".format(SERVICE_URI, channel, version, buildid, metric)).json()
+    res = requests.get("{}/build_id/channels/{}/dates/{}_{}?metric={}".format(SERVICE_URI, channel, version, buildid, metric)).json()
     assert(len(res) == 1)
 
     res = res[0]
@@ -114,7 +114,7 @@ def test_histogram(channel, version, buildid, metric, value, expected_count):
 
 @nottest  # Invoked by test_metrics
 def test_simple_measure(channel, version, buildid, metric, value, expected_count):
-    res = requests.get("{}/channel/{}/buildid/{}_{}?metric={}".format(SERVICE_URI, channel, version, buildid, metric)).json()
+    res = requests.get("{}/build_id/channels/{}/dates/{}_{}?metric={}".format(SERVICE_URI, channel, version, buildid, metric)).json()
     assert(len(res) == 1)
 
     res = res[0]
@@ -130,11 +130,11 @@ def test_simple_measure(channel, version, buildid, metric, value, expected_count
 
 @nottest  # Invoked by test_metrics
 def test_keyed_histogram(channel, version, buildid, metric, histograms, expected_count):
-    res = requests.get("{}/channel/{}/buildid/{}_{}?metric={}".format(SERVICE_URI, channel, version, buildid, metric)).json()
+    res = requests.get("{}/build_id/channels/{}/dates/{}_{}?metric={}".format(SERVICE_URI, channel, version, buildid, metric)).json()
     assert(len(res) == len(histograms))
 
     for label, value in histograms.iteritems():
-        res = requests.get("{}/channel/{}/buildid/{}_{}?metric={}&label={}".format(SERVICE_URI, channel, version, buildid, metric, label)).json()
+        res = requests.get("{}/build_id/channels/{}/dates/{}_{}?metric={}&label={}".format(SERVICE_URI, channel, version, buildid, metric, label)).json()
         assert(len(res) == 1)
 
         res = res[0]

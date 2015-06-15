@@ -65,6 +65,13 @@ def _preparedb():
     conn = create_connection()
     cursor = conn.cursor()
     query = """
+create or replace function aggregate_table_name(prefix text, channel text, version text, date text) returns text as $$
+begin
+    return format('%s_%s_%s_%s', prefix, channel, version, date);
+end
+$$ language plpgsql strict immutable;
+
+
 create or replace function aggregate_arrays(acc bigint[], x bigint[]) returns bigint[] as $$
 declare
     i int;
@@ -84,46 +91,18 @@ create aggregate aggregate_histograms (bigint[]) (
 );
 
 
-create or replace function add_buildid_metric(channel text, version text, buildid text, dimensions jsonb, histogram bigint[]) returns void as $$
-declare
-    tablename text;
-    table_exists bool;
-    temporary text;
-begin
-    tablename := channel || '_' || version || '_' || buildid;
-    -- Check if table exists and if not create one
-    table_exists := (select exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = tablename));
-
-    if not table_exists then
-        execute 'create table ' || tablename || '(id serial primary key, dimensions jsonb, histogram bigint[])';
-        execute 'create index on ' || tablename || ' using GIN (dimensions jsonb_path_ops)';
-    end if;
-
-    -- Check if the document already exists and update it, if not create one
-    execute 'with upsert as (update ' || tablename || ' as t
-                             set histogram = (select aggregate_histograms(v) from (values (1, t.histogram), (2, $1)) as t (k, v))
-                             where t.dimensions @> $2
-                             returning t.*)
-             insert into ' || tablename || ' (dimensions, histogram)
-             select * from (values ($2, $1)) as t
-             where not exists (select 1 from upsert)'
-             using histogram, dimensions;
-end
-$$ language plpgsql strict;
-
-
-create or replace function merge_buildid_table(channel text, version text, buildid text, stage_table regclass) returns void as $$
+create or replace function merge_table(prefix text, channel text, version text, date text, stage_table regclass) returns void as $$
 declare
     tablename text;
     table_exists bool;
 begin
-    tablename := channel || '_' || version || '_' || buildid;
+    tablename := aggregate_table_name(prefix, channel, version, date);
     -- Check if table exists and if not create one
     table_exists := (select exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = tablename));
 
     if not table_exists then
         execute format('create table %s as table %s', tablename, stage_table);
-        execute format('create index on %s using GIN (dimensions jsonb_path_ops)', stage_table);
+        execute format('create index on %s using GIN (dimensions jsonb_path_ops)', tablename);
         return;
     end if;
 
@@ -144,12 +123,12 @@ end
 $$ language plpgsql strict;
 
 
-create or replace function lock_buildid_transaction(channel text, version text, buildid text) returns bigint as $$
+create or replace function lock_transaction(prefix text, channel text, version text, date text) returns bigint as $$
 declare
     table_name text;
     lock bigint;
 begin
-    table_name := channel || '_' || version || '_' || buildid;
+    table_name := aggregate_table_name(prefix, channel, version, date);
     lock := (select h_bigint(table_name));
     execute 'select pg_advisory_xact_lock($1)' using lock;
     return lock;
@@ -162,23 +141,23 @@ create or replace function h_bigint(text) returns bigint as $$
 $$ language sql;
 
 
-create or replace function create_temporary_buildid_table(channel text, version text, buildid text) returns text as $$
+create or replace function create_temporary_table(prefix text, channel text, version text, date text) returns text as $$
 declare
     tablename text;
 begin
-    tablename := format('%s_%s_%s_staging', channel, version,  buildid);
-    execute 'create temporary table ' || tablename || ' (id serial primary key, dimensions jsonb, histogram bigint[]) on commit drop';
+    tablename := aggregate_table_name('staging_' || prefix, channel, version, date);
+    execute 'create temporary table ' || tablename || ' (dimensions jsonb, histogram bigint[]) on commit drop';
     return tablename;
 end
 $$ language plpgsql strict;
 
 
-create or replace function was_buildid_processed(channel text, version text, buildid text, submission_date text) returns boolean as $$
+create or replace function was_processed(prefix text, channel text, version text, date text, submission_date text) returns boolean as $$
 declare
     table_name text;
     was_processed boolean;
 begin
-    table_name := channel || '_' || version || '_' || buildid;
+    table_name := aggregate_table_name(prefix, channel, version, date);
     select exists(select 1
                   from buildid_update_dates as t
                   where t.tablename = table_name and submission_date = any(t.submission_dates))
@@ -201,7 +180,7 @@ end
 $$ language plpgsql strict;
 
 
-create or replace function get_buildid_metric(channel text, version text, buildid text, dimensions jsonb) returns table(label text, histogram bigint[]) as $$
+create or replace function get_metric(prefix text, channel text, version text, date text, dimensions jsonb) returns table(label text, histogram bigint[]) as $$
 declare
     tablename text;
 begin
@@ -209,7 +188,7 @@ begin
         raise exception 'Missing metric field!';
     end if;
 
-    tablename := channel || '_' || version || '_' || buildid;
+    tablename := aggregate_table_name(prefix, channel, version, date);
 
     return query execute
     E'select dimensions->>\\'label\\', aggregate_histograms(histogram)
@@ -221,26 +200,28 @@ end
 $$ language plpgsql strict immutable;
 
 
-create or replace function list_buildids(channel text) returns table(version text, buildid text) as $$
+create or replace function list_buildids(prefix text, channel text) returns table(version text, buildid text) as $$
 begin
     return query execute
     E'select t.matches[2], t.matches[3] from
-        (select regexp_matches(table_name::text, \\'([^_]*)_([0-9]*)_([0-9]*)\\')
+        (select regexp_matches(table_name::text, $3)
          from information_schema.tables
-         where table_schema=\\'public\\' and table_type=\\'BASE TABLE\\' and table_name like \\'' || channel || E'%\\'
-         order by table_name desc) as t (matches)';
+         where table_schema=\\'public\\' and table_type=\\'BASE TABLE\\' and table_name like $1 || $2
+         order by table_name desc) as t (matches)'
+       using prefix, '_' || channel || '%', '^' || prefix || '_([^_]+)_([0-9]+)_([0-9]+)$';
 end
 $$ language plpgsql strict;
 
 
-create or replace function list_channels() returns table(channel text) as $$
+create or replace function list_channels(prefix text) returns table(channel text) as $$
 begin
     return query execute
     E'select distinct t.matches[1] from
-        (select regexp_matches(table_name::text, \\'([^_]*)_([0-9]*)_([0-9]*)\\')
+        (select regexp_matches(table_name::text, $1 || \\'_([^_]+)_([0-9]+)_([0-9]+)\\')
          from information_schema.tables
          where table_schema=\\'public\\' and table_type=\\'BASE TABLE\\'
-         order by table_name desc) as t (matches)';
+         order by table_name desc) as t (matches)'
+       using prefix;
 end
 $$ language plpgsql strict;
 
@@ -259,9 +240,6 @@ $$ language plpgsql strict;
 
 
 select create_tables();
-
--- Example usage:
--- select get_buildid_metric('nightly', '41', '20150527', '{"metric": "JS_TELEMETRY_ADDON_EXCEPTIONS"}'::jsonb);
     """
 
     cursor.execute(query)
@@ -312,16 +290,16 @@ def _upsert_aggregates(aggregates, dry_run=False):
     submission_date, channel, version, build_id = aggregates[0]
 
     # Aggregates with different submisssion_dates write to the same tables, we need a lock
-    cursor.execute("select lock_buildid_transaction(%s, %s, %s)", (channel, version, build_id))
+    cursor.execute("select lock_transaction(%s, %s, %s, %s)", ("build_id", channel, version, build_id))
 
-    cursor.execute("select was_buildid_processed(%s, %s, %s, %s)", (channel, version, build_id, submission_date))
+    cursor.execute("select was_processed(%s, %s, %s, %s, %s)", ("build_id", channel, version, build_id, submission_date))
     if cursor.fetchone()[0]:
         # This aggregate has already been processed
         conn.rollback()
         return
 
     stage_table = StringIO()
-    cursor.execute("select create_temporary_buildid_table(%s, %s, %s)", (channel, version, build_id))
+    cursor.execute("select create_temporary_table(%s, %s, %s, %s)", ("build_id", channel, version, build_id))
     stage_table_name = cursor.fetchone()[0]
 
     for aggregate in aggregates[1]:
@@ -329,7 +307,7 @@ def _upsert_aggregates(aggregates, dry_run=False):
 
     stage_table.seek(0)
     cursor.copy_from(stage_table, stage_table_name, columns=("dimensions", "histogram"))
-    cursor.execute("select merge_buildid_table(%s, %s, %s, %s)", (channel, version, build_id, stage_table_name))
+    cursor.execute("select merge_table(%s, %s, %s, %s, %s)", ('build_id', channel, version, build_id, stage_table_name))
 
     if dry_run:
         conn.rollback()

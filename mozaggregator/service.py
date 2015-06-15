@@ -16,30 +16,36 @@ def execute_query(query, params=tuple()):
     return cursor.fetchall()
 
 
-@app.route('/channel/')
-def get_channels():
+@app.route('/<prefix>/channels/')
+def get_channels(prefix):
     try:
-        channels = execute_query("select * from list_channels()")
+        channels = execute_query("select * from list_channels(%s)", (prefix, ))
+        if not channels:
+            abort(404)
+
         return json.dumps([channel[0] for channel in channels])
     except:
         abort(404)
 
 
-@app.route('/channel/<channel>/buildid/')
-def get_buildids(channel):
+@app.route('/<prefix>/channels/<channel>/dates/')
+def get_dates(prefix, channel):
     try:
-        result = execute_query("select * from list_buildids(%s)", (channel, ))
-        pretty_result = map(lambda r: {"version": r[0], "buildid": r[1]}, result)
+        result = execute_query("select * from list_buildids(%s, %s)", (prefix, channel))
+        if not result:
+            abort(404)
+
+        pretty_result = map(lambda r: {"version": r[0], "date": r[1]}, result)
         return json.dumps(pretty_result)
     except:
         abort(404)
 
 
-@app.route('/channel/<channel>/buildid/<version>_<buildid>', methods=["GET"])
-def get_buildid(channel, version, buildid):
+@app.route('/<prefix>/channels/<channel>/dates/<version>_<date>', methods=["GET"])
+def get_date(prefix, channel, version, date):
     try:
         dimensions = json.dumps({k: v for k, v in request.args.iteritems()})
-        result = execute_query("select * from get_buildid_metric(%s, %s, %s, %s)", (channel, version, buildid, dimensions))
+        result = execute_query("select * from get_metric(%s, %s, %s, %s, %s)", (prefix, channel, version, date, dimensions))
 
         if not result:  # Metric not found
             abort(404)
