@@ -16,7 +16,7 @@ scalar_histogram_labels = cached_exponential_buckets(1, 30000, 50)
 
 
 def aggregate_metrics(sc, channels, submission_date, fraction=1):
-    """ Aggregates metrics over build-ids for a given submission date.
+    """ Returns the build-id and submission date aggregates for a given submission date.
 
     :param sc: A SparkContext instance
     :param channel: Either the name of a channel or a list/tuple of names
@@ -34,7 +34,13 @@ def aggregate_metrics(sc, channels, submission_date, fraction=1):
 
 def _aggregate_metrics(pings):
     trimmed = pings.filter(_sample_clients).map(_map_ping_to_dimensions)
-    return trimmed.aggregateByKey(defaultdict(dict), _aggregate_ping, _aggregate_aggregates)
+    build_id_aggregates = trimmed.aggregateByKey(defaultdict(dict), _aggregate_ping, _aggregate_aggregates)
+    submission_date_aggregates = build_id_aggregates.map(_map_build_id_key_to_submission_date_key).reduceByKey(_aggregate_aggregates)
+    return build_id_aggregates, submission_date_aggregates
+
+
+def _map_build_id_key_to_submission_date_key(aggregate):
+    return tuple(aggregate[0][:3] + aggregate[0][4:]), aggregate[1]
 
 
 def _sample_clients(ping):

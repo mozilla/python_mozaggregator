@@ -22,7 +22,8 @@ def setup_module():
 
     sc = pyspark.SparkContext(master="local[*]")
     raw_pings = list(generate_pings())
-    aggregates = _aggregate_metrics(sc.parallelize(raw_pings))
+    build_id_aggregates, submission_date_aggregates = _aggregate_metrics(sc.parallelize(raw_pings))
+    aggregates = build_id_aggregates
 
 
 def teardown_module():
