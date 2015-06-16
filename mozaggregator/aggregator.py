@@ -81,7 +81,7 @@ def _extract_histogram(state, histogram, histogram_name, label, is_child):
 
     if histogram["histogram_type"] == 4:  # Count histogram
         count = histogram["values"].get("0", 0)
-        return _extract_scalar_value(state, histogram_name, count, is_child)
+        return _extract_scalar_value(state, histogram_name, label, count, is_child)
 
     # Note that some dimensions don't vary within a single submissions
     # (e.g. channel) while some do (e.g. process type).
@@ -110,13 +110,13 @@ def _extract_simple_measures(state, simple):
         if type(value) == dict:
             for sub_name, sub_value in value.iteritems():
                 if type(sub_value) in (int, float, long):
-                    _extract_scalar_value(state, u"SIMPLE_MEASURES_{}_{}".format(name.upper(), sub_name.upper()), sub_value)
+                    _extract_scalar_value(state, u"SIMPLE_MEASURES_{}_{}".format(name.upper(), sub_name.upper()), u"", sub_value)
         elif type(value) in (int, float, long):
-            _extract_scalar_value(state, u"SIMPLE_MEASURES_{}".format(name.upper()), value)
+            _extract_scalar_value(state, u"SIMPLE_MEASURES_{}".format(name.upper()), u"", value)
 
 
-def _extract_scalar_value(state, name, value, is_child=False):
-    accessor = ("[[SCALAR]]_{}".format(name), u"", is_child)
+def _extract_scalar_value(state, name, label, value, is_child=False):
+    accessor = ("[[SCALAR]]_{}".format(name), label, is_child)
     aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
     state[accessor]["count"] = state[accessor].get("count", 0) + 1
 
