@@ -33,7 +33,7 @@ def aggregate_metrics(sc, channels, submission_date, fraction=1):
 
 
 def _aggregate_metrics(pings):
-    trimmed = pings.filter(_sample_clients).map(_map_ping_to_dimensions)
+    trimmed = pings.filter(_sample_clients).map(_map_ping_to_dimensions).filter(lambda x: x)
     build_id_aggregates = trimmed.aggregateByKey(defaultdict(dict), _aggregate_ping, _aggregate_aggregates)
     submission_date_aggregates = build_id_aggregates.map(_map_build_id_key_to_submission_date_key).reduceByKey(_aggregate_aggregates)
     return build_id_aggregates, submission_date_aggregates
@@ -168,20 +168,23 @@ def _aggregate_aggregates(agg1, agg2):
 
 
 def _map_ping_to_dimensions(ping):
-    submission_date = ping["meta"]["submissionDate"]
-    channel = ping["application"]["channel"]
-    version = ping["application"]["version"].split('.')[0]
-    build_id = ping["application"]["buildId"][:8]
-    application = ping["application"]["name"]
-    architecture = ping["application"]["architecture"]
-    os = ping["environment"]["system"]["os"]["name"]
-    os_version = ping["environment"]["system"]["os"]["version"]
-    e10s = ping["environment"]["settings"]["e10sEnabled"]
-    if os == "Linux":
-        os_version = str(os_version)[:3]
+    try:
+        submission_date = ping["meta"]["submissionDate"]
+        channel = ping["application"]["channel"]
+        version = ping["application"]["version"].split('.')[0]
+        build_id = ping["application"]["buildId"][:8]
+        application = ping["application"]["name"]
+        architecture = ping["application"]["architecture"]
+        os = ping["environment"]["system"]["os"]["name"]
+        os_version = ping["environment"]["system"]["os"]["version"]
+        e10s = ping["environment"]["settings"]["e10sEnabled"]
+        if os == "Linux":
+            os_version = str(os_version)[:3]
 
-    # Note that some dimensions don't vary within a single submissions
-    # (e.g. channel) while some do (e.g. process type).
-    # Dimensions that don't vary should appear in the submission key, while
-    # the ones that do vary should appear within the key of a single metric.
-    return ((submission_date, channel, version, build_id, application, architecture, os, os_version, e10s), ping)
+        # Note that some dimensions don't vary within a single submissions
+        # (e.g. channel) while some do (e.g. process type).
+        # Dimensions that don't vary should appear in the submission key, while
+        # the ones that do vary should appear within the key of a single metric.
+        return ((submission_date, channel, version, build_id, application, architecture, os, os_version, e10s), ping)
+    except KeyError:
+        return None
