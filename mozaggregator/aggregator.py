@@ -79,7 +79,7 @@ def _extract_histogram(state, histogram, histogram_name, label, is_child):
     if "values" not in histogram:
         return
 
-    if histogram["histogram_type"] == 4:  # Count histogram
+    if histogram.get("histogram_type", None) == 4:  # Count histogram
         count = histogram["values"].get("0", 0)
         return _extract_scalar_value(state, histogram_name, label, count, is_child)
 
