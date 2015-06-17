@@ -68,7 +68,7 @@ def submit_aggregates(aggregates, dry_run=False):
 def _preparedb():
     conn = create_connection()
     cursor = conn.cursor()
-    query = """
+    query = r"""
 create or replace function aggregate_table_name(prefix text, channel text, version text, date text) returns text as $$
 begin
     return format('%s_%s_%s_%s', prefix, channel, version, date);
@@ -195,10 +195,10 @@ begin
     tablename := aggregate_table_name(prefix, channel, version, date);
 
     return query execute
-    E'select dimensions->>\\'label\\', aggregate_histograms(histogram)
+    E'select dimensions->>\'label\', aggregate_histograms(histogram)
         from ' || tablename || E'
         where dimensions @> $1
-        group by dimensions->>\\'label\\''
+        group by dimensions->>\'label\''
         using dimensions;
 end
 $$ language plpgsql strict immutable;
@@ -210,7 +210,7 @@ begin
     E'select t.matches[2], t.matches[3] from
         (select regexp_matches(table_name::text, $3)
          from information_schema.tables
-         where table_schema=\\'public\\' and table_type=\\'BASE TABLE\\' and table_name like $1 || $2
+         where table_schema=\'public\' and table_type=\'BASE TABLE\' and table_name like $1 || $2
          order by table_name desc) as t (matches)'
        using prefix, '_' || channel || '%', '^' || prefix || '_([^_]+)_([0-9]+)_([0-9]+)$';
 end
@@ -221,9 +221,9 @@ create or replace function list_channels(prefix text) returns table(channel text
 begin
     return query execute
     E'select distinct t.matches[1] from
-        (select regexp_matches(table_name::text, $1 || \\'_([^_]+)_([0-9]+)_([0-9]+)\\')
+        (select regexp_matches(table_name::text, $1 || \'_([^_]+)_([0-9]+)_([0-9]+)\')
          from information_schema.tables
-         where table_schema=\\'public\\' and table_type=\\'BASE TABLE\\'
+         where table_schema=\'public\' and table_type=\'BASE TABLE\'
          order by table_name desc) as t (matches)'
        using prefix;
 end
