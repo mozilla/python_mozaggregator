@@ -4,7 +4,7 @@ import ujson as json
 from flask import Flask, request, abort
 from db import create_connection, histogram_revision_map
 from moztelemetry.histogram import Histogram
-from aggregator import scalar_histogram_labels
+from aggregator import simple_measures_labels, count_histogram_labels
 
 app = Flask(__name__)
 
@@ -44,9 +44,22 @@ def get_dates(prefix, channel):
 @app.route('/aggregates_by/<prefix>/channels/<channel>/dates/<version>_<date>', methods=["GET"])
 def get_date(prefix, channel, version, date):
     try:
-        dimensions = json.dumps({k: v for k, v in request.args.iteritems()})
-        result = execute_query("select * from get_metric(%s, %s, %s, %s, %s)", (prefix, channel, version, date, dimensions))
+        # Retrieve labels for histogram
+        dimensions = {k: v for k, v in request.args.iteritems()}
 
+        if dimensions["metric"].startswith("SIMPLE_MEASURES_"):
+            labels = simple_measures_labels
+        else:
+            revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
+            definition = Histogram(dimensions["metric"], {"values": {}}, revision=revision)
+
+            if definition.kind == "count":
+                labels = count_histogram_labels
+                dimensions["metric"] = "[[COUNT]]_{}".format(dimensions["metric"])
+            else:
+                labels = definition.get_value().keys().tolist()
+
+        result = execute_query("select * from get_metric(%s, %s, %s, %s, %s)", (prefix, channel, version, date, json.dumps(dimensions)))
         if not result:  # Metric not found
             abort(404)
 
@@ -55,16 +68,6 @@ def get_date(prefix, channel, version, date):
             label = row[0]
             histogram = row[1][:-1]
             count = row[1][-1]
-
-            # Retrieve labels for histogram
-            revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
-            try:
-                labels = Histogram(request.args["metric"], histogram, revision=revision).get_value().keys().tolist()
-            except Exception as e:
-                # Count histogram or simple measurement
-                # TODO: deal properly with those
-                labels = scalar_histogram_labels
-
             pretty_result.append({"label": label, "histogram": dict(zip(labels, histogram)), "count": count})
 
         return json.dumps(pretty_result)

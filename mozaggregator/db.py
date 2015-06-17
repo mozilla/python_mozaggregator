@@ -14,7 +14,7 @@ import os
 from moztelemetry.spark import Histogram
 from boto.s3.connection import S3Connection
 from cStringIO import StringIO
-from mozaggregator.aggregator import scalar_histogram_labels
+from mozaggregator.aggregator import simple_measures_labels, count_histogram_labels
 
 # Use latest revision, we don't really care about histograms that have
 # been removed. This only works though if histogram definitions are
@@ -252,13 +252,14 @@ select create_tables();
 def _get_complete_histogram(channel, metric, values):
     revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
 
-    if metric.startswith("[[SCALAR]]_"):
-        histogram = pd.Series({int(k): v for k, v in values.iteritems()}, index=scalar_histogram_labels).fillna(0).values
-        metric = metric[11:]
+    if metric.startswith("SIMPLE_MEASURES"):
+        histogram = pd.Series({int(k): v for k, v in values.iteritems()}, index=simple_measures_labels).fillna(0).values
+    elif metric.startswith("[[COUNT]]_"):  # Count histogram
+        histogram = pd.Series({int(k): v for k, v in values.iteritems()}, index=count_histogram_labels).fillna(0).values
     else:
         histogram = Histogram(metric, {"values": values}, revision=revision).get_value(autocast=False).values
 
-    return metric, map(int, list(histogram))
+    return map(long, list(histogram))
 
 
 def _upsert_aggregate(stage_table, aggregate):
@@ -274,8 +275,7 @@ def _upsert_aggregate(stage_table, aggregate):
         metric, label, child = metric
 
         try:
-            metric, histogram = _get_complete_histogram(channel, metric, payload["histogram"])
-            histogram += [payload["count"]]
+            histogram = _get_complete_histogram(channel, metric, payload["histogram"]) + [payload["count"]]
         except KeyError:  # TODO: ignore expired histograms
             continue
 
@@ -289,7 +289,7 @@ def _upsert_aggregate(stage_table, aggregate):
         # in the database, causing Postgres to choke.
         json_dimensions = json_dimensions.replace("\\", "\\\\")
 
-        stage_table.write("{}\t{}\n".format(json_dimensions, "{" + repr(histogram)[1:-1] + "}"))
+        stage_table.write("{}\t{}\n".format(json_dimensions, "{" + json.dumps(histogram)[1:-1] + "}"))
 
 
 def _upsert_build_id_aggregates(aggregates, dry_run=False):

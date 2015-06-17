@@ -3,7 +3,7 @@ import logging
 import requests
 import pandas as pd
 
-from mozaggregator.aggregator import _aggregate_metrics, scalar_histogram_labels
+from mozaggregator.aggregator import _aggregate_metrics, count_histogram_labels, simple_measures_labels
 from mozaggregator.db import create_connection, submit_aggregates
 from dataset import *
 from moztelemetry.histogram import Histogram
@@ -149,10 +149,10 @@ def test_histogram(prefix, channel, version, date, metric, value, expected_count
 
     if value["histogram_type"] == 4:  # Count histogram
         current = pd.Series({int(k): v for k, v in res["histogram"].iteritems()})
-        expected = pd.Series(index=scalar_histogram_labels, data=0)
-        expected[SCALAR_BUCKET] = res["count"]
+        expected = pd.Series(index=count_histogram_labels, data=0)
+        expected[COUNT_SCALAR_BUCKET] = res["count"]
         assert(value["values"]["0"] == SCALAR_VALUE)
-        assert(res["histogram"][str(SCALAR_BUCKET)] == res["count"])
+        assert(res["histogram"][str(COUNT_SCALAR_BUCKET)] == res["count"])
         assert((current == expected).all())
     else:
         current = pd.Series({int(k): v for k, v in res["histogram"].iteritems()})
@@ -169,10 +169,10 @@ def test_simple_measure(prefix, channel, version, date, metric, value, expected_
     assert(res["count"] == expected_count)
 
     current = pd.Series({int(k): v for k, v in res["histogram"].iteritems()})
-    expected = pd.Series(index=scalar_histogram_labels, data=0)
-    expected[SCALAR_BUCKET] = res["count"]
+    expected = pd.Series(index=simple_measures_labels, data=0)
+    expected[SIMPLE_SCALAR_BUCKET] = res["count"]
     assert(value == SCALAR_VALUE)
-    assert(res["histogram"][str(SCALAR_BUCKET)] == res["count"])
+    assert(res["histogram"][str(SIMPLE_SCALAR_BUCKET)] == res["count"])
     assert((current == expected).all())
 
 

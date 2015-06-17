@@ -3,7 +3,8 @@ import uuid
 NUM_CHILDREN_PER_PING = 3
 NUM_PINGS_PER_DIMENSIONS = 2
 SCALAR_VALUE = 42
-SCALAR_BUCKET = 35
+SIMPLE_SCALAR_BUCKET = 35
+COUNT_SCALAR_BUCKET = 40
 
 ping_dimensions = {"submission_date": [u"20150601", u"20150603"],
                    "channel": [u"nightly", u"aurora"],

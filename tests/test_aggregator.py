@@ -71,12 +71,12 @@ def test_simple_measurements():
         for key, value in aggregate[1].iteritems():
             metric, label, child = key
 
-            if re.match("^\[\[SCALAR\]\]_SIMPLE_MEASURES.*$", metric):
+            if metric.startswith("SIMPLE_MEASURES_"):
                 metric_count[metric] += 1
                 assert(label == "")
                 assert(child is False)
                 assert(value["count"] == NUM_PINGS_PER_DIMENSIONS)
-                assert(value["histogram"][str(SCALAR_BUCKET)] == value["count"])
+                assert(value["histogram"][str(SIMPLE_SCALAR_BUCKET)] == value["count"])
 
     assert len(metric_count) == len(simple_measurements_template)
     for v in metric_count.values():
@@ -106,7 +106,7 @@ def test_classic_histograms():
 
 def test_count_histograms():
     metric_count = defaultdict(int)
-    histograms = {"[[SCALAR]]_{}".format(k): v for k, v in histograms_template.iteritems() if v["histogram_type"] == 4}
+    histograms = {"[[COUNT]]_{}".format(k): v for k, v in histograms_template.iteritems() if v["histogram_type"] == 4}
 
     for aggregate in build_id_aggregates:
         for key, value in aggregate[1].iteritems():
@@ -117,7 +117,7 @@ def test_count_histograms():
                 metric_count[metric] += 1
                 assert(label == "")
                 assert(value["count"] == NUM_PINGS_PER_DIMENSIONS*(NUM_CHILDREN_PER_PING if child else 1))
-                assert(value["histogram"][str(SCALAR_BUCKET)] == value["count"])
+                assert(value["histogram"][str(COUNT_SCALAR_BUCKET)] == value["count"])
 
     assert len(metric_count) == len(histograms)
     for v in metric_count.values():

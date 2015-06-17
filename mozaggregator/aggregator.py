@@ -12,7 +12,8 @@ from moztelemetry.histogram import cached_exponential_buckets
 from collections import defaultdict
 
 # Simple measurement and count histogram labels
-scalar_histogram_labels = cached_exponential_buckets(1, 30000, 50)
+simple_measures_labels = cached_exponential_buckets(1, 30000, 50)
+count_histogram_labels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 23, 25, 27, 29, 31, 34, 37, 40, 43, 46, 50, 54, 58, 63, 68, 74, 80, 86, 93, 101, 109, 118, 128, 138, 149, 161, 174, 188, 203, 219, 237, 256, 277, 299, 323, 349, 377, 408, 441, 477, 516, 558, 603, 652, 705, 762, 824, 891, 963, 1041, 1125, 1216, 1315, 1422, 1537, 1662, 1797, 1943, 2101, 2271, 2455, 2654, 2869, 3102, 3354, 3626, 3920, 4238, 4582, 4954, 5356, 5791, 6261, 6769, 7318, 7912, 8554, 9249, 10000]
 
 
 def aggregate_metrics(sc, channels, submission_date, fraction=1):
@@ -81,7 +82,7 @@ def _extract_histogram(state, histogram, histogram_name, label, is_child):
 
     if histogram.get("histogram_type", None) == 4:  # Count histogram
         count = histogram["values"].get("0", 0)
-        return _extract_scalar_value(state, histogram_name, label, count, is_child)
+        return _extract_scalar_value(state, u"[[COUNT]]_{}".format(histogram_name), label, count, count_histogram_labels, is_child=is_child)
 
     # Note that some dimensions don't vary within a single submissions
     # (e.g. channel) while some do (e.g. process type).
@@ -110,18 +111,18 @@ def _extract_simple_measures(state, simple):
         if type(value) == dict:
             for sub_name, sub_value in value.iteritems():
                 if type(sub_value) in (int, float, long):
-                    _extract_scalar_value(state, u"SIMPLE_MEASURES_{}_{}".format(name.upper(), sub_name.upper()), u"", sub_value)
+                    _extract_scalar_value(state, u"SIMPLE_MEASURES_{}_{}".format(name.upper(), sub_name.upper()), u"", sub_value, simple_measures_labels)
         elif type(value) in (int, float, long):
-            _extract_scalar_value(state, u"SIMPLE_MEASURES_{}".format(name.upper()), u"", value)
+            _extract_scalar_value(state, u"SIMPLE_MEASURES_{}".format(name.upper()), u"", value, simple_measures_labels)
 
 
-def _extract_scalar_value(state, name, label, value, is_child=False):
-    accessor = ("[[SCALAR]]_{}".format(name), label, is_child)
+def _extract_scalar_value(state, name, label, value, bucket_labels, is_child=False):
+    accessor = (name, label, is_child)
     aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
     state[accessor]["count"] = state[accessor].get("count", 0) + 1
 
-    insert_bucket = scalar_histogram_labels[0]  # Initialized to underflow bucket
-    for bucket in reversed(scalar_histogram_labels):
+    insert_bucket = bucket_labels[0]  # Initialized to underflow bucket
+    for bucket in reversed(bucket_labels):
         if value >= bucket:
             insert_bucket = bucket
             break
