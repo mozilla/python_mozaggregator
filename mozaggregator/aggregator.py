@@ -64,24 +64,35 @@ def _sample_clients(ping):
 
 
 def _extract_histograms(state, payload, is_child=False):
+    if type(payload) != dict:
+        return
+
     histograms = payload.get("histograms", {})
     _extract_main_histograms(state, histograms, is_child)
 
     keyed_histograms = payload.get("keyedHistograms", {})
+    if type(keyed_histograms) != dict:
+        return
+
     for name, histograms in keyed_histograms.iteritems():
         _extract_keyed_histograms(state, name, histograms, is_child)
 
 
 def _extract_histogram(state, histogram, histogram_name, label, is_child):
-    # Things that can go wrong (and shouldn't!):
-    # 1. Missing "values" dict
-    # 2. None value in bucket
-    # 3. Non-integer value in bucket
-    if "values" not in histogram:
+    if type(histogram) != dict:
         return
 
-    if histogram.get("histogram_type", None) == 4:  # Count histogram
-        count = histogram["values"].get("0", 0)
+    values = histogram.get("values", None)
+    if type(values) != dict:
+        return
+
+    histogram_type = histogram.get("histogram_type", None)
+    if type(histogram_type) != int:
+        return
+
+    if histogram_type == 4:  # Count histogram
+        count = values.get("0", 0)
+        count = count if isinstance(count, (int, long)) else 0
         return _extract_scalar_value(state, u"[[COUNT]]_{}".format(histogram_name), label, count, count_histogram_labels, is_child=is_child)
 
     # Note that some dimensions don't vary within a single submissions
@@ -91,22 +102,31 @@ def _extract_histogram(state, histogram, histogram_name, label, is_child):
     aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
 
     state[accessor]["count"] = state[accessor].get("count", 0) + 1
-    for k, v in histogram["values"].iteritems():
+    for k, v in values.iteritems():
         v = v if isinstance(v, (int, long)) else 0
         aggregated_histogram[k] = aggregated_histogram.get(k, 0) + v
 
 
 def _extract_main_histograms(state, histograms, is_child):
+    if type(histograms) != dict:
+        return
+
     for histogram_name, histogram in histograms.iteritems():
         _extract_histogram(state, histogram, histogram_name, u"", is_child)
 
 
 def _extract_keyed_histograms(state, histogram_name, histograms, is_child):
+    if type(histograms) != dict:
+        return
+
     for key, histogram in histograms.iteritems():
         _extract_histogram(state, histogram, histogram_name, key, is_child)
 
 
 def _extract_simple_measures(state, simple):
+    if type(simple) != dict:
+        return
+
     for name, value in simple.iteritems():
         if type(value) == dict:
             for sub_name, sub_value in value.iteritems():
@@ -130,26 +150,22 @@ def _extract_scalar_value(state, name, label, value, bucket_labels, is_child=Fal
     aggregated_histogram[unicode(insert_bucket)] = aggregated_histogram.get(unicode(insert_bucket), 0) + 1
 
 
-def _extract_children_histograms(state, payload):
-    child_payloads = payload.get("childPayloads", {})
+def _extract_children_histograms(state, child_payloads):
+    if not isinstance(child_payloads, (list, tuple)):
+        return
+
     for child in child_payloads:
         _extract_histograms(state, child, True)
 
 
 def _aggregate_ping(state, ping):
-    _extract_histograms(state, ping["payload"])
-    _extract_simple_measures(state, ping["payload"].get("simpleMeasurements", {}))
-    _extract_children_histograms(state, ping["payload"])
+    if type(ping) != dict:
+        return
+
+    _extract_histograms(state, ping.get("payload", {}))
+    _extract_simple_measures(state, ping.get("payload", {}).get("simpleMeasurements", {}))
+    _extract_children_histograms(state, ping.get("payload", {}).get("childPayloads", {}))
     return state
-
-
-def _trim_ping(ping):
-    payload = {k: v for k, v in ping["payload"].iteritems() if k in ["histograms", "keyedHistograms", "info", "simpleMeasurements"]}
-    return {"clientId": ping["clientId"],
-            "meta": ping["meta"],
-            "environment": ping["environment"],
-            "application": ping["application"],
-            "payload": payload}
 
 
 def _aggregate_aggregates(agg1, agg2):
@@ -168,6 +184,10 @@ def _aggregate_aggregates(agg1, agg2):
     return agg1
 
 
+def _trim_payload(payload):
+    return {k: v for k, v in payload.iteritems() if k in ["histograms", "keyedHistograms", "simpleMeasurements"]}
+
+
 def _map_ping_to_dimensions(ping):
     try:
         submission_date = ping["meta"]["submissionDate"]
@@ -182,10 +202,14 @@ def _map_ping_to_dimensions(ping):
         if os == "Linux":
             os_version = str(os_version)[:3]
 
+        subset = {}
+        subset["payload"] = _trim_payload(ping["payload"])
+        subset["payload"]["childPayloads"] = [_trim_payload(c) for c in ping["payload"].get("childPayloads", [])]
+
         # Note that some dimensions don't vary within a single submissions
         # (e.g. channel) while some do (e.g. process type).
         # Dimensions that don't vary should appear in the submission key, while
         # the ones that do vary should appear within the key of a single metric.
-        return ((submission_date, channel, version, build_id, application, architecture, os, os_version, e10s), ping)
+        return ((submission_date, channel, version, build_id, application, architecture, os, os_version, e10s), subset)
     except KeyError:
         return None
