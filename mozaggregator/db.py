@@ -272,8 +272,6 @@ def _upsert_aggregate(stage_table, aggregate):
 
     for metric, payload in metrics.iteritems():
         metric, label, child = metric
-        # Postgres doesn't like quotes and tab is used as a separator in the staging table
-        label = label.encode('utf-8').translate(None, "'\"\t\\")
 
         try:
             metric, histogram = _get_complete_histogram(channel, metric, payload["histogram"])
@@ -285,7 +283,13 @@ def _upsert_aggregate(stage_table, aggregate):
         dimensions["label"] = label
         dimensions["child"] = child
 
-        stage_table.write("{}\t{}\n".format(json.dumps(dimensions), "{" + repr(histogram)[1:-1] + "}"))
+        json_dimensions = json.dumps(dimensions)
+        # json.dumps takes care of properly escaping the text but during
+        # the copy of the buffer it's re-interpreted before being inserted
+        # in the database, causing Postgres to choke.
+        json_dimensions = json_dimensions.replace("\\", "\\\\")
+
+        stage_table.write("{}\t{}\n".format(json_dimensions, "{" + repr(histogram)[1:-1] + "}"))
 
 
 def _upsert_build_id_aggregates(aggregates, dry_run=False):
