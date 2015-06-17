@@ -77,14 +77,13 @@ $$ language plpgsql strict immutable;
 
 
 create or replace function aggregate_arrays(acc bigint[], x bigint[]) returns bigint[] as $$
-declare
-    i int;
 begin
-    for i in 1 .. array_length(x, 1)
-    loop
-        acc[i] := coalesce(acc[i], 0) + x[i];
-    end loop;
-    return acc;
+    return (select array(
+                select sum(elem)
+                from (values (1, acc), (2, x)) as t(idx, arr)
+                     , unnest(t.arr) with ordinality x(elem, rn)
+                group by rn
+                order by rn));
 end
 $$ language plpgsql strict immutable;
 
@@ -112,13 +111,13 @@ begin
 
     -- Update existing tuples and delete matching rows from the staging table
     execute 'with merge as (update ' || tablename || ' as dest
-	                        set histogram = (select aggregate_histograms(v) from (values (1, dest.histogram), (2, src.histogram)) as t (k, v))
+	                        set histogram = aggregate_arrays(dest.histogram, src.histogram)
 	                        from ' || stage_table || ' as src
-                            where dest.dimensions @> src.dimensions
+                            where dest.dimensions = src.dimensions
                             returning dest.*)
                   delete from ' || stage_table || ' as stage
                   using merge
-                  where stage.dimensions @> merge.dimensions';
+                  where stage.dimensions = merge.dimensions';
 
     -- Insert new tuples
     execute 'insert into ' || tablename || ' (dimensions, histogram)
