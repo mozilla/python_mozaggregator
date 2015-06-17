@@ -103,6 +103,12 @@ def _extract_histogram(state, histogram, histogram_name, label, is_child):
 
     state[accessor]["count"] = state[accessor].get("count", 0) + 1
     for k, v in values.iteritems():
+        try:
+            int(k)
+        except:
+            # We have seen some histograms with non-integer bucket keys...
+            continue
+
         v = v if isinstance(v, (int, long)) else 0
         aggregated_histogram[k] = aggregated_histogram.get(k, 0) + v
 

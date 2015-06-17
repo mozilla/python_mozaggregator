@@ -112,8 +112,8 @@ begin
 
     -- Update existing tuples and delete matching rows from the staging table
     execute 'with merge as (update ' || tablename || ' as dest
-	                    set histogram = (select aggregate_histograms(v) from (values (1, dest.histogram), (2, src.histogram)) as t (k, v))
-	                    from ' || stage_table || ' as src
+	                        set histogram = (select aggregate_histograms(v) from (values (1, dest.histogram), (2, src.histogram)) as t (k, v))
+	                        from ' || stage_table || ' as src
                             where dest.dimensions @> src.dimensions
                             returning dest.*)
                   delete from ' || stage_table || ' as stage
@@ -268,7 +268,7 @@ def _upsert_aggregate(stage_table, aggregate):
     dimensions = {"application": application,
                   "architecture": architecture,
                   "os": os,
-                  "os_version": os_version,
+                  "osVersion": os_version,
                   "e10sEnabled": e10s}
 
     for metric, payload in metrics.iteritems():
