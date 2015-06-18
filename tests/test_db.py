@@ -141,7 +141,7 @@ def test_submission_dates_metrics():
 
 @nottest
 def test_histogram(prefix, channel, version, date, metric, value, expected_count):
-    res = requests.get("{}/aggregates_by/{}/channels/{}/dates/{}_{}?metric={}".format(SERVICE_URI, prefix, channel, version, date, metric)).json()
+    res = requests.get("{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}".format(SERVICE_URI, prefix, channel, version, date, metric)).json()
     assert(len(res) == 1)
 
     res = res[0]
@@ -162,7 +162,7 @@ def test_histogram(prefix, channel, version, date, metric, value, expected_count
 
 @nottest
 def test_simple_measure(prefix, channel, version, date, metric, value, expected_count):
-    res = requests.get("{}/aggregates_by/{}/channels/{}/dates/{}_{}?metric={}".format(SERVICE_URI, prefix, channel, version, date, metric)).json()
+    res = requests.get("{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}".format(SERVICE_URI, prefix, channel, version, date, metric)).json()
     assert(len(res) == 1)
 
     res = res[0]
@@ -178,11 +178,11 @@ def test_simple_measure(prefix, channel, version, date, metric, value, expected_
 
 @nottest
 def test_keyed_histogram(prefix, channel, version, date, metric, histograms, expected_count):
-    res = requests.get("{}/aggregates_by/{}/channels/{}/dates/{}_{}?metric={}".format(SERVICE_URI, prefix, channel, version, date, metric)).json()
+    res = requests.get("{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}".format(SERVICE_URI, prefix, channel, version, date, metric)).json()
     assert(len(res) == len(histograms))
 
     for label, value in histograms.iteritems():
-        res = requests.get("{}/aggregates_by/{}/channels/{}/dates/{}_{}?metric={}&label={}".format(SERVICE_URI, prefix, channel, version, date, metric, label)).json()
+        res = requests.get("{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}&label={}".format(SERVICE_URI, prefix, channel, version, date, metric, label)).json()
         assert(len(res) == 1)
 
         res = res[0]

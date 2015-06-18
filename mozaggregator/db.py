@@ -203,6 +203,17 @@ end
 $$ language plpgsql strict immutable;
 
 
+drop type if exists metric_type;
+create type metric_type AS (label text, histogram bigint[]);
+
+create or replace function batched_get_metric(prefix text, channel text, version text, dates text[], dimensions jsonb) returns table(date text, label text, histogram bigint[]) as $$
+begin
+    return query select t.date, (get_metric(prefix, channel, version, t.date, dimensions)::text::metric_type).*
+                 from (select unnest(dates)) as t(date);
+end
+$$ language plpgsql strict;
+
+
 create or replace function list_buildids(prefix text, channel text) returns table(version text, buildid text) as $$
 begin
     return query execute

@@ -41,6 +41,51 @@ def get_dates(prefix, channel):
         abort(404)
 
 
+@app.route('/aggregates_by/<prefix>/channels/<channel>/', methods=["GET"])
+def get_dates_metrics(prefix, channel):
+    try:
+        dimensions = {k: v for k, v in request.args.iteritems()}
+
+        # Get dates
+        dates = dimensions.pop('dates', "").split(',')
+        version = dimensions.pop('version', None)
+
+        if not dates or not version:
+            abort(404)
+
+        print dates
+
+        # Get bucket labels
+        if dimensions["metric"].startswith("SIMPLE_MEASURES_"):
+            labels = simple_measures_labels
+        else:
+            revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
+            definition = Histogram(dimensions["metric"], {"values": {}}, revision=revision)
+
+            if definition.kind == "count":
+                labels = count_histogram_labels
+                dimensions["metric"] = "[[COUNT]]_{}".format(dimensions["metric"])
+            else:
+                labels = definition.get_value().keys().tolist()
+
+        # Fetch metrics
+        result = execute_query("select * from batched_get_metric(%s, %s, %s, %s, %s)", (prefix, channel, version, dates, json.dumps(dimensions)))
+        if not result:  # Metric not found
+            abort(404)
+
+        pretty_result = []
+        for row in result:
+            date = row[0]
+            label = row[1]
+            histogram = row[2][:-1]
+            count = row[2][-1]
+            pretty_result.append({"date": date, "label": label, "histogram": dict(zip(labels, histogram)), "count": count})
+
+        return json.dumps(pretty_result)
+    except:
+        abort(404)
+
+
 @app.route('/aggregates_by/<prefix>/channels/<channel>/dates/<version>_<date>', methods=["GET"])
 def get_date(prefix, channel, version, date):
     try:
