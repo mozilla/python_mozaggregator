@@ -140,20 +140,22 @@ def test_submission_dates_metrics():
 @nottest
 def test_histogram(prefix, channel, version, dates, metric, value, expected_count):
     reply = requests.get("{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}".format(SERVICE_URI, prefix, channel, version, ",".join(dates), metric)).json()
-    assert(len(reply) == len(dates))
+    assert(len(reply["data"]) == len(dates))
 
-    for res in reply:
+    bucket_index = count_histogram_labels.index(COUNT_SCALAR_BUCKET)
+
+    for res in reply["data"]:
         assert(res["count"] == expected_count*(NUM_CHILDREN_PER_PING + 1))
 
         if value["histogram_type"] == 4:  # Count histogram
-            current = pd.Series({int(k): v for k, v in res["histogram"].iteritems()})
+            current = pd.Series(res["histogram"], index=map(int, reply["buckets"]))
             expected = pd.Series(index=count_histogram_labels, data=0)
             expected[COUNT_SCALAR_BUCKET] = res["count"]
             assert(value["values"]["0"] == SCALAR_VALUE)
-            assert(res["histogram"][str(COUNT_SCALAR_BUCKET)] == res["count"])
+            assert(res["histogram"][bucket_index] == res["count"])
             assert((current == expected).all())
         else:
-            current = pd.Series({int(k): v for k, v in res["histogram"].iteritems()})
+            current = pd.Series(res["histogram"], index=map(int, reply["buckets"]))
             expected = Histogram(metric, value).get_value()*res["count"]
             assert((current == expected).all())
 
@@ -161,31 +163,33 @@ def test_histogram(prefix, channel, version, dates, metric, value, expected_coun
 @nottest
 def test_simple_measure(prefix, channel, version, dates, metric, value, expected_count):
     reply = requests.get("{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}".format(SERVICE_URI, prefix, channel, version, ",".join(dates), metric)).json()
-    assert(len(reply) == len(dates))
+    assert(len(reply["data"]) == len(dates))
 
-    for res in reply:
+    bucket_index = simple_measures_labels.index(SIMPLE_SCALAR_BUCKET)
+
+    for res in reply["data"]:
         assert(res["count"] == expected_count)
 
-        current = pd.Series({int(k): v for k, v in res["histogram"].iteritems()})
+        current = pd.Series(res["histogram"], index=map(int, reply["buckets"]))
         expected = pd.Series(index=simple_measures_labels, data=0)
         expected[SIMPLE_SCALAR_BUCKET] = res["count"]
         assert(value == SCALAR_VALUE)
-        assert(res["histogram"][str(SIMPLE_SCALAR_BUCKET)] == res["count"])
+        assert(res["histogram"][bucket_index] == res["count"])
         assert((current == expected).all())
 
 
 @nottest
 def test_keyed_histogram(prefix, channel, version, dates, metric, histograms, expected_count):
     reply = requests.get("{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}".format(SERVICE_URI, prefix, channel, version, ",".join(dates), metric)).json()
-    assert(len(reply) == len(histograms)*len(dates))
+    assert(len(reply["data"]) == len(histograms)*len(dates))
 
     for label, value in histograms.iteritems():
-        res = requests.get("{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}&label={}".format(SERVICE_URI, prefix, channel, version, ",".join(dates), metric, label)).json()
-        assert(len(res) == len(dates))
+        reply = requests.get("{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}&label={}".format(SERVICE_URI, prefix, channel, version, ",".join(dates), metric, label)).json()
+        assert(len(reply["data"]) == len(dates))
 
-        res = res[0]
-        assert(res["count"] == expected_count*(NUM_CHILDREN_PER_PING + 1))
+        for res in reply["data"]:
+            assert(res["count"] == expected_count*(NUM_CHILDREN_PER_PING + 1))
 
-        current = pd.Series({int(k): v for k, v in res["histogram"].iteritems()})
-        expected = Histogram(metric, value).get_value()*res["count"]
-        assert((current == expected).all())
+            current = pd.Series(res["histogram"], index=map(int, reply["buckets"]))
+            expected = Histogram(metric, value).get_value()*res["count"]
+            assert((current == expected).all())

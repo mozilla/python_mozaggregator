@@ -53,8 +53,6 @@ def get_dates_metrics(prefix, channel):
         if not dates or not version:
             abort(404)
 
-        print dates
-
         # Get bucket labels
         if dimensions["metric"].startswith("SIMPLE_MEASURES_"):
             labels = simple_measures_labels
@@ -73,13 +71,13 @@ def get_dates_metrics(prefix, channel):
         if not result:  # Metric not found
             abort(404)
 
-        pretty_result = []
+        pretty_result = {"data": [], "buckets": labels}
         for row in result:
             date = row[0]
             label = row[1]
             histogram = row[2][:-1]
             count = row[2][-1]
-            pretty_result.append({"date": date, "label": label, "histogram": dict(zip(labels, histogram)), "count": count})
+            pretty_result["data"].append({"date": date, "label": label, "histogram": histogram, "count": count})
 
         return json.dumps(pretty_result)
     except:
