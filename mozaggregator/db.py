@@ -294,9 +294,9 @@ def _upsert_aggregate(stage_table, aggregate):
         dimensions["child"] = child
 
         json_dimensions = json.dumps(dimensions)
-        # json.dumps takes care of properly escaping the text but during
-        # the copy of the buffer it's re-interpreted before being inserted
-        # in the database, causing Postgres to choke.
+        # json.dumps takes care of properly escaping the text but a SQL command
+        # will first be interpreted as a string literal before being executed.
+        # This doubles the number of backslashes we need.
         json_dimensions = json_dimensions.replace("\\", "\\\\")
 
         stage_table.write("{}\t{}\n".format(json_dimensions, "{" + json.dumps(histogram)[1:-1] + "}"))
