@@ -86,41 +86,6 @@ def get_dates_metrics(prefix, channel):
         abort(404)
 
 
-@app.route('/aggregates_by/<prefix>/channels/<channel>/dates/<version>_<date>', methods=["GET"])
-def get_date(prefix, channel, version, date):
-    try:
-        # Retrieve labels for histogram
-        dimensions = {k: v for k, v in request.args.iteritems()}
-
-        if dimensions["metric"].startswith("SIMPLE_MEASURES_"):
-            labels = simple_measures_labels
-        else:
-            revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
-            definition = Histogram(dimensions["metric"], {"values": {}}, revision=revision)
-
-            if definition.kind == "count":
-                labels = count_histogram_labels
-                dimensions["metric"] = "[[COUNT]]_{}".format(dimensions["metric"])
-            else:
-                labels = definition.get_value().keys().tolist()
-
-        result = execute_query("select * from get_metric(%s, %s, %s, %s, %s)", (prefix, channel, version, date, json.dumps(dimensions)))
-        if not result:  # Metric not found
-            abort(404)
-
-        pretty_result = []
-        for row in result:
-            label = row[0]
-            histogram = row[1][:-1]
-            count = row[1][-1]
-            pretty_result.append({"label": label, "histogram": dict(zip(labels, histogram)), "count": count})
-
-        return json.dumps(pretty_result)
-
-    except:
-        abort(404)
-
-
 if __name__ == "__main__":
     global host
 

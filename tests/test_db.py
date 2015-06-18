@@ -97,19 +97,18 @@ def test_build_id_metrics():
 
     for channel in template_channel:
         for version in template_version:
-            for buildid in template_build_id:
-                for metric, value in histograms_template.iteritems():
-                    test_histogram("build_id", channel, version, buildid, metric, value, expected_count)
+            for metric, value in histograms_template.iteritems():
+                test_histogram("build_id", channel, version, template_build_id, metric, value, expected_count)
 
                 for simple_measure, value in simple_measurements_template.iteritems():
                     if not isinstance(value, int):
                         continue
 
                     metric = "SIMPLE_MEASURES_{}".format(simple_measure.upper())
-                    test_simple_measure("build_id", channel, version, buildid, metric, value, expected_count)
+                    test_simple_measure("build_id", channel, version, template_build_id, metric, value, expected_count)
 
                 for metric, histograms in keyed_histograms_template.iteritems():
-                    test_keyed_histogram("build_id", channel, version, buildid, metric, histograms, expected_count)
+                    test_keyed_histogram("build_id", channel, version, template_build_id, metric, histograms, expected_count)
 
 
 def test_submission_dates_metrics():
@@ -124,66 +123,65 @@ def test_submission_dates_metrics():
 
     for channel in template_channel:
         for version in template_version:
-            for submission_date in template_submission_date:
-                for metric, value in histograms_template.iteritems():
-                    test_histogram("submission_date", channel, version, submission_date, metric, value, expected_count)
+            for metric, value in histograms_template.iteritems():
+                test_histogram("submission_date", channel, version, template_submission_date, metric, value, expected_count)
 
-                for simple_measure, value in simple_measurements_template.iteritems():
-                    if not isinstance(value, int):
-                        continue
+            for simple_measure, value in simple_measurements_template.iteritems():
+                if not isinstance(value, int):
+                    continue
 
-                    metric = "SIMPLE_MEASURES_{}".format(simple_measure.upper())
-                    test_simple_measure("submission_date", channel, version, submission_date, metric, value, expected_count)
+                metric = "SIMPLE_MEASURES_{}".format(simple_measure.upper())
+                test_simple_measure("submission_date", channel, version, template_submission_date, metric, value, expected_count)
 
-                for metric, histograms in keyed_histograms_template.iteritems():
-                    test_keyed_histogram("submission_date", channel, version, submission_date, metric, histograms, expected_count)
+            for metric, histograms in keyed_histograms_template.iteritems():
+                test_keyed_histogram("submission_date", channel, version, template_submission_date, metric, histograms, expected_count)
 
 
 @nottest
-def test_histogram(prefix, channel, version, date, metric, value, expected_count):
-    res = requests.get("{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}".format(SERVICE_URI, prefix, channel, version, date, metric)).json()
-    assert(len(res) == 1)
+def test_histogram(prefix, channel, version, dates, metric, value, expected_count):
+    reply = requests.get("{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}".format(SERVICE_URI, prefix, channel, version, ",".join(dates), metric)).json()
+    assert(len(reply) == len(dates))
 
-    res = res[0]
-    assert(res["count"] == expected_count*(NUM_CHILDREN_PER_PING + 1))
+    for res in reply:
+        assert(res["count"] == expected_count*(NUM_CHILDREN_PER_PING + 1))
 
-    if value["histogram_type"] == 4:  # Count histogram
+        if value["histogram_type"] == 4:  # Count histogram
+            current = pd.Series({int(k): v for k, v in res["histogram"].iteritems()})
+            expected = pd.Series(index=count_histogram_labels, data=0)
+            expected[COUNT_SCALAR_BUCKET] = res["count"]
+            assert(value["values"]["0"] == SCALAR_VALUE)
+            assert(res["histogram"][str(COUNT_SCALAR_BUCKET)] == res["count"])
+            assert((current == expected).all())
+        else:
+            current = pd.Series({int(k): v for k, v in res["histogram"].iteritems()})
+            expected = Histogram(metric, value).get_value()*res["count"]
+            assert((current == expected).all())
+
+
+@nottest
+def test_simple_measure(prefix, channel, version, dates, metric, value, expected_count):
+    reply = requests.get("{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}".format(SERVICE_URI, prefix, channel, version, ",".join(dates), metric)).json()
+    assert(len(reply) == len(dates))
+
+    for res in reply:
+        assert(res["count"] == expected_count)
+
         current = pd.Series({int(k): v for k, v in res["histogram"].iteritems()})
-        expected = pd.Series(index=count_histogram_labels, data=0)
-        expected[COUNT_SCALAR_BUCKET] = res["count"]
-        assert(value["values"]["0"] == SCALAR_VALUE)
-        assert(res["histogram"][str(COUNT_SCALAR_BUCKET)] == res["count"])
-        assert((current == expected).all())
-    else:
-        current = pd.Series({int(k): v for k, v in res["histogram"].iteritems()})
-        expected = Histogram(metric, value).get_value()*res["count"]
+        expected = pd.Series(index=simple_measures_labels, data=0)
+        expected[SIMPLE_SCALAR_BUCKET] = res["count"]
+        assert(value == SCALAR_VALUE)
+        assert(res["histogram"][str(SIMPLE_SCALAR_BUCKET)] == res["count"])
         assert((current == expected).all())
 
 
 @nottest
-def test_simple_measure(prefix, channel, version, date, metric, value, expected_count):
-    res = requests.get("{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}".format(SERVICE_URI, prefix, channel, version, date, metric)).json()
-    assert(len(res) == 1)
-
-    res = res[0]
-    assert(res["count"] == expected_count)
-
-    current = pd.Series({int(k): v for k, v in res["histogram"].iteritems()})
-    expected = pd.Series(index=simple_measures_labels, data=0)
-    expected[SIMPLE_SCALAR_BUCKET] = res["count"]
-    assert(value == SCALAR_VALUE)
-    assert(res["histogram"][str(SIMPLE_SCALAR_BUCKET)] == res["count"])
-    assert((current == expected).all())
-
-
-@nottest
-def test_keyed_histogram(prefix, channel, version, date, metric, histograms, expected_count):
-    res = requests.get("{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}".format(SERVICE_URI, prefix, channel, version, date, metric)).json()
-    assert(len(res) == len(histograms))
+def test_keyed_histogram(prefix, channel, version, dates, metric, histograms, expected_count):
+    reply = requests.get("{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}".format(SERVICE_URI, prefix, channel, version, ",".join(dates), metric)).json()
+    assert(len(reply) == len(histograms)*len(dates))
 
     for label, value in histograms.iteritems():
-        res = requests.get("{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}&label={}".format(SERVICE_URI, prefix, channel, version, date, metric, label)).json()
-        assert(len(res) == 1)
+        res = requests.get("{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}&label={}".format(SERVICE_URI, prefix, channel, version, ",".join(dates), metric, label)).json()
+        assert(len(res) == len(dates))
 
         res = res[0]
         assert(res["count"] == expected_count*(NUM_CHILDREN_PER_PING + 1))
