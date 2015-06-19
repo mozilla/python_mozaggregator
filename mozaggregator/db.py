@@ -240,6 +240,25 @@ end
 $$ language plpgsql strict;
 
 
+create or replace function list_filter_options(prefix text, channel text, filter text) returns table(option text) as $$
+declare
+    last_table_name text;
+begin
+    execute E'select table_name
+              from information_schema.tables
+              where table_schema=\'public\' and table_type=\'BASE TABLE\' and table_name like $1 || $2
+              order by table_name desc
+              limit 1'
+              into last_table_name
+              using prefix, '_' || channel || '%';
+
+     return query execute
+     E'select distinct dimensions->>\'' || filter || E'\'
+       from ' || last_table_name;
+end
+$$ language plpgsql strict stable;
+
+
 create or replace function create_tables() returns void as $$
 declare
     table_exists boolean;

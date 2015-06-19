@@ -3,7 +3,7 @@ import ujson as json
 
 from flask import Flask, request, abort
 from db import create_connection, histogram_revision_map
-from moztelemetry.histogram import Histogram
+from moztelemetry.histogram import Histogram, _fetch_histograms_definition
 from aggregator import simple_measures_labels, count_histogram_labels
 
 app = Flask(__name__)
@@ -40,6 +40,21 @@ def get_dates(prefix, channel):
     except:
         abort(404)
 
+@app.route('/aggregates_by/<prefix>/channels/<channel>/filters/<filter>')
+def get_filter_options(prefix, channel, filter):
+    try:
+        if filter == "metric":
+            revision = histogram_revision_map.get(channel, "nightly")
+            return json.dumps(_fetch_histograms_definition(revision).keys())
+
+        options = execute_query("select * from list_filter_options(%s, %s, %s)", (prefix, channel, filter))
+        if not options:
+            abort(404)
+
+        return json.dumps([option[0] for option in options])
+    except Exception as e:
+        raise e
+        abort(404)
 
 @app.route('/aggregates_by/<prefix>/channels/<channel>/', methods=["GET"])
 def get_dates_metrics(prefix, channel):
@@ -57,10 +72,12 @@ def get_dates_metrics(prefix, channel):
         if dimensions["metric"].startswith("SIMPLE_MEASURES_"):
             labels = simple_measures_labels
             kind = "exponential"
+            description = ""
         else:
             revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
             definition = Histogram(dimensions["metric"], {"values": {}}, revision=revision)
             kind = definition.kind
+            description = definition.definition.description()
 
             if kind == "count":
                 labels = count_histogram_labels
@@ -73,7 +90,7 @@ def get_dates_metrics(prefix, channel):
         if not result:  # Metric not found
             abort(404)
 
-        pretty_result = {"data": [], "buckets": labels, "kind": kind}
+        pretty_result = {"data": [], "buckets": labels, "kind": kind, "description": description}
         for row in result:
             date = row[0]
             label = row[1]
