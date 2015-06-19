@@ -200,7 +200,7 @@ begin
         group by dimensions->>\'label\''
         using dimensions;
 end
-$$ language plpgsql strict immutable;
+$$ language plpgsql strict stable;
 
 
 drop type if exists metric_type;
