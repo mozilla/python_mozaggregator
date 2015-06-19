@@ -56,11 +56,13 @@ def get_dates_metrics(prefix, channel):
         # Get bucket labels
         if dimensions["metric"].startswith("SIMPLE_MEASURES_"):
             labels = simple_measures_labels
+            kind = "exponential"
         else:
             revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
             definition = Histogram(dimensions["metric"], {"values": {}}, revision=revision)
+            kind = definition.kind
 
-            if definition.kind == "count":
+            if kind == "count":
                 labels = count_histogram_labels
                 dimensions["metric"] = "[[COUNT]]_{}".format(dimensions["metric"])
             else:
@@ -71,7 +73,7 @@ def get_dates_metrics(prefix, channel):
         if not result:  # Metric not found
             abort(404)
 
-        pretty_result = {"data": [], "buckets": labels}
+        pretty_result = {"data": [], "buckets": labels, "kind": kind}
         for row in result:
             date = row[0]
             label = row[1]
