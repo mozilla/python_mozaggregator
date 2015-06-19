@@ -3,7 +3,7 @@ import ujson as json
 
 from flask import Flask, request, abort
 from db import create_connection, histogram_revision_map
-from moztelemetry.histogram import Histogram, _fetch_histograms_definition
+from moztelemetry.histogram import Histogram
 from aggregator import simple_measures_labels, count_histogram_labels
 
 app = Flask(__name__)
@@ -43,15 +43,19 @@ def get_dates(prefix, channel):
 @app.route('/aggregates_by/<prefix>/channels/<channel>/filters/<filter>')
 def get_filter_options(prefix, channel, filter):
     try:
-        if filter == "metric":
-            revision = histogram_revision_map.get(channel, "nightly")
-            return json.dumps(_fetch_histograms_definition(revision).keys())
-
         options = execute_query("select * from list_filter_options(%s, %s, %s)", (prefix, channel, filter))
         if not options:
             abort(404)
 
-        return json.dumps([option[0] for option in options])
+        pretty_opts = []
+        for option in options:
+            option = option[0]
+            if filter == "metric" and option.startswith("[[COUNT]]_"):
+                pretty_opts.append(option[10:])
+            else:
+                pretty_opts.append(option)
+
+        return json.dumps(pretty_opts)
     except Exception as e:
         raise e
         abort(404)
