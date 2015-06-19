@@ -44,7 +44,7 @@ def get_dates(prefix, channel):
 def get_filter_options(prefix, channel, filter):
     try:
         options = execute_query("select * from list_filter_options(%s, %s, %s)", (prefix, channel, filter))
-        if not options:
+        if not options or (len(options) == 1 and options[0][0] is None):
             abort(404)
 
         pretty_opts = []
