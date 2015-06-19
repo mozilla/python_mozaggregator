@@ -252,9 +252,16 @@ begin
               into last_table_name
               using prefix, '_' || channel || '%';
 
-     return query execute
-     E'select distinct dimensions->>\'' || filter || E'\'
-       from ' || last_table_name;
+     if (filter = 'os' or filter = 'osVersion') then
+         return query execute
+         E'select concat(t.os, \',\', t.version)
+           from (select distinct dimensions->>\'os\', dimensions->>\'osVersion\'
+                 from ' || last_table_name || E') as t(os, version)';
+     else
+         return query execute
+	  E'select distinct dimensions->>\'' || filter || E'\'
+	   from ' || last_table_name;
+     end if;
 end
 $$ language plpgsql strict stable;
 
