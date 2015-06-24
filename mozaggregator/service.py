@@ -5,8 +5,27 @@ from flask import Flask, request, abort
 from db import create_connection, histogram_revision_map
 from moztelemetry.histogram import Histogram
 from aggregator import simple_measures_labels, count_histogram_labels
+from werkzeug.contrib.cache import SimpleCache
+from joblib import Parallel, delayed
+from functools import wraps
+
+TIMEOUT = 24*60*60
 
 app = Flask(__name__)
+cache = SimpleCache()
+
+
+def cache_request(f):
+    @wraps(f)
+    def decorated_request(*args, **kwargs):
+        rv = cache.get(request.url)
+        if rv is None:
+            rv = f(*args, **kwargs)
+            cache.set(request.url, rv, timeout=TIMEOUT)
+            return rv
+        else:
+            return rv
+    return decorated_request
 
 
 def execute_query(query, params=tuple()):
@@ -17,6 +36,7 @@ def execute_query(query, params=tuple()):
 
 
 @app.route('/aggregates_by/<prefix>/channels/')
+@cache_request
 def get_channels(prefix):
     try:
         channels = execute_query("select * from list_channels(%s)", (prefix, ))
@@ -29,6 +49,7 @@ def get_channels(prefix):
 
 
 @app.route('/aggregates_by/<prefix>/channels/<channel>/dates/')
+@cache_request
 def get_dates(prefix, channel):
     try:
         result = execute_query("select * from list_buildids(%s, %s)", (prefix, channel))
@@ -40,27 +61,40 @@ def get_dates(prefix, channel):
     except:
         abort(404)
 
-@app.route('/aggregates_by/<prefix>/channels/<channel>/filters/<filter>')
-def get_filter_options(prefix, channel, filter):
+
+def get_filter_options(prefix, channel, filters, filter):
+    options = execute_query("select * from list_filter_options(%s, %s, %s)", (prefix, channel, filter))
+    if not options or (len(options) == 1 and options[0][0] is None):
+        raise ValueError("Invalid option")
+
+    pretty_opts = []
+    for option in options:
+        option = option[0]
+        if filter == "metric" and option.startswith("[[COUNT]]_"):
+            pretty_opts.append(option[10:])
+        else:
+            pretty_opts.append(option)
+
+    filters[filter] = pretty_opts
+
+
+@app.route('/aggregates_by/<prefix>/channels/<channel>/filters/')
+@cache_request
+def get_filters_options(prefix, channel):
     try:
-        options = execute_query("select * from list_filter_options(%s, %s, %s)", (prefix, channel, filter))
-        if not options or (len(options) == 1 and options[0][0] is None):
-            abort(404)
+        filters = {}
+        dimensions = ["metric", "application", "architecture", "os", "e10sEnabled", "child"]
 
-        pretty_opts = []
-        for option in options:
-            option = option[0]
-            if filter == "metric" and option.startswith("[[COUNT]]_"):
-                pretty_opts.append(option[10:])
-            else:
-                pretty_opts.append(option)
+        Parallel(n_jobs=len(dimensions), backend="threading")(delayed(get_filter_options)(prefix, channel, filters, f)
+                                                              for f in dimensions)
 
-        return json.dumps(pretty_opts)
-    except Exception as e:
-        raise e
+        return json.dumps(filters)
+    except:
         abort(404)
 
+
 @app.route('/aggregates_by/<prefix>/channels/<channel>/', methods=["GET"])
+@cache_request
 def get_dates_metrics(prefix, channel):
     try:
         dimensions = {k: v for k, v in request.args.iteritems()}

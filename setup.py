@@ -12,12 +12,12 @@ import setuptools.command.install
 
 
 setup(name='python_mozaggregator',
-      version='0.2.0.3',
+      version='0.2.0.4',
       author='Roberto Agostino Vitillo',
       author_email='rvitillo@mozilla.com',
       description='Telemetry aggregation job',
       url='https://github.com/vitillo/python_mozaggregator',
       packages=['mozaggregator'],
       package_dir={'mozaggregator': 'mozaggregator'},
-      install_requires=['python_moztelemetry', 'Flask', 'boto', 'ujson', 'psycopg2', 'pandas>=0.15.2'])
+      install_requires=['python_moztelemetry', 'Flask', 'joblib', 'boto', 'ujson', 'psycopg2', 'pandas>=0.15.2'])
 
