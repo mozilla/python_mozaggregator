@@ -99,7 +99,8 @@ def get_filters_options(prefix, channel):
 @cache_request
 def get_dates_metrics(prefix, channel):
     try:
-        dimensions = {k: v for k, v in request.args.iteritems()}
+        mapping = {"true": True, "false": False}
+        dimensions = {k: mapping.get(v, v) for k, v in request.args.iteritems()}
 
         # Get dates
         dates = dimensions.pop('dates', "").split(',')
