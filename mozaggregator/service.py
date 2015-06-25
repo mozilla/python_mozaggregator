@@ -2,6 +2,7 @@ import argparse
 import ujson as json
 
 from flask import Flask, request, abort
+from flask.ext.cors import CORS
 from db import create_connection, histogram_revision_map
 from moztelemetry.histogram import Histogram
 from aggregator import simple_measures_labels, count_histogram_labels
@@ -13,6 +14,7 @@ TIMEOUT = 24*60*60
 
 app = Flask(__name__)
 cache = SimpleCache()
+CORS(app, resources=r'/*', allow_headers='Content-Type')
 
 
 def cache_request(f):
