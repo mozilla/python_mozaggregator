@@ -123,6 +123,8 @@ def get_dates_metrics(prefix, channel):
             if kind == "count":
                 labels = count_histogram_labels
                 dimensions["metric"] = "[[COUNT]]_{}".format(dimensions["metric"])
+            elif kind == "flag":
+                labels = [0, 1]
             else:
                 labels = definition.get_value().keys().tolist()
 
