@@ -86,23 +86,14 @@ def test_submission_dates():
 
 
 def test_filters():
-    for kind in ['build_id', 'submission_date']:
+    for kind in ["build_id", "submission_date"]:
         for channel in ping_dimensions["channel"]:
-            for filter in set(ping_dimensions.keys() + ["child"]).difference(set(["submission_date", "channel", "version", "build_id", "os", "os_version"])):
-                if filter == "arch":
-                    api_filter = "architecture"
-                    truth = ping_dimensions[filter]
-                elif filter == "e10s":
-                    api_filter = "e10sEnabled"
-                    truth = ["true", "false"]
-                elif filter == "child":
-                    truth = ["true", "false"]
-                else:
-                    truth = ping_dimensions[filter]
-                    api_filter = filter
-
-                options = requests.get("{}/aggregates_by/{}/channels/{}/filters/{}".format(SERVICE_URI, kind, channel, api_filter)).json()
-                assert set(options) == set(truth)
+            options = requests.get("{}/aggregates_by/{}/channels/{}/filters/".format(SERVICE_URI, kind, channel)).json()
+            #  We should really test all filters...
+            assert set(options["application"]) == set(ping_dimensions["application"])
+            assert set(options["architecture"]) == set(ping_dimensions["arch"])
+            assert set(options["e10sEnabled"]) == set(["true", "false"])
+            assert set(options["child"]) == set(["true", "false"])
 
 
 def test_build_id_metrics():

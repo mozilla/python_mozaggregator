@@ -311,6 +311,13 @@ def _upsert_aggregate(stage_table, aggregate):
         metric, label, child = metric
 
         try:
+            metric.decode('ascii')
+        except UnicodeDecodeError:
+            continue  # Metric names shouldn't contain non-ascii characters
+        except UnicodeEncodeError:
+            continue
+
+        try:
             histogram = _get_complete_histogram(channel, metric, payload["histogram"]) + [payload["count"]]
         except KeyError:  # TODO: ignore expired histograms
             continue
