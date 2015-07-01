@@ -217,5 +217,5 @@ def _map_ping_to_dimensions(ping):
         # Dimensions that don't vary should appear in the submission key, while
         # the ones that do vary should appear within the key of a single metric.
         return ((submission_date, channel, version, build_id, application, architecture, os, os_version, e10s), subset)
-    except KeyError:
+    except:
         return None

@@ -10,6 +10,7 @@ import pandas as pd
 import ujson as json
 import boto.rds2
 import os
+import string
 
 from moztelemetry.spark import Histogram
 from boto.s3.connection import S3Connection
@@ -24,6 +25,7 @@ histogram_revision_map = {"nightly": "https://hg.mozilla.org/mozilla-central/rev
                           "beta": "https://hg.mozilla.org/releases/mozilla-beta/rev/tip",
                           "release": "https://hg.mozilla.org/releases/mozilla-release/rev/tip"}
 
+_metric_printable = set(string.ascii_uppercase + string.digits + "_-[]")
 
 def create_connection(autocommit=True, host_override=None):
     # import boto.rds2  # The serializer doesn't pick this one up for some reason when using emacs...
@@ -248,7 +250,7 @@ begin
               from information_schema.tables
               where table_schema=\'public\' and table_type=\'BASE TABLE\' and table_name like $1 || $2
               order by table_name desc
-              limit 1'
+              limit 1 offset 2'
               into last_table_name
               using prefix, '_' || channel || '%';
 
@@ -310,9 +312,12 @@ def _upsert_aggregate(stage_table, aggregate):
     for metric, payload in metrics.iteritems():
         metric, label, child = metric
 
+        if not set(metric).issubset(_metric_printable):
+            continue  # Ignore metrics with non printable characters...
+
         try:
             histogram = _get_complete_histogram(channel, metric, payload["histogram"]) + [payload["count"]]
-        except KeyError:  # TODO: ignore expired histograms
+        except KeyError:
             continue
 
         dimensions["metric"] = metric
