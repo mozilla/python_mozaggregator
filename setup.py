@@ -12,7 +12,7 @@ import setuptools.command.install
 
 
 setup(name='python_mozaggregator',
-      version='0.2.0.6',
+      version='0.2.0.7',
       author='Roberto Agostino Vitillo',
       author_email='rvitillo@mozilla.com',
       description='Telemetry aggregation job',
