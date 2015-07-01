@@ -250,7 +250,7 @@ begin
               from information_schema.tables
               where table_schema=\'public\' and table_type=\'BASE TABLE\' and table_name like $1 || $2
               order by table_name desc
-              limit 1 offset 2'
+              limit 1'
               into last_table_name
               using prefix, '_' || channel || '%';
 
