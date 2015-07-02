@@ -181,6 +181,7 @@ def _aggregate_aggregates(agg1, agg2):
 
         if metric not in agg1:
             agg1[metric] = payload
+            continue
 
         agg1[metric]["count"] += payload["count"]
 
