@@ -1,5 +1,5 @@
 # python_mozaggregator
-Aggregator job for Telemetry. Read this [blog]() post for details. 
+Aggregator job for Telemetry. Read this [blog](http://robertovitillo.com/2015/07/02/telemetry-metrics-roll-ups/) post for details. 
 
 ## API
 Aggregates are made available through a HTTP API. There are two kinds of aggregates: per submission date and per build-id. 
