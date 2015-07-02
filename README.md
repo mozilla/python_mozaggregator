@@ -3,7 +3,7 @@ Aggregator job for Telemetry. Read this [blog]() post for details.
 
 ## API
 Aggregates are made available through a HTTP API. There are two kinds of aggregates: per submission date and per build-id. 
-To access the aggregates use the ```aggregates_by/build_id/``` prefix and ```aggregates_by/submission_date/``` prefix respectively.
+To access the aggregates use the ```aggregates_by/build_id/``` and ```aggregates_by/submission_date/``` prefix respectively.
 
 The following examples are based on build-id aggregates.
 
