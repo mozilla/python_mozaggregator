@@ -185,6 +185,7 @@ def _aggregate_aggregates(agg1, agg2):
             continue
 
         agg1[metric]["count"] += payload["count"]
+        agg1[metric]["sum"] += payload["sum"]
 
         for k, v in payload["histogram"].iteritems():
             agg1[metric]["histogram"][k] = agg1[metric]["histogram"].get(k, 0) + v

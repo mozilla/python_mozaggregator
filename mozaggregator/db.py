@@ -316,7 +316,7 @@ def _upsert_aggregate(stage_table, aggregate):
             continue  # Ignore metrics with non printable characters...
 
         try:
-            histogram = _get_complete_histogram(channel, metric, payload["histogram"]) + [payload["count"]]
+            histogram = _get_complete_histogram(channel, metric, payload["histogram"]) + [payload["sum"], payload["count"]]
         except KeyError:
             continue
 

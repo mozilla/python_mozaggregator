@@ -33,10 +33,12 @@ curl -X GET "http://SERVICE/aggregates_by/build_id/channels/nightly/?version=41&
 {"buckets":[0, ..., 10000],
  "data":[{"date":"20150615",
           "count":239459,
+          "sum": 412346123,
           "histogram":[309, ..., 5047],
           "label":""},
          {"date":"20150616",
           "count":233688,
+          "sum": 402241121,
           "histogram":[306, ..., 7875],
           "label":""}],
  "kind":"exponential",
@@ -59,5 +61,6 @@ A reply has two attributes:
 - data, which is an array of metric object with the following attributes:
   - date: a build-id
   - count: number of metrics aggregated
+  - sum: sum of accumulated values
   - histogram: bucket values
   - description: histogram description

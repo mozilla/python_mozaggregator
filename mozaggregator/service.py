@@ -138,9 +138,10 @@ def get_dates_metrics(prefix, channel):
         for row in result:
             date = row[0]
             label = row[1]
-            histogram = row[2][:-1]
+            histogram = row[2][:-2]
+            sum = row[2][-2]
             count = row[2][-1]
-            pretty_result["data"].append({"date": date, "label": label, "histogram": histogram, "count": count})
+            pretty_result["data"].append({"date": date, "label": label, "histogram": histogram, "count": count, "sum": sum})
 
         return json.dumps(pretty_result)
     except:

@@ -162,13 +162,16 @@ def test_histogram(prefix, channel, version, dates, metric, value, expected_coun
             current = pd.Series(res["histogram"], index=map(int, reply["buckets"]))
             expected = pd.Series(index=count_histogram_labels, data=0)
             expected[COUNT_SCALAR_BUCKET] = res["count"]
-            assert(value["values"]["0"] == SCALAR_VALUE)
+
             assert(res["histogram"][bucket_index] == res["count"])
+            assert(res["sum"] == value["sum"]*res["count"])
             assert((current == expected).all())
         else:
             current = pd.Series(res["histogram"], index=map(int, reply["buckets"]))
             expected = Histogram(metric, value).get_value()*res["count"]
+
             assert((current == expected).all())
+            assert(res["sum"] == value["sum"]*res["count"])
 
 
 @nottest
@@ -184,8 +187,9 @@ def test_simple_measure(prefix, channel, version, dates, metric, value, expected
         current = pd.Series(res["histogram"], index=map(int, reply["buckets"]))
         expected = pd.Series(index=simple_measures_labels, data=0)
         expected[SIMPLE_SCALAR_BUCKET] = res["count"]
-        assert(value == SCALAR_VALUE)
+
         assert(res["histogram"][bucket_index] == res["count"])
+        assert(res["sum"] == value*res["count"])
         assert((current == expected).all())
 
 
@@ -203,4 +207,6 @@ def test_keyed_histogram(prefix, channel, version, dates, metric, histograms, ex
 
             current = pd.Series(res["histogram"], index=map(int, reply["buckets"]))
             expected = Histogram(metric, value).get_value()*res["count"]
+
             assert((current == expected).all())
+            assert(res["sum"] == value["sum"]*res["count"])
