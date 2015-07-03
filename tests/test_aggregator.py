@@ -76,6 +76,7 @@ def test_simple_measurements():
                 assert(label == "")
                 assert(child is False)
                 assert(value["count"] == NUM_PINGS_PER_DIMENSIONS)
+                assert(value["sum"] == NUM_PINGS_PER_DIMENSIONS*SCALAR_VALUE)
                 assert(value["histogram"][str(SIMPLE_SCALAR_BUCKET)] == value["count"])
 
     assert len(metric_count) == len(simple_measurements_template)
@@ -96,6 +97,7 @@ def test_classic_histograms():
                 metric_count[metric] += 1
                 assert(label == "")
                 assert(value["count"] == NUM_PINGS_PER_DIMENSIONS*(NUM_CHILDREN_PER_PING if child else 1))
+                assert(value["sum"] == value["count"]*histogram["sum"])
                 assert(set(histogram["values"].keys()) == set(value["histogram"].keys()))
                 assert((pd.Series(histogram["values"])*value["count"] == pd.Series(value["histogram"])).all())
 
@@ -117,6 +119,7 @@ def test_count_histograms():
                 metric_count[metric] += 1
                 assert(label == "")
                 assert(value["count"] == NUM_PINGS_PER_DIMENSIONS*(NUM_CHILDREN_PER_PING if child else 1))
+                assert(value["sum"] == value["count"]*histogram["sum"])
                 assert(value["histogram"][str(COUNT_SCALAR_BUCKET)] == value["count"])
 
     assert len(metric_count) == len(histograms)
@@ -135,6 +138,7 @@ def test_keyed_histograms():
                 metric_count["{}_{}".format(metric, label)] += 1
                 assert(label != "")
                 assert(value["count"] == NUM_PINGS_PER_DIMENSIONS*(NUM_CHILDREN_PER_PING if child else 1))
+                assert(value["sum"] == value["count"]*keyed_histograms_template[metric][label]["sum"])
 
                 histogram_template = keyed_histograms_template[metric][label]["values"]
                 assert(set(histogram_template.keys()) == set(value["histogram"].keys()))
