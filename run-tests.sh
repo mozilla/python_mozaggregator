@@ -1,6 +1,16 @@
 #!/bin/bash
 set -e
 
+if [ -z "$SPARK_HOME" ]; then
+    echo 'You need to set $SPARK_HOME to run these tests.' >&2
+    exit 1
+fi
+
+PYFORJ=`ls -1 $SPARK_HOME/python/lib/py4j-*-src.zip | head -1`
+
+export PYTHONPATH=$PYTHONPATH:$SPARK_HOME/python:../
+export PYTHONPATH=$PYTHONPATH:$PYFORJ
+
 clean_exit() {
     local error_code="$?"
     for job in $(jobs -p); do
@@ -45,6 +55,6 @@ export DB_TEST_URL="postgresql:///?host=${PGSQL_DATA}&dbname=template1"
 # Launch db service
 mkfifo ${PGSQL_DATA}/out_service
 python ./mozaggregator/service.py -d &> ${PGSQL_DATA}/out_service &
-wait_for_line "* Restarting with reloader" ${PGSQL_DATA}/out_service
+wait_for_line "* Running " ${PGSQL_DATA}/out_service
 
 nosetests ./tests/

@@ -1,10 +1,9 @@
 import pyspark
 import logging
 import pandas as pd
-import re
 
-from collections import defaultdict
 from mozaggregator.aggregator import _aggregate_metrics
+from collections import defaultdict
 from dataset import *
 
 
