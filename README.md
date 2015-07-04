@@ -55,7 +55,7 @@ The available filters are:
 - label, e.g Adblock-Plus
 - child, e.g. true, meaningful only if e10s is enabled
 
-A reply has two attributes:
+A reply has the following attributes:
 - buckets, which represents the bucket labels of the histogram
 - kind, the kind of histogram (e.g. exponential)
 - data, which is an array of metric object with the following attributes:
