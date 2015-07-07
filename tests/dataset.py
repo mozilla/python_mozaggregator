@@ -95,17 +95,24 @@ def generate_payload(dimensions):
                    u"name": dimensions["application"],
                    u"architecture": dimensions["arch"]}
 
+    e10s_autostart = {"E10S_AUTOSTART": {u'bucket_count': 3,
+                                         u'histogram_type': 2,
+                                         u'range': [1, 2],
+                                         u'sum': 1,
+                                         u'sum_squares_hi': 0,
+                                         u'sum_squares_lo': 1,
+                                         u'values': {u'0': int(not dimensions["e10s"]), u'1': int(dimensions["e10s"]), u'2': 0}}}
+
     child_payloads = [{"histograms": histograms_template,
                        "keyedHistograms": keyed_histograms_template}
                       for i in range(NUM_CHILDREN_PER_PING)]
 
     payload = {u"simpleMeasurements": simple_measurements_template,
-               u"histograms": histograms_template,
+               u"histograms": dict(histograms_template, **e10s_autostart),
                u"keyedHistograms": keyed_histograms_template,
                u"childPayloads": child_payloads}
     environment = {u"system": {u"os": {u"name": dimensions["os"],
-                                       u"version": dimensions["os_version"]}},
-                   u"settings": {u"e10sEnabled": dimensions["e10s"]}}
+                                       u"version": dimensions["os_version"]}}}
 
     return {u"clientId": str(uuid.uuid4()),
             u"meta": meta,

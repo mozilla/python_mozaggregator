@@ -207,7 +207,7 @@ def _map_ping_to_dimensions(ping):
         architecture = ping["application"]["architecture"]
         os = ping["environment"]["system"]["os"]["name"]
         os_version = ping["environment"]["system"]["os"]["version"]
-        e10s = ping["environment"]["settings"]["e10sEnabled"]
+        e10s = ping["payload"]["histograms"]["E10S_AUTOSTART"]["values"]["1"] > 0
         if os == "Linux":
             os_version = str(os_version)[:3]
 
