@@ -27,7 +27,7 @@ histogram_revision_map = {"nightly": "https://hg.mozilla.org/mozilla-central/rev
 
 _metric_printable = set(string.ascii_uppercase + string.digits + "_-[]")
 
-def create_connection(autocommit=True, host_override=None):
+def create_connection(autocommit=True, host_override=None, dbname_override=None):
     # import boto.rds2  # The serializer doesn't pick this one up for some reason when using emacs...
 
     connection_string = os.getenv("DB_TEST_URL")  # Used only for testing
@@ -41,7 +41,7 @@ def create_connection(autocommit=True, host_override=None):
         rds = boto.rds2.connect_to_region("us-west-2")
         db = rds.describe_db_instances("telemetry-aggregates")["DescribeDBInstancesResponse"]["DescribeDBInstancesResult"]["DBInstances"][0]
         host = host_override or db["Endpoint"]["Address"]
-        dbname = db["DBName"]
+        dbname = dbname_override or db["DBName"]
         user = db["MasterUsername"]
 
         conn = psycopg2.connect(dbname=dbname, user=user, password=config["password"], host=host)
