@@ -330,7 +330,7 @@ def _upsert_aggregate(stage_table, aggregate):
         # This doubles the number of backslashes we need.
         json_dimensions = json_dimensions.replace("\\", "\\\\")
 
-        stage_table.write("{}\t{}\n".format(json_dimensions, "{" + json.dumps(histogram)[1:-1] + "}"))
+        stage_table.write("{}\t{}\n".format(json_dimensions, "{" + ",".join([str(long(x)) for x in histogram]) + "}"))
 
 
 def _upsert_build_id_aggregates(aggregates, dry_run=False):
