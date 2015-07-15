@@ -363,6 +363,9 @@ def _upsert_build_id_aggregates(aggregates, dry_run=False):
     else:
         conn.commit()
 
+    cursor.close()
+    conn.close()
+
 
 def _upsert_submission_date_aggregates(aggregates, dry_run=False):
     conn = create_connection(autocommit=False)
@@ -391,10 +394,14 @@ def _upsert_submission_date_aggregates(aggregates, dry_run=False):
     else:
         conn.commit()
 
+    cursor.close()
+    conn.close()
+
 
 def _vacuumdb():
     conn = create_connection()
     conn.set_isolation_level(0)
     cursor = conn.cursor()
     cursor.execute("vacuum")
+    cursor.close()
     conn.close()
