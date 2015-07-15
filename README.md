@@ -60,7 +60,7 @@ The available filters are:
 A reply has the following attributes:
 - buckets, which represents the bucket labels of the histogram
 - kind, the kind of histogram (e.g. exponential)
-- data, which is an array of metric object with the following attributes:
+- data, which is an array of metric objects with the following attributes:
   - date: a build-id
   - count: number of metrics aggregated
   - sum: sum of accumulated values

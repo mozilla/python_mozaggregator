@@ -88,7 +88,7 @@ def get_filters_options(prefix, channel):
         dimensions = ["metric", "application", "architecture", "os", "e10sEnabled", "child"]
 
         # TODO: come up with a better strategy than using the nightly filter options on all channels
-        Parallel(n_jobs=len(dimensions), backend="threading")(delayed(get_filter_options)(prefix, "nightly", filters, f)
+        Parallel(n_jobs=len(dimensions), backend="threading")(delayed(get_filter_options)("submission_date", "nightly", filters, f)
                                                               for f in dimensions)
 
         return json.dumps(filters)
