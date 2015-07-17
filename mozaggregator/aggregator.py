@@ -103,8 +103,8 @@ def _extract_histogram(state, histogram, histogram_name, label, is_child):
     accessor = (histogram_name, label, is_child)
     aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
 
-    state[accessor]["sum"] = state[accessor].get("sum", 0) + sum
-    state[accessor]["count"] = state[accessor].get("count", 0) + 1
+    state[accessor]["sum"] = state[accessor].get("sum", 0L) + sum
+    state[accessor]["count"] = state[accessor].get("count", 0L) + 1L
     for k, v in values.iteritems():
         try:
             int(k)
@@ -112,8 +112,8 @@ def _extract_histogram(state, histogram, histogram_name, label, is_child):
             # We have seen some histograms with non-integer bucket keys...
             continue
 
-        v = v if isinstance(v, (int, long)) else 0
-        aggregated_histogram[k] = aggregated_histogram.get(k, 0) + v
+        v = v if isinstance(v, (int, long)) else 0L
+        aggregated_histogram[k] = aggregated_histogram.get(k, 0L) + v
 
 
 def _extract_main_histograms(state, histograms, is_child):
@@ -148,8 +148,8 @@ def _extract_simple_measures(state, simple):
 def _extract_scalar_value(state, name, label, value, bucket_labels, is_child=False):
     accessor = (name, label, is_child)
     aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
-    state[accessor]["sum"] = state[accessor].get("sum", 0) + value
-    state[accessor]["count"] = state[accessor].get("count", 0) + 1
+    state[accessor]["sum"] = state[accessor].get("sum", 0L) + value
+    state[accessor]["count"] = state[accessor].get("count", 0L) + 1L
 
     insert_bucket = bucket_labels[0]  # Initialized to underflow bucket
     for bucket in reversed(bucket_labels):
@@ -157,7 +157,7 @@ def _extract_scalar_value(state, name, label, value, bucket_labels, is_child=Fal
             insert_bucket = bucket
             break
 
-    aggregated_histogram[unicode(insert_bucket)] = aggregated_histogram.get(unicode(insert_bucket), 0) + 1
+    aggregated_histogram[unicode(insert_bucket)] = aggregated_histogram.get(unicode(insert_bucket), 0L) + 1L
 
 
 def _extract_children_histograms(state, child_payloads):
@@ -188,7 +188,7 @@ def _aggregate_aggregates(agg1, agg2):
         agg1[metric]["sum"] += payload["sum"]
 
         for k, v in payload["histogram"].iteritems():
-            agg1[metric]["histogram"][k] = agg1[metric]["histogram"].get(k, 0) + v
+            agg1[metric]["histogram"][k] = agg1[metric]["histogram"].get(k, 0L) + v
 
     return agg1
 
