@@ -87,7 +87,7 @@ def _extract_histogram(state, histogram, histogram_name, label, is_child):
         return
 
     sum = histogram.get("sum", None)
-    if not isinstance(sum, (int, long)):
+    if not isinstance(sum, (int, long)) or sum < 0:
         return
 
     histogram_type = histogram.get("histogram_type", None)
