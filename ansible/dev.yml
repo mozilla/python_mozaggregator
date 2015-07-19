@@ -1,0 +1,33 @@
+- name: setup local development environment
+  hosts: all
+
+  vars:
+    - spark_version: 1.3.1
+    - postgresql_version: 9.4
+
+  pre_tasks:
+    - name: install packages
+      sudo: yes
+      apt: name={{item}} state=installed update_cache=yes cache_valid_time=3600
+      with_items:
+        - postgresql-{{postgresql_version}}
+        - postgresql-contrib-{{postgresql_version}}
+        - libpq-dev
+        - liblzma-dev
+
+    - name: stop postgres service
+      sudo: yes
+      service: name=postgresql state=stopped
+
+    - name: configure postgresql
+      lineinfile: dest={{ansible_env.HOME}}/.bashrc regexp="^export.*postgresql" line="export PATH=/usr/lib/postgresql/{{postgresql_version}}/bin:$PATH"
+
+  roles:
+    - dotfiles 
+    - anaconda
+    - role: spark
+      spark_version: "{{spark_version}}"
+
+  post_tasks:
+    - name: setup project dependencies
+      command: "{{ansible_env.HOME}}/miniconda/bin/python setup.py develop chdir=/vagrant"

@@ -25,7 +25,7 @@ Vagrant.configure("2") do |config|
     dev.vm.box = "ubuntu/vivid64"
     dev.vm.network :forwarded_port, host: 5000, guest: 5000
     dev.vm.provision "ansible" do |ansible|
-      ansible.playbook = "ansible/playbooks/dev.yml"
+      ansible.playbook = "ansible/dev.yml"
     end
   end
 end

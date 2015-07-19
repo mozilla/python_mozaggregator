@@ -1,0 +1,16 @@
+- name: install packages
+  sudo: yes
+  apt: name={{item}} state=installed update_cache=yes cache_valid_time=3600
+  with_items:
+    - vim
+    - emacs
+    - zsh
+    - tmux
+    - git
+    - htop
+
+- name: download dotfiles
+  git: repo=https://github.com/vitillo/dotfiles.git dest={{ansible_env.HOME}}/dotfiles
+
+- name: install dotfiles
+  command: make chdir={{ansible_env.HOME}}/dotfiles creates={{ansible_env.HOME}}/.vimrc

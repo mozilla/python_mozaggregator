@@ -1,0 +1,17 @@
+- name: install java
+  sudo: yes
+  apt: name=openjdk-7-jdk state=installed update_cache=yes cache_valid_time=3600
+
+- name: install spark
+  command: "{{item}} chdir={{ansible_env.HOME}} creates=spark-{{spark_version}}-bin-hadoop2.4"
+  with_items:
+    - wget http://d3kbcqa49mib13.cloudfront.net/spark-{{spark_version}}-bin-hadoop2.4.tgz
+    - tar -xzf spark-{{spark_version}}-bin-hadoop2.4.tgz
+  notify:
+    - delete spark installer
+
+- name: source spark
+  lineinfile: >
+    dest={{ansible_env.HOME}}/.bashrc
+    regexp="^export SPARK_HOME"
+    line="export SPARK_HOME={{ansible_env.HOME}}/spark-{{spark_version}}-bin-hadoop2.4"
