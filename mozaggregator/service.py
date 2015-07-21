@@ -10,6 +10,10 @@ from werkzeug.contrib.cache import SimpleCache
 from joblib import Parallel, delayed
 from functools import wraps
 
+from tornado.wsgi import WSGIContainer
+from tornado.httpserver import HTTPServer
+from tornado.ioloop import IOLoop
+
 TIMEOUT = 24*60*60
 
 app = Flask(__name__)
@@ -165,4 +169,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     host = args.host
 
-    app.run("0.0.0.0", debug=args.debug, threaded=True)
+    if args.debug:
+        app.run("0.0.0.0", debug=args.debug, threaded=True)
+    else:
+        http_server = HTTPServer(WSGIContainer(app))
+        http_server.listen(5000)
+        IOLoop.instance().start()

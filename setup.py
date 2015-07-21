@@ -8,12 +8,12 @@
 from setuptools import setup
 
 setup(name='python_mozaggregator',
-      version='0.2.1.9',
+      version='0.2.2.0',
       author='Roberto Agostino Vitillo',
       author_email='rvitillo@mozilla.com',
       description='Telemetry aggregation job',
       url='https://github.com/vitillo/python_mozaggregator',
       packages=['mozaggregator'],
       package_dir={'mozaggregator': 'mozaggregator'},
-      install_requires=['python_moztelemetry', 'Flask', 'flask-cors', 'joblib', 'boto', 'ujson', 'psycopg2', 'pandas>=0.15.2'])
+      install_requires=['python_moztelemetry', 'Flask', 'flask-cors', 'tornado', 'joblib', 'boto', 'ujson', 'psycopg2', 'pandas>=0.15.2'])
 
