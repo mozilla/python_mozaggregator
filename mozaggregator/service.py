@@ -165,4 +165,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     host = args.host
 
-    app.run("0.0.0.0", debug=args.debug)
+    app.run("0.0.0.0", debug=args.debug, threaded=True)
