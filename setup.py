@@ -7,12 +7,8 @@
 
 from distutils.core import setup
 
-import urllib
-import setuptools.command.install
-
-
 setup(name='python_mozaggregator',
-      version='0.2.1.7',
+      version='0.2.1.8',
       author='Roberto Agostino Vitillo',
       author_email='rvitillo@mozilla.com',
       description='Telemetry aggregation job',

@@ -37,6 +37,11 @@ def execute_query(query, params=tuple()):
     return cursor.fetchall()
 
 
+@app.route('/status')
+def status():
+    return "OK"
+
+
 @app.route('/aggregates_by/<prefix>/channels/')
 @cache_request
 def get_channels(prefix):
