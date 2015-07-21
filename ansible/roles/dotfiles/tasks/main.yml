@@ -8,6 +8,7 @@
     - tmux
     - git
     - htop
+    - make
 
 - name: download dotfiles
   git: repo=https://github.com/vitillo/dotfiles.git dest={{ansible_env.HOME}}/dotfiles

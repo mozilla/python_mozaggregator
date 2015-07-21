@@ -14,4 +14,4 @@
   command: "{{item}} chdir={{ansible_env.HOME}}"
   with_items:
     - miniconda/bin/conda update --yes conda
-    - miniconda/bin/conda install --yes atlas numpy scipy matplotlib nose dateutil pandas flask
+    - miniconda/bin/conda install --yes atlas numpy scipy matplotlib nose dateutil pandas flask supervisor tornado

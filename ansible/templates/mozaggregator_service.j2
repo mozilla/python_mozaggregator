@@ -1,0 +1,6 @@
+[program:mozaggregator_service]
+command={{ansible_env.HOME}}/miniconda/bin/python {{ansible_env.HOME}}/miniconda/lib/python2.7/site-packages/mozaggregator/service.py
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/mozaggregator_service.err.log
+stdout_logfile=/var/log/mozaggregator_service.out.log

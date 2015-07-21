@@ -3,6 +3,19 @@
 # python_mozaggregator
 Aggregator job for Telemetry. See this [blog](http://robertovitillo.com/2015/07/02/telemetry-metrics-roll-ups/) post for details. 
 
+## Development and deployment
+
+To start hacking on your local machine:
+```bash
+vagrant up
+vagrant ssh
+```
+
+To deploy a new version of the aggregation service to the cloud:
+```bash
+ansible-playbook ansible/deploy.yml -i ansible/inventory
+```
+
 ## API
 Aggregates are made available through a HTTP API. There are two kinds of aggregates: per submission date and per build-id. 
 To access the aggregates use the ```aggregates_by/build_id/``` and ```aggregates_by/submission_date/``` prefix respectively.
