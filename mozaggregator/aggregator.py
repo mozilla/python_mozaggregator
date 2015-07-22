@@ -146,6 +146,9 @@ def _extract_simple_measures(state, simple):
 
 
 def _extract_scalar_value(state, name, label, value, bucket_labels, is_child=False):
+    if value < 0:  # Afaik we are collecting only positive values
+        return
+
     accessor = (name, label, is_child)
     aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
     state[accessor]["sum"] = state[accessor].get("sum", 0L) + value
