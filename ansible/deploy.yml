@@ -124,8 +124,8 @@
           ping_protocol: http
           ping_port: 5000
           ping_path: "/status"
-          response_timeout: 5 # seconds
-          interval: 30 # seconds
+          response_timeout: 50 # seconds
+          interval: 60 # seconds
           unhealthy_threshold: 2
           healthy_threshold: 2
       register: elb
