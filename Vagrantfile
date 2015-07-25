@@ -24,6 +24,7 @@ Vagrant.configure("2") do |config|
     dev.ssh.insert_key = false
     dev.vm.box = "ubuntu/vivid64"
     dev.vm.network :forwarded_port, host: 5000, guest: 5000
+    dev.vm.network :forwarded_port, host: 5432, guest: 5432
     dev.vm.provision "ansible" do |ansible|
       ansible.playbook = "ansible/dev.yml"
     end
