@@ -19,7 +19,7 @@
 
     - name: stop postgres service
       sudo: yes
-      service: name=postgresql state=stopped
+      service: name=postgresql state=stopped enabled=no
 
     - name: configure postgresql
       lineinfile: dest={{ansible_env.HOME}}/.bashrc regexp="^export.*postgresql" line="export PATH=/usr/lib/postgresql/{{postgresql_version}}/bin:$PATH"

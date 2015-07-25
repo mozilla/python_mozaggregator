@@ -15,3 +15,10 @@
     dest={{ansible_env.HOME}}/.bashrc
     regexp="^export SPARK_HOME"
     line="export SPARK_HOME={{ansible_env.HOME}}/spark-{{spark_version}}-bin-hadoop2.4"
+
+- name: source pyspark
+  lineinfile: >
+    dest={{ansible_env.HOME}}/.bashrc
+    regexp="^export PYTHONPATH"
+    line="export PYTHONPATH=$SPARK_HOME/python"
+  

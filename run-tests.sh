@@ -46,8 +46,9 @@ trap "clean_exit" EXIT
 PGSQL_DATA=`mktemp -d /tmp/PGSQL-XXXXX`
 PGSQL_PATH=`pg_config --bindir`
 ${PGSQL_PATH}/initdb ${PGSQL_DATA}
+echo "host all all 0.0.0.0/0 trust" >> $PGSQL_DATA/pg_hba.conf
 mkfifo ${PGSQL_DATA}/out
-${PGSQL_PATH}/postgres -F -k ${PGSQL_DATA} -D ${PGSQL_DATA} &> ${PGSQL_DATA}/out &
+${PGSQL_PATH}/postgres -h '*' -F -k ${PGSQL_DATA} -D ${PGSQL_DATA} &> ${PGSQL_DATA}/out &
 # Wait for PostgreSQL to start listening to connection
 wait_for_line "database system is ready to accept connections" ${PGSQL_DATA}/out
 export DB_TEST_URL="postgresql:///?host=${PGSQL_DATA}&dbname=template1"
