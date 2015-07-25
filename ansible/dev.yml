@@ -12,8 +12,10 @@
       with_items:
         - postgresql-{{postgresql_version}}
         - postgresql-contrib-{{postgresql_version}}
+        - g++
         - libpq-dev
         - liblzma-dev
+        - libsnappy-dev
 
     - name: stop postgres service
       sudo: yes
