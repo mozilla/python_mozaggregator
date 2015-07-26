@@ -14,4 +14,4 @@
   git: repo=https://github.com/vitillo/dotfiles.git dest={{ansible_env.HOME}}/dotfiles
 
 - name: install dotfiles
-  command: make chdir={{ansible_env.HOME}}/dotfiles creates={{ansible_env.HOME}}/.vimrc
+  command: make install-vim install-tmux install-emacs chdir={{ansible_env.HOME}}/dotfiles creates={{ansible_env.HOME}}/.vimrc
