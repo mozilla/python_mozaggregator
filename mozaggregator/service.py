@@ -105,6 +105,46 @@ def get_filters_options(prefix, channel):
         abort(404)
 
 
+def get_filter_options_new(channel, version, filters, filter):
+    options = execute_query("select * from get_filter_options(%s, %s, %s)", (channel, version, filter))
+    if not options or (len(options) == 1 and options[0][0] is None):
+        return
+
+    pretty_opts = []
+    for option in options:
+        option = option[0]
+        if filter == "metric" and option.startswith("[[COUNT]]_"):
+            pretty_opts.append(option[10:])
+        else:
+            pretty_opts.append(option)
+
+    filters[filter] = pretty_opts
+
+
+@app.route('/filters/', methods=["GET"])
+@cache_request
+def get_filters_options_new():
+    try:
+        channel = request.args.get("channel", None)
+        version = request.args.get("version", None)
+
+        if not channel or not version:
+            abort(404)
+
+        filters = {}
+        dimensions = ["metric", "application", "architecture", "os", "e10sEnabled", "child"]
+
+        Parallel(n_jobs=len(dimensions), backend="threading")(delayed(get_filter_options_new)(channel, version, filters, f)
+                                                              for f in dimensions)
+
+        if not filters:
+            abort(404)
+
+        return json.dumps(filters)
+    except:
+        abort(404)
+
+
 @app.route('/aggregates_by/<prefix>/channels/<channel>/', methods=["GET"])
 @cache_request
 def get_dates_metrics(prefix, channel):

@@ -96,6 +96,17 @@ def test_filters():
             assert set(options["child"]) == set(["true", "false"])
 
 
+def test_filters_new():
+    for channel in ping_dimensions["channel"]:
+        for version in [v.split('.')[0] for v in ping_dimensions["version"]]:
+            options = requests.get("{}/filters/?channel={}&version={}".format(SERVICE_URI, channel, version)).json()
+            #  We should really test all filters...
+            assert set(options["application"]) == set(ping_dimensions["application"])
+            assert set(options["architecture"]) == set(ping_dimensions["arch"])
+            assert set(options["e10sEnabled"]) == set(["true", "false"])
+            assert set(options["child"]) == set(["true", "false"])
+
+
 def test_build_id_metrics():
     template_channel = ping_dimensions["channel"]
     template_version = [x.split('.')[0] for x in ping_dimensions["version"]]

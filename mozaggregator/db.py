@@ -108,13 +108,14 @@ begin
     if not table_exists then
         execute format('create table %s as table %s', tablename, stage_table);
         execute format('create index on %s using GIN (dimensions jsonb_path_ops)', tablename);
+        perform update_filter_options(channel, version, stage_table);
         return;
     end if;
 
     -- Update existing tuples and delete matching rows from the staging table
     execute 'with merge as (update ' || tablename || ' as dest
-	                        set histogram = aggregate_arrays(dest.histogram, src.histogram)
-	                        from ' || stage_table || ' as src
+                            set histogram = aggregate_arrays(dest.histogram, src.histogram)
+                            from ' || stage_table || ' as src
                             where dest.dimensions = src.dimensions
                             returning dest.*)
                   delete from ' || stage_table || ' as stage
@@ -124,6 +125,7 @@ begin
     -- Insert new tuples
     execute 'insert into ' || tablename || ' (dimensions, histogram)
              select dimensions, histogram from ' || stage_table;
+    perform update_filter_options(channel, version, stage_table);
 end
 $$ language plpgsql strict;
 
@@ -268,6 +270,76 @@ end
 $$ language plpgsql strict stable;
 
 
+create or replace function get_dimension_values(filter text, table_name regclass) returns table(option text) as $$
+declare
+begin
+     -- TODO: os & osVersion should be merged into a single dimension...
+     if (filter = 'osVersion') then
+         return query execute
+         E'select concat(t.os, \',\', t.version)
+           from (select distinct dimensions->>\'os\', dimensions->>\'osVersion\'
+                 from ' || table_name || E') as t(os, version)';
+     else
+         return query execute
+         E'select distinct dimensions->>\'' || filter || E'\' from ' || table_name;
+     end if;
+end
+$$ language plpgsql strict stable;
+
+
+create or replace function update_filter_options(channel text, version text, stage_table regclass) returns void as $$
+declare
+    table_match text;
+    dimension_sample jsonb;
+    dimension text;
+begin
+    table_match := aggregate_table_name('*', channel, version, '*');
+
+    execute 'select dimensions
+             from ' || stage_table || '
+             limit 1'
+             into dimension_sample;
+
+    perform lock_transaction('*', channel, version, '*');
+
+    for dimension in select jsonb_object_keys(dimension_sample)
+    loop
+        if (dimension = 'label' or dimension = 'os') then
+          continue;
+        end if;
+
+        execute E'with curr as (select value
+                                from filter_options
+                                where table_match = $1 and filter = $2),
+                       new as (select get_dimension_values($2, $3)),
+                       diff as (select * from new except select * from curr)
+                       insert into filter_options (table_match, filter, value)
+                              select $1, $2, t.value
+                              from diff as t(value)'
+        using table_match, dimension, stage_table;
+    end loop;
+end
+$$ language plpgsql strict;
+
+
+create or replace function get_filter_options(channel text, version text, dimension text) returns table(option text) as $$
+declare
+    match_table text;
+begin
+    match_table := aggregate_table_name('*', channel, version, '*');
+
+    if dimension = 'os' then
+        dimension := 'osVersion';
+    end if;
+
+    return query
+    select value
+    from filter_options
+    where table_match = match_table and filter = dimension;
+end
+$$ language plpgsql strict;
+
+
 create or replace function create_tables() returns void as $$
 declare
     table_exists boolean;
@@ -276,6 +348,12 @@ begin
    if (not table_exists) then
        create table table_update_dates (tablename text primary key, submission_dates text[]);
        create index on table_update_dates (tablename);
+   end if;
+
+   table_exists := (select exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'filter_options'));
+   if (not table_exists) then
+       create table filter_options (id serial primary key, table_match text not null, filter text not null, value text not null);
+       create index on filter_options (table_match);
    end if;
 end
 $$ language plpgsql strict;
