@@ -31,5 +31,10 @@
       spark_version: "{{spark_version}}"
 
   post_tasks:
-    - name: setup project dependencies
+    - name: setup project dependencies on vagrant
       command: "{{ansible_env.HOME}}/miniconda/bin/python setup.py develop chdir=/vagrant"
+      when: not travis_build_dir is defined
+
+    - name: setup project dependencies on travis
+      command: "{{ansible_env.HOME}}/miniconda/bin/python setup.py develop chdir={{travis_build_dir}}"
+      when: travis_build_dir is defined

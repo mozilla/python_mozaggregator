@@ -1,30 +1,15 @@
 language: python
+
 python:
   - 2.7
-addons:
-  postgresql: 9.4
+
 before_install:
   - sudo service postgresql stop
 
-  # Setup anaconda
-  - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
-  - chmod +x miniconda.sh
-  - ./miniconda.sh -b
-  - export PATH=/home/travis/miniconda/bin:$PATH
-  - conda update --yes conda
-  
-  # Setup Spark
-  - wget http://d3kbcqa49mib13.cloudfront.net/spark-1.3.1-bin-hadoop2.4.tgz
-
-  # The next couple lines fix a crash with multiprocessing on Travis and are not specific to using Miniconda
-  - sudo rm -rf /dev/shm
-  - sudo ln -s /run/shm /dev/shm
 install:
-  - conda install --yes python=$TRAVIS_PYTHON_VERSION atlas numpy scipy matplotlib nose dateutil pandas statsmodels flask
-  - sudo apt-get install -y g++ liblzma-dev libsnappy-dev
-  - python setup.py install
+  - pip install ansible
 
-  - tar -xzf spark-1.3.1-bin-hadoop2.4.tgz;
-  - export SPARK_HOME=`pwd`/spark-1.3.1-bin-hadoop2.4;
 script:
-  - ./run-tests.sh
+  # note that without a sudo command travis will execute the script in a non sudo enabled environment which will cause the ansible script to fail
+  - ansible-playbook -i ansible/travis_inventory ansible/dev.yml --connection=local -e "travis_build_dir=$TRAVIS_BUILD_DIR"
+  - bash -i ./run-tests.sh  # source .bashrc before executing tests
