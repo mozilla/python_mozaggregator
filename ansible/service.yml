@@ -9,8 +9,10 @@
       with_items:
         - libpq-dev
         - liblzma-dev
+        - libsnappy-dev
         - supervisor
         - gcc
+        - g++
         - awscli
 
     - name: start supervisord service and have it run during system startup

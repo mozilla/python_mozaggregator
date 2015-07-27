@@ -15,7 +15,7 @@
       register: result
 
     - set_fact: db_pass="{{(result.stdout|from_json).password}}"
-    
+
     - name: create VPC
       ec2_vpc:
         state: present
