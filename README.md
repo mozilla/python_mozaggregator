@@ -28,9 +28,9 @@ curl -X GET http://SERVICE/aggregates_by/build_id/channels/
 ["nightly","beta","aurora"]
 ```
 
-##### Get a list of options for the available dimensions on a given channel:
+##### Get a list of options for the available dimensions on a given channel and version:
 ```bash
-curl -X GET "http://SERVICE/aggregates_by/build_id/channels/nightly/filters/"
+curl -X GET "http://SERVICE/filters/?channel=nightly&version=42"
 {"metric":["A11Y_CONSUMERS","A11Y_IATABLE_USAGE_FLAG",...], 
  "application":["Fennec","Firefox"],
  ...}
