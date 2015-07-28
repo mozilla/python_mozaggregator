@@ -86,17 +86,6 @@ def test_submission_dates():
 
 
 def test_filters():
-    for kind in ["build_id", "submission_date"]:
-        for channel in ping_dimensions["channel"]:
-            options = requests.get("{}/aggregates_by/{}/channels/{}/filters/".format(SERVICE_URI, kind, channel)).json()
-            #  We should really test all filters...
-            assert set(options["application"]) == set(ping_dimensions["application"])
-            assert set(options["architecture"]) == set(ping_dimensions["arch"])
-            assert set(options["e10sEnabled"]) == set(["true", "false"])
-            assert set(options["child"]) == set(["true", "false"])
-
-
-def test_filters_new():
     for channel in ping_dimensions["channel"]:
         for version in [v.split('.')[0] for v in ping_dimensions["version"]]:
             options = requests.get("{}/filters/?channel={}&version={}".format(SERVICE_URI, channel, version)).json()
