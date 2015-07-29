@@ -27,8 +27,6 @@
   post_tasks:
     - name: install db service
       command: "{{ansible_env.HOME}}/miniconda/bin/pip install python_mozaggregator --upgrade"
-      notify:
-        - restart supervisor
 
     - name: setup service
       sudo: yes
