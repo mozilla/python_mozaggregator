@@ -5,5 +5,5 @@ RDS="telemetry-aggregates"
 TIMEOUT=24*60*60
 MINCONN=4
 MAXCONN=64
-CACHETYPE="redis"
+CACHETYPE="simple"
 USE_PRODUCTION_DB=True
