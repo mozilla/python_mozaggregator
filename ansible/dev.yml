@@ -10,12 +10,13 @@
       sudo: yes
       apt: name={{item}} state=installed update_cache=yes cache_valid_time=3600
       with_items:
-        - postgresql-{{postgresql_version}}
-        - postgresql-contrib-{{postgresql_version}}
-        - g++
         - libpq-dev
         - liblzma-dev
         - libsnappy-dev
+        - postgresql-{{postgresql_version}}
+        - postgresql-contrib-{{postgresql_version}}
+        - g++
+        - redis-server
 
     - name: stop postgres service
       sudo: yes

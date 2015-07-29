@@ -4,7 +4,7 @@ import requests
 import pandas as pd
 
 from mozaggregator.aggregator import _aggregate_metrics, count_histogram_labels, simple_measures_labels
-from mozaggregator.db import create_connection, submit_aggregates
+from mozaggregator.db import _create_connection, submit_aggregates
 from dataset import *
 from moztelemetry.histogram import Histogram
 from nose.tools import nottest
@@ -30,7 +30,7 @@ def teardown_module():
 
 
 def test_connection():
-    db = create_connection()
+    db = _create_connection()
     assert(db)
 
 

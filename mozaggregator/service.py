@@ -1,24 +1,27 @@
-import argparse
 import ujson as json
+import config
 
 from flask import Flask, request, abort
 from flask.ext.cors import CORS
-from db import create_connection, histogram_revision_map
+from flask.ext.cache import Cache
 from moztelemetry.histogram import Histogram
-from aggregator import simple_measures_labels, count_histogram_labels
-from werkzeug.contrib.cache import SimpleCache
 from joblib import Parallel, delayed
 from functools import wraps
+from gevent.monkey import patch_all
+from psycogreen.gevent import patch_psycopg
+from psycopg2.pool import SimpleConnectionPool
+from aggregator import simple_measures_labels, count_histogram_labels
+from db import get_db_connection_string, histogram_revision_map
 
-from tornado.wsgi import WSGIContainer
-from tornado.httpserver import HTTPServer
-from tornado.ioloop import IOLoop
-
-TIMEOUT = 24*60*60
-
+pool = None
 app = Flask(__name__)
-cache = SimpleCache()
+app.config.from_object('config')
 CORS(app, resources=r'/*', allow_headers='Content-Type')
+cache = Cache(app, config={'CACHE_TYPE': app.config["CACHETYPE"]})
+
+patch_all()
+patch_psycopg()
+cache.clear()
 
 
 def cache_request(f):
@@ -27,18 +30,32 @@ def cache_request(f):
         rv = cache.get(request.url)
         if rv is None:
             rv = f(*args, **kwargs)
-            cache.set(request.url, rv, timeout=TIMEOUT)
+            cache.set(request.url, rv, timeout=app.config["TIMEOUT"])
             return rv
         else:
             return rv
     return decorated_request
 
 
+def create_pool():
+    global pool
+    if pool is None:
+        pool = SimpleConnectionPool(app.config["MINCONN"], app.config["MAXCONN"], dsn=get_db_connection_string())
+    return pool
+
+
 def execute_query(query, params=tuple()):
-    db = create_connection(host_override=host)
-    cursor = db.cursor()
-    cursor.execute(query, params)
-    return cursor.fetchall()
+    pool = create_pool()
+    db = pool.getconn()
+
+    try:
+        cursor = db.cursor()
+        cursor.execute(query, params)
+        return cursor.fetchall()
+    except:
+        abort(404)
+    finally:
+        pool.putconn(db)
 
 
 @app.route('/status')
@@ -49,137 +66,105 @@ def status():
 @app.route('/aggregates_by/<prefix>/channels/')
 @cache_request
 def get_channels(prefix):
-    try:
-        channels = execute_query("select * from list_channels(%s)", (prefix, ))
-        if not channels:
-            abort(404)
-
-        return json.dumps([channel[0] for channel in channels])
-    except:
-        abort(404)
+    channels = execute_query("select * from list_channels(%s)", (prefix, ))
+    return json.dumps([channel[0] for channel in channels])
 
 
 @app.route('/aggregates_by/<prefix>/channels/<channel>/dates/')
 @cache_request
 def get_dates(prefix, channel):
-    try:
-        result = execute_query("select * from list_buildids(%s, %s)", (prefix, channel))
-        if not result:
-            abort(404)
-
-        pretty_result = map(lambda r: {"version": r[0], "date": r[1]}, result)
-        return json.dumps(pretty_result)
-    except:
-        abort(404)
+    result = execute_query("select * from list_buildids(%s, %s)", (prefix, channel))
+    pretty_result = map(lambda r: {"version": r[0], "date": r[1]}, result)
+    return json.dumps(pretty_result)
 
 
 def get_filter_options(channel, version, filters, filter):
-    options = execute_query("select * from get_filter_options(%s, %s, %s)", (channel, version, filter))
-    if not options or (len(options) == 1 and options[0][0] is None):
-        return
+    try:
+        options = execute_query("select * from get_filter_options(%s, %s, %s)", (channel, version, filter))
+        if not options or (len(options) == 1 and options[0][0] is None):
+            return
 
-    pretty_opts = []
-    for option in options:
-        option = option[0]
-        if filter == "metric" and option.startswith("[[COUNT]]_"):
-            pretty_opts.append(option[10:])
-        else:
-            pretty_opts.append(option)
+        pretty_opts = []
+        for option in options:
+            option = option[0]
+            if filter == "metric" and option.startswith("[[COUNT]]_"):
+                pretty_opts.append(option[10:])
+            else:
+                pretty_opts.append(option)
 
-    filters[filter] = pretty_opts
+        filters[filter] = pretty_opts
+    except:
+        pass
 
 
 @app.route('/filters/', methods=["GET"])
 @cache_request
 def get_filters_options():
-    try:
-        channel = request.args.get("channel", None)
-        version = request.args.get("version", None)
+    channel = request.args.get("channel", None)
+    version = request.args.get("version", None)
 
-        if not channel or not version:
-            abort(404)
-
-        filters = {}
-        dimensions = ["metric", "application", "architecture", "os", "e10sEnabled", "child"]
-
-        Parallel(n_jobs=len(dimensions), backend="threading")(delayed(get_filter_options)(channel, version, filters, f)
-                                                              for f in dimensions)
-
-        if not filters:
-            abort(404)
-
-        return json.dumps(filters)
-    except:
+    if not channel or not version:
         abort(404)
+
+    filters = {}
+    dimensions = ["metric", "application", "architecture", "os", "e10sEnabled", "child"]
+
+    Parallel(n_jobs=len(dimensions), backend="threading")(delayed(get_filter_options)(channel, version, filters, f)
+                                                            for f in dimensions)
+
+    if not filters:
+        abort(404)
+
+    return json.dumps(filters)
 
 
 @app.route('/aggregates_by/<prefix>/channels/<channel>/', methods=["GET"])
 @cache_request
 def get_dates_metrics(prefix, channel):
-    try:
-        mapping = {"true": True, "false": False}
-        dimensions = {k: mapping.get(v, v) for k, v in request.args.iteritems()}
+    mapping = {"true": True, "false": False}
+    dimensions = {k: mapping.get(v, v) for k, v in request.args.iteritems()}
 
-        # Get dates
-        dates = dimensions.pop('dates', "").split(',')
-        version = dimensions.pop('version', None)
+    # Get dates
+    dates = dimensions.pop('dates', "").split(',')
+    version = dimensions.pop('version', None)
+    metric = dimensions.get('metric', None)
 
-        if not dates or not version:
-            abort(404)
-
-        # Get bucket labels
-        if dimensions["metric"].startswith("SIMPLE_MEASURES_"):
-            labels = simple_measures_labels
-            kind = "exponential"
-            description = ""
-        else:
-            revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
-            definition = Histogram(dimensions["metric"], {"values": {}}, revision=revision)
-            kind = definition.kind
-            description = definition.definition.description()
-
-            if kind == "count":
-                labels = count_histogram_labels
-                dimensions["metric"] = "[[COUNT]]_{}".format(dimensions["metric"])
-            elif kind == "flag":
-                labels = [0, 1]
-            else:
-                labels = definition.get_value().keys().tolist()
-
-        # Fetch metrics
-        result = execute_query("select * from batched_get_metric(%s, %s, %s, %s, %s)", (prefix, channel, version, dates, json.dumps(dimensions)))
-        if not result:  # Metric not found
-            abort(404)
-
-        pretty_result = {"data": [], "buckets": labels, "kind": kind, "description": description}
-        for row in result:
-            date = row[0]
-            label = row[1]
-            histogram = row[2][:-2]
-            sum = row[2][-2]
-            count = row[2][-1]
-            pretty_result["data"].append({"date": date, "label": label, "histogram": histogram, "count": count, "sum": sum})
-
-        return json.dumps(pretty_result)
-    except:
+    if not dates or not version or not metric:
         abort(404)
+
+    # Get bucket labels
+    if metric.startswith("SIMPLE_MEASURES_"):
+        labels = simple_measures_labels
+        kind = "exponential"
+        description = ""
+    else:
+        revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
+        definition = Histogram(metric, {"values": {}}, revision=revision)
+        kind = definition.kind
+        description = definition.definition.description()
+
+        if kind == "count":
+            labels = count_histogram_labels
+            dimensions["metric"] = "[[COUNT]]_{}".format(metric)
+        elif kind == "flag":
+            labels = [0, 1]
+        else:
+            labels = definition.get_value().keys().tolist()
+
+    # Fetch metrics
+    result = execute_query("select * from batched_get_metric(%s, %s, %s, %s, %s)", (prefix, channel, version, dates, json.dumps(dimensions)))
+
+    pretty_result = {"data": [], "buckets": labels, "kind": kind, "description": description}
+    for row in result:
+        date = row[0]
+        label = row[1]
+        histogram = row[2][:-2]
+        sum = row[2][-2]
+        count = row[2][-1]
+        pretty_result["data"].append({"date": date, "label": label, "histogram": histogram, "count": count, "sum": sum})
+
+    return json.dumps(pretty_result)
 
 
 if __name__ == "__main__":
-    global host
-
-    parser = argparse.ArgumentParser(description="Aggregation REST service", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-
-    parser.add_argument("-d", "--debug", help="Debug mode", dest="debug", action="store_true")
-    parser.add_argument("-o", "--host", help="DB hostname", default=None)
-
-    parser.set_defaults(debug=False)
-    args = parser.parse_args()
-    host = args.host
-
-    if args.debug:
-        app.run("0.0.0.0", debug=args.debug, threaded=True)
-    else:
-        http_server = HTTPServer(WSGIContainer(app))
-        http_server.listen(5000)
-        IOLoop.instance().start()
+    app.run("0.0.0.0", debug=True, threaded=True)

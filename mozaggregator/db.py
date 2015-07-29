@@ -12,6 +12,7 @@ import boto.rds2
 import os
 import string
 import sql
+import config
 
 from moztelemetry.spark import Histogram
 from boto.s3.connection import S3Connection
@@ -28,24 +29,22 @@ histogram_revision_map = {"nightly": "https://hg.mozilla.org/mozilla-central/rev
 
 _metric_printable = set(string.ascii_uppercase + string.digits + "_-[]")
 
-def create_connection(autocommit=True, host_override=None, dbname_override=None):
-    # import boto.rds2  # The serializer doesn't pick this one up for some reason when using emacs...
 
-    connection_string = os.getenv("DB_TEST_URL")  # Used only for testing
-    if connection_string:
-        conn = psycopg2.connect(connection_string)
-    else:
+def get_db_connection_string():
+    if os.getenv("DB_TEST_URL"):
+        return os.getenv("DB_TEST_URL")
+    elif config.USE_PRODUCTION_DB:
         s3 = S3Connection()
-        config = s3.get_bucket("telemetry-spark-emr").get_key("aggregator_credentials").get_contents_as_string()
-        config = json.loads(config)
+        secret = json.loads(s3.get_bucket(config.BUCKET).get_key(config.SECRET).get_contents_as_string())["password"]
+        rds = boto.rds2.connect_to_region(config.REGION)
+        db = rds.describe_db_instances(config.RDS)["DescribeDBInstancesResponse"]["DescribeDBInstancesResult"]["DBInstances"][0]
+        return "dbname={} user={} password={} host={}".format(db["DBName"], db["MasterUsername"], secret, db["Endpoint"]["Address"])
+    else:
+        return "dbname={} user={} password={} host={}".format(config.DBNAME, config.DBUSER, config.DBPASS, config.DBHOST)
 
-        rds = boto.rds2.connect_to_region("us-west-2")
-        db = rds.describe_db_instances("telemetry-aggregates")["DescribeDBInstancesResponse"]["DescribeDBInstancesResult"]["DBInstances"][0]
-        host = host_override or db["Endpoint"]["Address"]
-        dbname = dbname_override or db["DBName"]
-        user = db["MasterUsername"]
 
-        conn = psycopg2.connect(dbname=dbname, user=user, password=config["password"], host=host)
+def _create_connection(autocommit=True, host_override=None, dbname_override=None):
+    conn = psycopg2.connect(get_db_connection_string())
 
     if autocommit:
         conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
@@ -69,7 +68,7 @@ def submit_aggregates(aggregates, dry_run=False):
 
 
 def _preparedb():
-    conn = create_connection()
+    conn = _create_connection()
     cursor = conn.cursor()
     cursor.execute(sql.query)
 
@@ -121,7 +120,7 @@ def _upsert_aggregate(stage_table, aggregate):
 
 
 def _upsert_build_id_aggregates(aggregates, dry_run=False):
-    conn = create_connection(autocommit=False)
+    conn = _create_connection(autocommit=False)
     cursor = conn.cursor()
     submission_date, channel, version, build_id = aggregates[0]
 
@@ -155,7 +154,7 @@ def _upsert_build_id_aggregates(aggregates, dry_run=False):
 
 
 def _upsert_submission_date_aggregates(aggregates, dry_run=False):
-    conn = create_connection(autocommit=False)
+    conn = _create_connection(autocommit=False)
     cursor = conn.cursor()
     submission_date, channel, version = aggregates[0]
 
@@ -186,7 +185,7 @@ def _upsert_submission_date_aggregates(aggregates, dry_run=False):
 
 
 def _vacuumdb():
-    conn = create_connection()
+    conn = _create_connection()
     conn.set_isolation_level(0)
     cursor = conn.cursor()
     cursor.execute("vacuum")
