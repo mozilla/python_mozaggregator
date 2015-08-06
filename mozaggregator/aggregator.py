@@ -50,6 +50,10 @@ def _sample_clients(ping):
     if not client_id:
         return False
 
+    # Check if telemetry is enabled
+    if not ping.get("environment", {}).get("settings", {}).get("telemetryEnabled", False):
+        return False
+
     channel = ping["application"]["channel"]
     percentage = {"nightly": 100,
                   "aurora": 100,

@@ -112,7 +112,8 @@ def generate_payload(dimensions):
                u"keyedHistograms": keyed_histograms_template,
                u"childPayloads": child_payloads}
     environment = {u"system": {u"os": {u"name": dimensions["os"],
-                                       u"version": dimensions["os_version"]}}}
+                                       u"version": dimensions["os_version"]}},
+                   u"settings": {u"telemetryEnabled": True}}
 
     return {u"clientId": str(uuid.uuid4()),
             u"meta": meta,
