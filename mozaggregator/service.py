@@ -153,6 +153,8 @@ def get_dates_metrics(prefix, channel):
 
     # Fetch metrics
     result = execute_query("select * from batched_get_metric(%s, %s, %s, %s, %s)", (prefix, channel, version, dates, json.dumps(dimensions)))
+    if not result:
+        abort(404)
 
     pretty_result = {"data": [], "buckets": labels, "kind": kind, "description": description}
     for row in result:
