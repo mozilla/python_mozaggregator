@@ -8,7 +8,7 @@
 from setuptools import setup
 
 setup(name='python_mozaggregator',
-      version='0.2.2.6',
+      version='0.2.2.7',
       author='Roberto Agostino Vitillo',
       author_email='rvitillo@mozilla.com',
       description='Telemetry aggregation job',
