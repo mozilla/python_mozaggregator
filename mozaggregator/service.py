@@ -139,7 +139,12 @@ def get_dates_metrics(prefix, channel):
         description = ""
     else:
         revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
-        definition = Histogram(metric, {"values": {}}, revision=revision)
+        try:
+            definition = Histogram(metric, {"values": {}}, revision=revision)
+        except KeyError:
+            # Couldn't find the histogram definition
+            abort(404)
+
         kind = definition.kind
         description = definition.definition.description()
 
