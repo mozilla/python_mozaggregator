@@ -79,7 +79,7 @@
         key_name: mozilla_vitillo
         assign_public_ip: yes
         group: aggregator-service
-        instance_tags: { Name: telemetry-aggregate-service, type: telemetry }
+        instance_tags: { Name: telemetry-aggregate-service, type: telemetry, Owner: rvitillo@mozilla.com }
         exact_count: 1
         count_tag: { Name: telemetry-aggregate-service }
         vpc_subnet_id: "{{vpc.subnets[0].id}}"
