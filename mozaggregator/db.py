@@ -103,7 +103,7 @@ def _upsert_aggregate(stage_table, aggregate):
 
         try:
             histogram = _get_complete_histogram(channel, metric, payload["histogram"]) + [payload["sum"], payload["count"]]
-        except KeyError:
+        except:
             continue
 
         dimensions["metric"] = metric
