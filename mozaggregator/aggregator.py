@@ -5,8 +5,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import binascii
-
 from moztelemetry.spark import get_pings
 from moztelemetry.histogram import cached_exponential_buckets
 from collections import defaultdict
@@ -45,16 +43,16 @@ def _map_build_id_key_to_submission_date_key(aggregate):
 
 
 def _sample_clients(ping):
-    client_id = ping.get("clientId", None)
+    sample_id = ping.get("meta", {}).get("sampleId", None)
 
-    if not client_id:
+    if type(sample_id) not in (int, float, long):
         return False
 
     # Check if telemetry is enabled
     if not ping.get("environment", {}).get("settings", {}).get("telemetryEnabled", False):
         return False
 
-    channel = ping["application"]["channel"]
+    channel = ping.get("application", {}).get("channel", None)
     percentage = {"nightly": 100,
                   "aurora": 100,
                   "beta": 100,
@@ -64,7 +62,7 @@ def _sample_clients(ping):
         return False
 
     # Use meta/sampleid once Heka spits it out correctly
-    return client_id and ((binascii.crc32(client_id) % 100) < percentage[channel])
+    return sample_id < percentage[channel]
 
 
 def _extract_histograms(state, payload, is_child=False):
