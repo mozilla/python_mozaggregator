@@ -88,7 +88,8 @@ def generate_pings():
 
 
 def generate_payload(dimensions):
-    meta = {u"submissionDate": dimensions["submission_date"]}
+    meta = {u"submissionDate": dimensions["submission_date"],
+            u"sampleId": 42}
     application = {u"channel": dimensions["channel"],
                    u"version": dimensions["version"],
                    u"buildId": dimensions["build_id"],
