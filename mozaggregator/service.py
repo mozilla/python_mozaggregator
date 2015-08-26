@@ -4,6 +4,7 @@ import config
 from flask import Flask, request, abort
 from flask.ext.cors import CORS
 from flask.ext.cache import Cache
+from flask_sslify import SSLify
 from moztelemetry.histogram import Histogram
 from joblib import Parallel, delayed
 from functools import wraps
@@ -16,8 +17,10 @@ from db import get_db_connection_string, histogram_revision_map
 pool = None
 app = Flask(__name__)
 app.config.from_object('config')
+
 CORS(app, resources=r'/*', allow_headers='Content-Type')
 cache = Cache(app, config={'CACHE_TYPE': app.config["CACHETYPE"]})
+sslify = SSLify(app, skips=['status'])
 
 patch_all()
 patch_psycopg()
