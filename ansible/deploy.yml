@@ -20,7 +20,7 @@
       ec2_vpc:
         state: present
         cidr_block: 10.10.0.0/16
-        resource_tags: { "type": "telemetry" }
+        resource_tags: { "type": "telemetry", "application": "aggregation_service" }
         region: "{{region}}"
         internet_gateway: yes
         subnets:
@@ -101,6 +101,10 @@
             from_port: 80
             to_port: 80
             cidr_ip: 0.0.0.0/0
+          - proto: tcp
+            from_port: 443
+            to_port: 443
+            cidr_ip: 0.0.0.0/0
         rules_egress:
           - proto: all
             cidr_ip: 0.0.0.0/0
@@ -120,6 +124,11 @@
           - protocol: http
             load_balancer_port: 80
             instance_port: 5000
+          - protocol: https
+            load_balancer_port: 443
+            instance_protocol: http
+            instance_port: 5000
+            ssl_certificate_id: "arn:aws:iam::142069644989:server-certificate/exp20180829_star_telemetry_mozilla_org"
         health_check:
           ping_protocol: http
           ping_port: 5000
