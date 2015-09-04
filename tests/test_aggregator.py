@@ -126,6 +126,27 @@ def test_count_histograms():
         assert(v == 2*len(build_id_aggregates))  # Count both child and parent metrics
 
 
+def test_boolean_histogram():
+    metric_count = defaultdict(int)
+    histograms = {k: v for k, v in histograms_template.iteritems() if v["histogram_type"] == 2}
+
+    for aggregate in build_id_aggregates:
+        for key, value in aggregate[1].iteritems():
+            metric, label, child = key
+            histogram = histograms.get(metric, None)
+
+            if histogram:
+                metric_count[metric] += 1
+                assert(label == "")
+                assert(value["count"] == NUM_PINGS_PER_DIMENSIONS*(NUM_CHILDREN_PER_PING if child else 1))
+                assert(value["sum"] == value["count"]*histogram["sum"])
+                assert(value["histogram"]["1"] == value["count"])
+
+    assert len(metric_count) == len(histograms)
+    for v in metric_count.values():
+        assert(v == 2*len(build_id_aggregates))  # Count both child and parent metrics
+
+
 def test_keyed_histograms():
     metric_count = defaultdict(int)
 

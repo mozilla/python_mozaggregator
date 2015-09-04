@@ -37,7 +37,14 @@ histograms_template = {u"EVENTLOOP_UI_LAG_EXP_MS": {u'bucket_count': 20,
                                                        u'sum': SCALAR_VALUE,
                                                        u'sum_squares_hi': 0,
                                                        u'sum_squares_lo': 1,
-                                                       u'values': {u'0': SCALAR_VALUE, u'1': 0}}}
+                                                       u'values': {u'0': SCALAR_VALUE, u'1': 0}},
+                       u"USE_COUNTER_PROPERTY_FILL_DOCUMENT": {u'bucket_count': 3,
+                                                               u'histogram_type': 2,
+                                                               u'range': [1, 2],
+                                                               u'sum': 1,
+                                                               u'sum_squares_hi': 0,
+                                                               u'sum_squares_lo': 0,
+                                                               u'values': {u'0': 0, u'1': 1}}}
 
 keyed_histograms_template = {u'BLOCKED_ON_PLUGIN_INSTANCE_DESTROY_MS':
                              {u'Shockwave Flash17.0.0.188': {u'bucket_count': 20,
