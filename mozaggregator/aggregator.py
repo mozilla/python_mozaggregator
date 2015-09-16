@@ -84,6 +84,9 @@ def _extract_histogram(state, histogram, histogram_name, label, is_child):
     if type(histogram) != dict:
         return
 
+    if histogram_name.startswith("USE_COUNTER2_"):
+        return
+
     values = histogram.get("values", None)
     if type(values) != dict:
         return

@@ -109,6 +109,9 @@ def test_build_id_metrics():
     for channel in template_channel:
         for version in template_version:
             for metric, value in histograms_template.iteritems():
+                if metric.startswith("USE_COUNTER2_"):  # TODO: Bug 1204994
+                    continue
+
                 test_histogram("build_id", channel, version, template_build_id, metric, value, expected_count)
 
                 for simple_measure, value in simple_measurements_template.iteritems():
@@ -135,6 +138,9 @@ def test_submission_dates_metrics():
     for channel in template_channel:
         for version in template_version:
             for metric, value in histograms_template.iteritems():
+                if metric.startswith("USE_COUNTER2_"):  # TODO: Bug 1204994
+                    continue
+
                 test_histogram("submission_date", channel, version, template_submission_date, metric, value, expected_count)
 
             for simple_measure, value in simple_measurements_template.iteritems():

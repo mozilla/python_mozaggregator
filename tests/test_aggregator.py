@@ -107,7 +107,7 @@ def test_classic_histograms():
 
 def test_count_histograms():
     metric_count = defaultdict(int)
-    histograms = {"[[COUNT]]_{}".format(k): v for k, v in histograms_template.iteritems() if v["histogram_type"] == 4}
+    histograms = {"[[COUNT]]_{}".format(k): v for k, v in histograms_template.iteritems() if v["histogram_type"] == 4 and not k.startswith("USE_COUNTER2_")}
 
     for aggregate in build_id_aggregates:
         for key, value in aggregate[1].iteritems():
