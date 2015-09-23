@@ -85,7 +85,7 @@ def test_simple_measurements():
 
 def test_classic_histograms():
     metric_count = defaultdict(int)
-    histograms = {k: v for k, v in histograms_template.iteritems() if v["histogram_type"] != 4}
+    histograms = {k: v for k, v in histograms_template.iteritems() if v["histogram_type"] != 4 and not k.startswith("USE_COUNTER2_")}
 
     for aggregate in build_id_aggregates:
         for key, value in aggregate[1].iteritems():
@@ -107,7 +107,7 @@ def test_classic_histograms():
 
 def test_count_histograms():
     metric_count = defaultdict(int)
-    histograms = {"[[COUNT]]_{}".format(k): v for k, v in histograms_template.iteritems() if v["histogram_type"] == 4 and not k.startswith("USE_COUNTER2_")}
+    histograms = {"[[COUNT]]_{}".format(k): v for k, v in histograms_template.iteritems() if v["histogram_type"] == 4 and not k.endswith("CONTENT_DOCUMENTS_DESTROYED")}
 
     for aggregate in build_id_aggregates:
         for key, value in aggregate[1].iteritems():
@@ -126,9 +126,13 @@ def test_count_histograms():
         assert(v == 2*len(build_id_aggregates))  # Count both child and parent metrics
 
 
-def test_boolean_histogram():
+def test_use_counter2_histogram():
     metric_count = defaultdict(int)
-    histograms = {k: v for k, v in histograms_template.iteritems() if v["histogram_type"] == 2}
+    histograms = {k: v for k, v in histograms_template.iteritems() if k.startswith("USE_COUNTER2_")}
+
+    docs_destroyed = histograms_template["CONTENT_DOCUMENTS_DESTROYED"]["sum"]
+    top_docs_destroyed = histograms_template["TOP_LEVEL_CONTENT_DOCUMENTS_DESTROYED"]["sum"]
+    partial = docs_destroyed - top_docs_destroyed
 
     for aggregate in build_id_aggregates:
         for key, value in aggregate[1].iteritems():
@@ -140,7 +144,7 @@ def test_boolean_histogram():
                 assert(label == "")
                 assert(value["count"] == NUM_PINGS_PER_DIMENSIONS*(NUM_CHILDREN_PER_PING if child else 1))
                 assert(value["sum"] == value["count"]*histogram["sum"])
-                assert(value["histogram"]["1"] == value["count"])
+                assert(value["histogram"]["0"] == value["count"]*(partial - histogram["values"]["1"]))
 
     assert len(metric_count) == len(histograms)
     for v in metric_count.values():

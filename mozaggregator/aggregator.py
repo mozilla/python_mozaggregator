@@ -84,9 +84,6 @@ def _extract_histogram(state, histogram, histogram_name, label, is_child):
     if type(histogram) != dict:
         return
 
-    if histogram_name.startswith("USE_COUNTER2_"):
-        return
-
     values = histogram.get("values", None)
     if type(values) != dict:
         return
@@ -125,7 +122,22 @@ def _extract_main_histograms(state, histograms, is_child):
     if type(histograms) != dict:
         return
 
+    # Deal with USE_COUNTER2_ histograms, see Bug 1204994
+    docs_destroyed = histograms.get("CONTENT_DOCUMENTS_DESTROYED", {}).get("sum", None)
+    top_docs_destroyed = histograms.get("TOP_LEVEL_CONTENT_DOCUMENTS_DESTROYED", {}).get("sum", None)
+
+    if docs_destroyed is not None and top_docs_destroyed is not None:
+        total_destroyed = docs_destroyed - top_docs_destroyed
+    else:
+        total_destroyed = None
+
     for histogram_name, histogram in histograms.iteritems():
+        if total_destroyed is not None and histogram_name.startswith("USE_COUNTER2_"):
+            used = histogram.get("values", {}).get("1", None)
+            if used is None:
+                continue
+            histogram["values"]["0"] = total_destroyed - used
+
         _extract_histogram(state, histogram, histogram_name, u"", is_child)
 
 

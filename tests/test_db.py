@@ -109,9 +109,6 @@ def test_build_id_metrics():
     for channel in template_channel:
         for version in template_version:
             for metric, value in histograms_template.iteritems():
-                if metric.startswith("USE_COUNTER2_"):  # TODO: Bug 1204994
-                    continue
-
                 test_histogram("build_id", channel, version, template_build_id, metric, value, expected_count)
 
                 for simple_measure, value in simple_measurements_template.iteritems():
@@ -138,9 +135,6 @@ def test_submission_dates_metrics():
     for channel in template_channel:
         for version in template_version:
             for metric, value in histograms_template.iteritems():
-                if metric.startswith("USE_COUNTER2_"):  # TODO: Bug 1204994
-                    continue
-
                 test_histogram("submission_date", channel, version, template_submission_date, metric, value, expected_count)
 
             for simple_measure, value in simple_measurements_template.iteritems():
@@ -156,6 +150,9 @@ def test_submission_dates_metrics():
 
 @nottest
 def test_histogram(prefix, channel, version, dates, metric, value, expected_count):
+    if metric.endswith("CONTENT_DOCUMENTS_DESTROYED"):  # Ignore USE_COUNTER2_ support histograms
+        return
+
     reply = requests.get("{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}".format(SERVICE_URI, prefix, channel, version, ",".join(dates), metric)).json()
     assert(len(reply["data"]) == len(dates))
 
