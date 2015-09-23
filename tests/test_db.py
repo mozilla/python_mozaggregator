@@ -169,6 +169,18 @@ def test_histogram(prefix, channel, version, dates, metric, value, expected_coun
             assert(res["histogram"][bucket_index] == res["count"])
             assert(res["sum"] == value["sum"]*res["count"])
             assert((current == expected).all())
+        elif metric.startswith("USE_COUNTER2_"):
+            if metric.endswith("_PAGE"):
+                destroyed = histograms_template["TOP_LEVEL_CONTENT_DOCUMENTS_DESTROYED"]["sum"]
+            else:
+                destroyed = histograms_template["CONTENT_DOCUMENTS_DESTROYED"]["sum"]
+            value["values"]["0"] = destroyed - value["values"]["1"]
+
+            current = pd.Series(res["histogram"], index=map(int, reply["buckets"]))
+            expected = Histogram(metric, value).get_value()*res["count"]
+
+            assert((current == expected).all())
+            assert(res["sum"] == value["sum"]*res["count"])
         else:
             current = pd.Series(res["histogram"], index=map(int, reply["buckets"]))
             expected = Histogram(metric, value).get_value()*res["count"]

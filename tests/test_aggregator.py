@@ -130,9 +130,8 @@ def test_use_counter2_histogram():
     metric_count = defaultdict(int)
     histograms = {k: v for k, v in histograms_template.iteritems() if k.startswith("USE_COUNTER2_")}
 
+    pages_destroyed = histograms_template["TOP_LEVEL_CONTENT_DOCUMENTS_DESTROYED"]["sum"]
     docs_destroyed = histograms_template["CONTENT_DOCUMENTS_DESTROYED"]["sum"]
-    top_docs_destroyed = histograms_template["TOP_LEVEL_CONTENT_DOCUMENTS_DESTROYED"]["sum"]
-    partial = docs_destroyed - top_docs_destroyed
 
     for aggregate in build_id_aggregates:
         for key, value in aggregate[1].iteritems():
@@ -144,7 +143,12 @@ def test_use_counter2_histogram():
                 assert(label == "")
                 assert(value["count"] == NUM_PINGS_PER_DIMENSIONS*(NUM_CHILDREN_PER_PING if child else 1))
                 assert(value["sum"] == value["count"]*histogram["sum"])
-                assert(value["histogram"]["0"] == value["count"]*(partial - histogram["values"]["1"]))
+
+                if metric.endswith("_DOCUMENT"):
+                    assert(value["histogram"]["0"] == value["count"]*(docs_destroyed - histogram["values"]["1"]))
+                else:
+                    assert(value["histogram"]["0"] == value["count"]*(pages_destroyed - histogram["values"]["1"]))
+
 
     assert len(metric_count) == len(histograms)
     for v in metric_count.values():
