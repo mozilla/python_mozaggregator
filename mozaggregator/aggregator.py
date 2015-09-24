@@ -45,7 +45,7 @@ def _map_build_id_key_to_submission_date_key(aggregate):
 def _sample_clients(ping):
     sample_id = ping.get("meta", {}).get("sampleId", None)
 
-    if type(sample_id) not in (int, float, long):
+    if not isinstance(sample_id, (int, float, long)):
         return False
 
     # Check if telemetry is enabled
@@ -66,14 +66,14 @@ def _sample_clients(ping):
 
 
 def _extract_histograms(state, payload, is_child=False):
-    if type(payload) != dict:
+    if not isinstance(payload, dict):
         return
 
     histograms = payload.get("histograms", {})
     _extract_main_histograms(state, histograms, is_child)
 
     keyed_histograms = payload.get("keyedHistograms", {})
-    if type(keyed_histograms) != dict:
+    if not isinstance(keyed_histograms, dict):
         return
 
     for name, histograms in keyed_histograms.iteritems():
@@ -81,11 +81,11 @@ def _extract_histograms(state, payload, is_child=False):
 
 
 def _extract_histogram(state, histogram, histogram_name, label, is_child):
-    if type(histogram) != dict:
+    if not isinstance(histogram, dict):
         return
 
     values = histogram.get("values", None)
-    if type(values) != dict:
+    if not isinstance(values, dict):
         return
 
     sum = histogram.get("sum", None)
@@ -93,7 +93,7 @@ def _extract_histogram(state, histogram, histogram_name, label, is_child):
         return
 
     histogram_type = histogram.get("histogram_type", None)
-    if type(histogram_type) != int:
+    if not isinstance(histogram_type, int):
         return
 
     if histogram_type == 4:  # Count histogram
@@ -119,7 +119,7 @@ def _extract_histogram(state, histogram, histogram_name, label, is_child):
 
 
 def _extract_main_histograms(state, histograms, is_child):
-    if type(histograms) != dict:
+    if not isinstance(histograms, dict):
         return
 
     # Deal with USE_COUNTER2_ histograms, see Bug 1204994
@@ -147,7 +147,7 @@ def _extract_main_histograms(state, histograms, is_child):
 
 
 def _extract_keyed_histograms(state, histogram_name, histograms, is_child):
-    if type(histograms) != dict:
+    if not isinstance(histograms, dict):
         return
 
     for key, histogram in histograms.iteritems():
@@ -155,15 +155,15 @@ def _extract_keyed_histograms(state, histogram_name, histograms, is_child):
 
 
 def _extract_simple_measures(state, simple):
-    if type(simple) != dict:
+    if not isinstance(simple, dict):
         return
 
     for name, value in simple.iteritems():
-        if type(value) == dict:
+        if isinstance(value, dict):
             for sub_name, sub_value in value.iteritems():
-                if type(sub_value) in (int, float, long):
+                if isinstance(sub_value, (int, float, long)):
                     _extract_scalar_value(state, u"SIMPLE_MEASURES_{}_{}".format(name.upper(), sub_name.upper()), u"", sub_value, simple_measures_labels)
-        elif type(value) in (int, float, long):
+        elif isinstance(value, (int, float, long)):
             _extract_scalar_value(state, u"SIMPLE_MEASURES_{}".format(name.upper()), u"", value, simple_measures_labels)
 
 
@@ -194,7 +194,7 @@ def _extract_children_histograms(state, child_payloads):
 
 
 def _aggregate_ping(state, ping):
-    if type(ping) != dict:
+    if not isinstance(ping, dict):
         return
 
     _extract_histograms(state, ping.get("payload", {}))
