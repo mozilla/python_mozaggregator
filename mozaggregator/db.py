@@ -27,7 +27,7 @@ histogram_revision_map = {"nightly": "https://hg.mozilla.org/mozilla-central/rev
                           "beta": "https://hg.mozilla.org/releases/mozilla-beta/rev/tip",
                           "release": "https://hg.mozilla.org/releases/mozilla-release/rev/tip"}
 
-_metric_printable = set(string.ascii_uppercase + string.digits + "_-[]")
+_metric_printable = set(string.ascii_uppercase + string.ascii_lowercase + string.digits + "_-[]")
 
 
 def get_db_connection_string():
