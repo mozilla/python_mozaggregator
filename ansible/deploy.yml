@@ -1,10 +1,6 @@
 - name: provision aws resources
   hosts: localhost
   remote_user: ubuntu
-  vars:
-    - region: us-west-2
-    - credential_bucket: telemetry-spark-emr-2
-    - credential_object: aggregator_credentials
 
   tasks:
     - name: fetch db credentials

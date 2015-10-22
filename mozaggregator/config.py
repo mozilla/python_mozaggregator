@@ -1,5 +1,5 @@
 REGION="us-west-2"
-BUCKET="telemetry-spark-emr"
+BUCKET="telemetry-spark-emr-2"
 SECRET="aggregator_credentials"
 RDS="telemetry-aggregates"
 TIMEOUT=24*60*60
