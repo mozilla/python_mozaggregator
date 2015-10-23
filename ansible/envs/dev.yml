@@ -2,3 +2,4 @@ region: us-west-2
 credential_bucket: telemetry-spark-emr-2
 credential_object: aggregator_credentials
 rds_instance_name: telemetry-aggregates
+
