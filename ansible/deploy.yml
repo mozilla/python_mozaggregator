@@ -1,10 +1,6 @@
 - name: provision aws resources
   hosts: localhost
   remote_user: ubuntu
-  vars:
-    - region: us-west-2
-    - credential_bucket: telemetry-spark-emr
-    - credential_object: aggregator_credentials
 
   tasks:
     - name: fetch db credentials
@@ -68,7 +64,7 @@
         vpc_id: "{{vpc.vpc_id}}"
 
     - name: get a recent ubuntu AMI
-      ec2_ami_search: distro=ubuntu release=utopic store=instance-store region={{region}}
+      ec2_ami_search: distro=ubuntu release=vivid store=instance-store region={{region}}
       register: ubuntu_image
 
     - name: create service instance
@@ -78,12 +74,12 @@
         instance_type: m3.medium
         key_name: mozilla_vitillo
         assign_public_ip: yes
-        group: aggregator-service
+        group: telemetry-aggregator-service
         instance_tags: { Name: telemetry-aggregate-service, type: telemetry, Owner: rvitillo@mozilla.com }
         exact_count: 1
         count_tag: { Name: telemetry-aggregate-service }
         vpc_subnet_id: "{{vpc.subnets[0].id}}"
-        instance_profile_name: telemetry-spark-emr
+        instance_profile_name: "telemetry-spark-cloudformation-TelemetrySparkInstanceProfile-1SATUBVEXG7E3"
         wait: yes
       register: ec2
 
@@ -128,7 +124,7 @@
             load_balancer_port: 443
             instance_protocol: http
             instance_port: 5000
-            ssl_certificate_id: "arn:aws:iam::142069644989:server-certificate/exp20180829_star_telemetry_mozilla_org"
+            ssl_certificate_id: "arn:aws:iam::927034868273:server-certificate/exp20180829_star_telemetry_mozilla_org"
         health_check:
           ping_protocol: http
           ping_port: 5000
