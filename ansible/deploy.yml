@@ -16,7 +16,7 @@
       ec2_vpc:
         state: present
         cidr_block: 10.10.0.0/16
-        resource_tags: { "type": "telemetry", "application": "aggregation_service" }
+        resource_tags: { "Type": "telemetry-aggregation-service", "App": "pipeline" }
         region: "{{region}}"
         internet_gateway: yes
         subnets:
@@ -75,7 +75,7 @@
         key_name: mozilla_vitillo
         assign_public_ip: yes
         group: telemetry-aggregator-service
-        instance_tags: { Name: telemetry-aggregate-service, type: telemetry, Owner: rvitillo@mozilla.com }
+        instance_tags: { App: pipeline, Name: telemetry-aggregate-service, Type: telemetry-aggregate-service, Owner: rvitillo@mozilla.com }
         exact_count: 1
         count_tag: { Name: telemetry-aggregate-service }
         vpc_subnet_id: "{{vpc.subnets[0].id}}"
@@ -192,5 +192,6 @@
         wait: yes
         subnet: telemetry-aggregator
         vpc_security_groups: "{{db_group.group_id}}"
+        tags: { App: pipeline, Type: telemetry-aggregate-service-db, Owner: rvitillo@mozilla.com }
 
 - include: service.yml
