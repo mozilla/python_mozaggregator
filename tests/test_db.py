@@ -197,7 +197,7 @@ def test_simple_measure(prefix, channel, version, dates, metric, value, expected
     bucket_index = simple_measures_labels.index(SIMPLE_SCALAR_BUCKET)
 
     for res in reply["data"]:
-        assert(res["count"] == expected_count)
+        assert(res["count"] == expected_count*(NUM_CHILDREN_PER_PING + 1))
 
         current = pd.Series(res["histogram"], index=map(int, reply["buckets"]))
         expected = pd.Series(index=simple_measures_labels, data=0)

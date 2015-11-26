@@ -128,7 +128,8 @@ def generate_payload(dimensions):
                                          u'values': {u'0': int(not dimensions["e10s"]), u'1': int(dimensions["e10s"]), u'2': 0}}}
 
     child_payloads = [{"histograms": histograms_template,
-                       "keyedHistograms": keyed_histograms_template}
+                       "keyedHistograms": keyed_histograms_template,
+                       "simpleMeasurements": simple_measurements_template}
                       for i in range(NUM_CHILDREN_PER_PING)]
 
     payload = {u"simpleMeasurements": simple_measurements_template,
