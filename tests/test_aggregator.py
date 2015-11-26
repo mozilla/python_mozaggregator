@@ -73,14 +73,13 @@ def test_simple_measurements():
             if metric.startswith("SIMPLE_MEASURES_"):
                 metric_count[metric] += 1
                 assert(label == "")
-                assert(child is False)
-                assert(value["count"] == NUM_PINGS_PER_DIMENSIONS)
-                assert(value["sum"] == NUM_PINGS_PER_DIMENSIONS*SCALAR_VALUE)
+                assert(value["count"] == NUM_PINGS_PER_DIMENSIONS*(NUM_CHILDREN_PER_PING if child else 1))
+                assert(value["sum"] == value["count"]*SCALAR_VALUE)
                 assert(value["histogram"][str(SIMPLE_SCALAR_BUCKET)] == value["count"])
 
     assert len(metric_count) == len(simple_measurements_template)
     for v in metric_count.values():
-        assert(v == len(build_id_aggregates))
+        assert(v == 2*len(build_id_aggregates)) # Count both child and parent metrics
 
 
 def test_classic_histograms():

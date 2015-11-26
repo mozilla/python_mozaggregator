@@ -154,7 +154,7 @@ def _extract_keyed_histograms(state, histogram_name, histograms, is_child):
         _extract_histogram(state, histogram, histogram_name, key, is_child)
 
 
-def _extract_simple_measures(state, simple):
+def _extract_simple_measures(state, simple, is_child=False):
     if not isinstance(simple, dict):
         return
 
@@ -162,9 +162,9 @@ def _extract_simple_measures(state, simple):
         if isinstance(value, dict):
             for sub_name, sub_value in value.iteritems():
                 if isinstance(sub_value, (int, float, long)):
-                    _extract_scalar_value(state, u"SIMPLE_MEASURES_{}_{}".format(name.upper(), sub_name.upper()), u"", sub_value, simple_measures_labels)
+                    _extract_scalar_value(state, u"SIMPLE_MEASURES_{}_{}".format(name.upper(), sub_name.upper()), u"", sub_value, simple_measures_labels, is_child)
         elif isinstance(value, (int, float, long)):
-            _extract_scalar_value(state, u"SIMPLE_MEASURES_{}".format(name.upper()), u"", value, simple_measures_labels)
+            _extract_scalar_value(state, u"SIMPLE_MEASURES_{}".format(name.upper()), u"", value, simple_measures_labels, is_child)
 
 
 def _extract_scalar_value(state, name, label, value, bucket_labels, is_child=False):
@@ -185,12 +185,13 @@ def _extract_scalar_value(state, name, label, value, bucket_labels, is_child=Fal
     aggregated_histogram[unicode(insert_bucket)] = aggregated_histogram.get(unicode(insert_bucket), 0L) + 1L
 
 
-def _extract_children_histograms(state, child_payloads):
+def _extract_child_payloads(state, child_payloads):
     if not isinstance(child_payloads, (list, tuple)):
         return
 
     for child in child_payloads:
         _extract_histograms(state, child, True)
+        _extract_simple_measures(state, child.get("simpleMeasurements", {}), True)
 
 
 def _aggregate_ping(state, ping):
@@ -199,7 +200,7 @@ def _aggregate_ping(state, ping):
 
     _extract_histograms(state, ping.get("payload", {}))
     _extract_simple_measures(state, ping.get("payload", {}).get("simpleMeasurements", {}))
-    _extract_children_histograms(state, ping.get("payload", {}).get("childPayloads", {}))
+    _extract_child_payloads(state, ping.get("payload", {}).get("childPayloads", {}))
     return state
 
 
