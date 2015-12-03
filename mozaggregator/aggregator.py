@@ -5,6 +5,8 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+import sys
+
 from moztelemetry.spark import get_pings
 from moztelemetry.histogram import cached_exponential_buckets
 from collections import defaultdict
@@ -32,8 +34,11 @@ def aggregate_metrics(sc, channels, submission_date, fraction=1):
 
 
 def _aggregate_metrics(pings):
+    # Use few reducers only when running the test-suite to speed execution up.
+    reducers = 10 if sys.argv[0].endswith('nosetests') else 10000
+
     trimmed = pings.filter(_sample_clients).map(_map_ping_to_dimensions).filter(lambda x: x)
-    build_id_aggregates = trimmed.aggregateByKey(defaultdict(dict), _aggregate_ping, _aggregate_aggregates)
+    build_id_aggregates = trimmed.aggregateByKey(defaultdict(dict), _aggregate_ping, _aggregate_aggregates, reducers)
     submission_date_aggregates = build_id_aggregates.map(_map_build_id_key_to_submission_date_key).reduceByKey(_aggregate_aggregates)
     return build_id_aggregates, submission_date_aggregates
 

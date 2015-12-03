@@ -43,8 +43,11 @@ def get_db_connection_string():
         return "dbname={} user={} password={} host={}".format(config.DBNAME, config.DBUSER, config.DBPASS, config.DBHOST)
 
 
-def _create_connection(autocommit=True, host_override=None, dbname_override=None):
-    conn = psycopg2.connect(get_db_connection_string())
+def _create_connection(autocommit=True, connection_string_override=None):
+    if connection_string_override:
+        conn = psycopg2.connect(connection_string_override)
+    else:
+        conn = psycopg2.connect(get_db_connection_string())
 
     if autocommit:
         conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
@@ -55,15 +58,22 @@ def _create_connection(autocommit=True, host_override=None, dbname_override=None
 def submit_aggregates(aggregates, dry_run=False):
     _preparedb()
 
-    build_id_count = aggregates[0].groupBy(lambda x: x[0][:4]).\
-                                   map(lambda x: _upsert_build_id_aggregates(x, dry_run=dry_run)).\
-                                   count()
+    connection_string = get_db_connection_string()
 
-    submission_date_count = aggregates[1].groupBy(lambda x: x[0][:3]).\
-                                          map(lambda x: _upsert_submission_date_aggregates(x, dry_run=dry_run)).\
-                                          count()
+    build_id_count = aggregates[0].\
+                     map(lambda x: (x[0][:4], _aggregate_to_sql(x))).\
+                     reduceByKey(lambda x, y: x + y).\
+                     map(lambda x: _upsert_build_id_aggregates(x[0], x[1], connection_string, dry_run=dry_run)).\
+                     count()
 
-    _vacuumdb()
+    submission_date_count = aggregates[1].\
+                            map(lambda x: (x[0][:3], _aggregate_to_sql(x))).\
+                            reduceByKey(lambda x, y: x + y).\
+                            map(lambda x: _upsert_submission_date_aggregates(x[0], x[1], connection_string, dry_run=dry_run)).\
+                            count()
+
+    # TODO: Auto-vacuuming might be sufficient. Re-enable if needed.
+    # _vacuumdb()
     return build_id_count, submission_date_count
 
 
@@ -86,7 +96,8 @@ def _get_complete_histogram(channel, metric, values):
     return map(long, list(histogram))
 
 
-def _upsert_aggregate(stage_table, aggregate):
+def _aggregate_to_sql(aggregate):
+    result = StringIO()
     key, metrics = aggregate
     submission_date, channel, version, application, architecture, os, os_version, e10s = key[:3] + key[-5:]
     dimensions = {"application": application,
@@ -116,13 +127,15 @@ def _upsert_aggregate(stage_table, aggregate):
         # This doubles the number of backslashes we need.
         json_dimensions = json_dimensions.replace("\\", "\\\\")
 
-        stage_table.write("{}\t{}\n".format(json_dimensions, "{" + ",".join([str(long(x)) for x in histogram]) + "}"))
+        result.write("{}\t{}\n".format(json_dimensions, "{" + ",".join([str(long(x)) for x in histogram]) + "}"))
+
+    return result.getvalue()
 
 
-def _upsert_build_id_aggregates(aggregates, dry_run=False):
-    conn = _create_connection(autocommit=False)
+def _upsert_build_id_aggregates(key, stage_table, connection_string, dry_run=False):
+    conn = _create_connection(autocommit=False, connection_string_override=connection_string)
     cursor = conn.cursor()
-    submission_date, channel, version, build_id = aggregates[0]
+    submission_date, channel, version, build_id = key
 
     # Aggregates with different submisssion_dates write to the same tables, we need a lock
     cursor.execute("select lock_transaction(%s, %s, %s, %s)", ("build_id", channel, version, build_id))
@@ -133,15 +146,10 @@ def _upsert_build_id_aggregates(aggregates, dry_run=False):
         conn.rollback()
         return
 
-    stage_table = StringIO()
     cursor.execute("select create_temporary_table(%s, %s, %s, %s)", ("build_id", channel, version, build_id))
     stage_table_name = cursor.fetchone()[0]
 
-    for aggregate in aggregates[1]:
-        _upsert_aggregate(stage_table, aggregate)
-
-    stage_table.seek(0)
-    cursor.copy_from(stage_table, stage_table_name, columns=("dimensions", "histogram"))
+    cursor.copy_from(StringIO(stage_table), stage_table_name, columns=("dimensions", "histogram"))
     cursor.execute("select merge_table(%s, %s, %s, %s, %s)", ('build_id', channel, version, build_id, stage_table_name))
 
     if dry_run:
@@ -153,10 +161,10 @@ def _upsert_build_id_aggregates(aggregates, dry_run=False):
     conn.close()
 
 
-def _upsert_submission_date_aggregates(aggregates, dry_run=False):
-    conn = _create_connection(autocommit=False)
+def _upsert_submission_date_aggregates(key, stage_table, connection_string, dry_run=False):
+    conn = _create_connection(autocommit=False, connection_string_override=connection_string)
     cursor = conn.cursor()
-    submission_date, channel, version = aggregates[0]
+    submission_date, channel, version = key
 
     cursor.execute("select was_processed(%s, %s, %s, %s, %s)", ("submission_date", channel, version, submission_date, submission_date))
     if cursor.fetchone()[0]:
@@ -164,15 +172,10 @@ def _upsert_submission_date_aggregates(aggregates, dry_run=False):
         conn.rollback()
         return
 
-    stage_table = StringIO()
     cursor.execute("select create_temporary_table(%s, %s, %s, %s)", ("submission_date", channel, version, submission_date))
     stage_table_name = cursor.fetchone()[0]
 
-    for aggregate in aggregates[1]:
-        _upsert_aggregate(stage_table, aggregate)
-
-    stage_table.seek(0)
-    cursor.copy_from(stage_table, stage_table_name, columns=("dimensions", "histogram"))
+    cursor.copy_from(StringIO(stage_table), stage_table_name, columns=("dimensions", "histogram"))
     cursor.execute("select merge_table(%s, %s, %s, %s, %s)", ("submission_date", channel, version, submission_date, stage_table_name))
 
     if dry_run:
