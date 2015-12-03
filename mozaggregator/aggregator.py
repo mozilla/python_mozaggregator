@@ -33,7 +33,7 @@ def aggregate_metrics(sc, channels, submission_date, fraction=1):
 
 def _aggregate_metrics(pings):
     trimmed = pings.filter(_sample_clients).map(_map_ping_to_dimensions).filter(lambda x: x)
-    build_id_aggregates = trimmed.aggregateByKey(defaultdict(dict), _aggregate_ping, _aggregate_aggregates)
+    build_id_aggregates = trimmed.aggregateByKey(defaultdict(dict), _aggregate_ping, _aggregate_aggregates, 10000)
     submission_date_aggregates = build_id_aggregates.map(_map_build_id_key_to_submission_date_key).reduceByKey(_aggregate_aggregates)
     return build_id_aggregates, submission_date_aggregates
 

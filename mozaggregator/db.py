@@ -43,8 +43,11 @@ def get_db_connection_string():
         return "dbname={} user={} password={} host={}".format(config.DBNAME, config.DBUSER, config.DBPASS, config.DBHOST)
 
 
-def _create_connection(autocommit=True, host_override=None, dbname_override=None):
-    conn = psycopg2.connect(get_db_connection_string())
+def _create_connection(autocommit=True, connection_string_override=None):
+    if connection_string_override:
+        conn = psycopg2.connect(connection_string_override)
+    else:
+        conn = psycopg2.connect(get_db_connection_string())
 
     if autocommit:
         conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
@@ -55,16 +58,18 @@ def _create_connection(autocommit=True, host_override=None, dbname_override=None
 def submit_aggregates(aggregates, dry_run=False):
     _preparedb()
 
+    connection_string = get_db_connection_string()
+
     build_id_count = aggregates[0].\
                      map(lambda x: (x[0][:4], _aggregate_to_sql(x))).\
                      reduceByKey(lambda x, y: x + y).\
-                     map(lambda x: _upsert_build_id_aggregates(x[0], x[1], dry_run=dry_run)).\
+                     map(lambda x: _upsert_build_id_aggregates(x[0], x[1], connection_string, dry_run=dry_run)).\
                      count()
 
     submission_date_count = aggregates[1].\
                             map(lambda x: (x[0][:3], _aggregate_to_sql(x))).\
                             reduceByKey(lambda x, y: x + y).\
-                            map(lambda x: _upsert_submission_date_aggregates(x[0], x[1], dry_run=dry_run)).\
+                            map(lambda x: _upsert_submission_date_aggregates(x[0], x[1], connection_string, dry_run=dry_run)).\
                             count()
 
     _vacuumdb()
@@ -126,8 +131,8 @@ def _aggregate_to_sql(aggregate):
     return result.getvalue()
 
 
-def _upsert_build_id_aggregates(key, stage_table, dry_run=False):
-    conn = _create_connection(autocommit=False)
+def _upsert_build_id_aggregates(key, stage_table, connection_string, dry_run=False):
+    conn = _create_connection(autocommit=False, connection_string_override=connection_string)
     cursor = conn.cursor()
     submission_date, channel, version, build_id = key
 
@@ -155,8 +160,8 @@ def _upsert_build_id_aggregates(key, stage_table, dry_run=False):
     conn.close()
 
 
-def _upsert_submission_date_aggregates(key, stage_table, dry_run=False):
-    conn = _create_connection(autocommit=False)
+def _upsert_submission_date_aggregates(key, stage_table, connection_string, dry_run=False):
+    conn = _create_connection(autocommit=False, connection_string_override=connection_string)
     cursor = conn.cursor()
     submission_date, channel, version = key
 
