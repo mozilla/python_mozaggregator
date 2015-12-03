@@ -1,5 +1,3 @@
-[![Build Status](https://travis-ci.org/mozilla/python_mozaggregator.svg?branch=master)](https://travis-ci.org/mozilla/python_mozaggregator)
-
 # python_mozaggregator
 Aggregator job for Telemetry. See this [blog](http://robertovitillo.com/2015/07/02/telemetry-metrics-roll-ups/) post for details. 
 
