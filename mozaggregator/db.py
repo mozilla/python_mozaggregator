@@ -72,7 +72,8 @@ def submit_aggregates(aggregates, dry_run=False):
                             map(lambda x: _upsert_submission_date_aggregates(x[0], x[1], connection_string, dry_run=dry_run)).\
                             count()
 
-    _vacuumdb()
+    # TODO: Auto-vacuuming might be sufficient. Re-enable if needed.
+    # _vacuumdb()
     return build_id_count, submission_date_count
 
 
