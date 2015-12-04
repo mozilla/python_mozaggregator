@@ -28,6 +28,7 @@ histogram_revision_map = {"nightly": "https://hg.mozilla.org/mozilla-central/rev
                           "release": "https://hg.mozilla.org/releases/mozilla-release/rev/tip"}
 
 _metric_printable = set(string.ascii_uppercase + string.ascii_lowercase + string.digits + "_-[]")
+_max_bigint = (1 << 63) - 1
 
 
 def get_db_connection_string():
@@ -93,8 +94,7 @@ def _get_complete_histogram(channel, metric, values):
     else:
         histogram = Histogram(metric, {"values": values}, revision=revision).get_value(autocast=False).values
 
-    # Make sure values fit within a pgsql bigint
-    return map(lambda x: long(min(x, (1 << 63) - 1)), list(histogram))
+    return list(histogram)
 
 
 def _aggregate_to_sql(aggregate):
@@ -115,6 +115,8 @@ def _aggregate_to_sql(aggregate):
 
         try:
             histogram = _get_complete_histogram(channel, metric, payload["histogram"]) + [payload["sum"], payload["count"]]
+            # Make sure values fit within a pgsql bigint
+            histogram = [str(long(min(x, _max_bigint))) for x in histogram]
         except KeyError:
             continue
 
@@ -128,7 +130,7 @@ def _aggregate_to_sql(aggregate):
         # This doubles the number of backslashes we need.
         json_dimensions = json_dimensions.replace("\\", "\\\\")
 
-        result.write("{}\t{}\n".format(json_dimensions, "{" + ",".join([str(long(x)) for x in histogram]) + "}"))
+        result.write("{}\t{}\n".format(json_dimensions, "{" + ",".join(histogram) + "}"))
 
     return result.getvalue()
 
