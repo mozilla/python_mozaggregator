@@ -28,8 +28,6 @@ histogram_revision_map = {"nightly": "https://hg.mozilla.org/mozilla-central/rev
                           "release": "https://hg.mozilla.org/releases/mozilla-release/rev/tip"}
 
 _metric_printable = set(string.ascii_uppercase + string.ascii_lowercase + string.digits + "_-[]")
-_max_bigint = (1 << 63) - 1
-
 
 def get_db_connection_string():
     if os.getenv("DB_TEST_URL"):
@@ -114,9 +112,13 @@ def _aggregate_to_sql(aggregate):
             continue  # Ignore metrics with non printable characters...
 
         try:
-            histogram = _get_complete_histogram(channel, metric, payload["histogram"]) + [payload["sum"], payload["count"]]
             # Make sure values fit within a pgsql bigint
-            histogram = [str(long(min(x, _max_bigint))) for x in histogram]
+            # TODO: we should probably log this event
+            if payload["sum"] > (1 << 63) - 1:
+                continue
+
+            histogram = _get_complete_histogram(channel, metric, payload["histogram"]) + [payload["sum"], payload["count"]]
+            histogram = [str(long(x)) for x in histogram]
         except KeyError:
             continue
 
