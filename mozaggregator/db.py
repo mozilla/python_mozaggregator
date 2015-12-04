@@ -93,7 +93,8 @@ def _get_complete_histogram(channel, metric, values):
     else:
         histogram = Histogram(metric, {"values": values}, revision=revision).get_value(autocast=False).values
 
-    return map(long, list(histogram))
+    # Make sure values fit within a pgsql bigint
+    return map(lambda x: long(min(x, (1 << 63) - 1)), list(histogram))
 
 
 def _aggregate_to_sql(aggregate):
