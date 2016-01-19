@@ -1,6 +1,6 @@
 [program:mozaggregator_service]
-directory={{ansible_env.HOME}}/miniconda/lib/python2.7/site-packages/mozaggregator/
-command={{ansible_env.HOME}}/miniconda/bin/gunicorn -k gevent --bind 0.0.0.0:5000 service:app
+directory={{ansible_env.HOME}}/miniconda2/lib/python2.7/site-packages/mozaggregator/
+command={{ansible_env.HOME}}/miniconda2/bin/gunicorn -k gevent --bind 0.0.0.0:5000 service:app
 autostart=true
 autorestart=true
 stderr_logfile=/var/log/mozaggregator_service.err.log

@@ -8,10 +8,10 @@
     - delete miniconda installer 
 
 - name: source anaconda
-  lineinfile: dest={{ansible_env.HOME}}/.bashrc regexp="^export.*miniconda/bin" line="export PATH={{ansible_env.HOME}}/miniconda/bin:$PATH"
+  lineinfile: dest={{ansible_env.HOME}}/.bashrc regexp="^export.*miniconda2/bin" line="export PATH={{ansible_env.HOME}}/miniconda2/bin:$PATH"
 
 - name: install common python packages
   command: "{{item}} chdir={{ansible_env.HOME}}"
   with_items:
-    - miniconda/bin/conda update --yes conda
-    - miniconda/bin/conda install --yes atlas numpy scipy matplotlib nose dateutil pandas flask supervisor tornado
+    - miniconda2/bin/conda update --yes conda
+    - miniconda2/bin/conda install --yes atlas numpy scipy matplotlib nose dateutil pandas flask supervisor tornado
