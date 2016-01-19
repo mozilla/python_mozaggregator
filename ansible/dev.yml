@@ -26,7 +26,6 @@
       lineinfile: dest={{ansible_env.HOME}}/.bashrc regexp="^export.*postgresql" line="export PATH=/usr/lib/postgresql/{{postgresql_version}}/bin:$PATH"
 
   roles:
-    - dotfiles 
     - anaconda
     - role: spark
       spark_version: "{{spark_version}}"
