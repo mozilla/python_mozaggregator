@@ -135,6 +135,9 @@ def get_dates_metrics(prefix, channel):
     if not dates or not version or not metric:
         abort(404)
 
+    if metric == "SEARCH_COUNTS":
+        abort(404)
+
     # Get bucket labels
     if metric.startswith("SIMPLE_MEASURES_"):
         labels = simple_measures_labels
