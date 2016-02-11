@@ -14,6 +14,12 @@ vagrant up
 vagrant ssh
 ```
 
+To run tests within the Vagrant VM:
+```bash
+cd /vagrant
+./run-tests.sh
+```
+
 To deploy a new version of the aggregation service to the cloud:
 ```bash
 ansible-playbook ansible/deploy.yml -e '@ansible/envs/dev.yml' -i ansible/inventory

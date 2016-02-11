@@ -1,7 +1,7 @@
 import ujson as json
 import config
 
-from flask import Flask, request, abort
+from flask import Flask, Response, request, abort
 from flask.ext.cors import CORS
 from flask.ext.cache import Cache
 from flask_sslify import SSLify
@@ -70,7 +70,7 @@ def status():
 @cache_request
 def get_channels(prefix):
     channels = execute_query("select * from list_channels(%s)", (prefix, ))
-    return json.dumps([channel[0] for channel in channels])
+    return Response(json.dumps([channel[0] for channel in channels]), mimetype="application/json")
 
 
 @app.route('/aggregates_by/<prefix>/channels/<channel>/dates/')
@@ -78,7 +78,7 @@ def get_channels(prefix):
 def get_dates(prefix, channel):
     result = execute_query("select * from list_buildids(%s, %s)", (prefix, channel))
     pretty_result = map(lambda r: {"version": r[0], "date": r[1]}, result)
-    return json.dumps(pretty_result)
+    return Response(json.dumps(pretty_result), mimetype="application/json")
 
 
 def get_filter_options(channel, version, filters, filter):
@@ -118,7 +118,7 @@ def get_filters_options():
     if not filters:
         abort(404)
 
-    return json.dumps(filters)
+    return Response(json.dumps(filters), mimetype="application/json")
 
 
 @app.route('/aggregates_by/<prefix>/channels/<channel>/', methods=["GET"])
@@ -176,7 +176,7 @@ def get_dates_metrics(prefix, channel):
         count = row[2][-1]
         pretty_result["data"].append({"date": date, "label": label, "histogram": histogram, "count": count, "sum": sum})
 
-    return json.dumps(pretty_result)
+    return Response(json.dumps(pretty_result), mimetype="application/json")
 
 
 if __name__ == "__main__":
