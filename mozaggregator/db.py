@@ -33,7 +33,7 @@ def get_db_connection_string():
     if os.getenv("DB_TEST_URL"):
         return os.getenv("DB_TEST_URL")
     elif config.USE_PRODUCTION_DB:
-        s3 = S3Connection()
+        s3 = S3Connection(host="s3-us-west-2.amazonaws.com")
         secret = json.loads(s3.get_bucket(config.BUCKET).get_key(config.SECRET).get_contents_as_string())["password"]
         rds = boto.rds2.connect_to_region(config.REGION)
         db = rds.describe_db_instances(config.RDS)["DescribeDBInstancesResponse"]["DescribeDBInstancesResult"]["DBInstances"][0]
