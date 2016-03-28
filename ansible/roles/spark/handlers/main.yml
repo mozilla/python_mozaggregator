@@ -1,2 +1,0 @@
-- name: delete spark installer
-  file: path={{ansible_env.HOME}}/spark-{{spark_version}}-bin-hadoop2.4.tgz state=absent
