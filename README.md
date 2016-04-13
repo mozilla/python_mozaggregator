@@ -3,11 +3,6 @@ Aggregator job for Telemetry. See this [blog](http://robertovitillo.com/2015/07/
 
 ## Development and deployment
 
-To reconfigure the project:
-```
-ansible-playbook ansible/configure.yml -e '@ansible/envs/dev.yml' -i ansible/inventory
-```
-
 To start hacking on your local machine:
 ```bash
 vagrant up
@@ -25,11 +20,16 @@ To deploy a new version of the aggregation service to the cloud:
 ansible-playbook ansible/deploy.yml -e '@ansible/envs/dev.yml' -i ansible/inventory
 ```
 
+To connect to the database on the host, when running it inside the Vagrant VM, using something like [pgAdmin](http://pgadmin.org/), use `localhost` as the host, `5432` as the port, `vagrant` as the username, and a blank password.
+
 ## API
-Aggregates are made available through a HTTP API. There are two kinds of aggregates: per submission date and per build-id. 
+Aggregates are made available through a HTTP API. There are two kinds of aggregates: per submission date (date a ping is received by the server) and per build-id (date the submitting product was built).
+
 To access the aggregates use the ```aggregates_by/build_id/``` and ```aggregates_by/submission_date/``` prefix respectively.
 
-The following examples are based on build-id aggregates.
+In the URLs below, replace `SERVICE` with the origin of this service's instance. The official service is `http://aggregates.telemetry.mozilla.org`.
+
+The following examples are based on build-id aggregates. Replace `build_id` with `submission_date` to use aggregates per submission date instead.
 
 ##### Get available channels:
 ```bash
@@ -70,21 +70,24 @@ curl -X GET "http://SERVICE/aggregates_by/build_id/channels/nightly/?version=41&
 ```
 
 The available filters are:
-- metric, e.g. JS_TELEMETRY_ADDON_EXCEPTIONS
-- application, e.g. Firefox
-- architecture, e.g. x86
-- os, e.g. Windows_NT
-- osVersion, e.g. 6.1
-- e10sEnabled, e.g. true
-- label, e.g Adblock-Plus
-- child, e.g. true, meaningful only if e10s is enabled
+- `metric`, e.g. JS_TELEMETRY_ADDON_EXCEPTIONS
+- `application`, e.g. Firefox
+- `architecture`, e.g. x86
+- `os`, e.g. Windows_NT
+- `osVersion`, e.g. 6.1
+- `e10sEnabled`, e.g. true
+- `label`, e.g Adblock-Plus
+- `child`, e.g. true, meaningful only if e10s is enabled
 
 A reply has the following attributes:
-- buckets, which represents the bucket labels of the histogram
-- kind, the kind of histogram (e.g. exponential)
-- data, which is an array of metric objects with the following attributes:
-  - date: a build-id
-  - count: number of metrics aggregated
-  - sum: sum of accumulated values
-  - histogram: bucket values
-  - description: histogram description
+- `buckets`, which represents the bucket labels of the histogram
+- `kind`, the kind of histogram (e.g. exponential)
+- `data`, which is an array of metric objects with the following attributes:
+  - `date`: a build-id
+  - `count`: number of metrics aggregated
+  - `sum`: sum of accumulated values
+  - `histogram`: bucket values
+  - `description`: histogram description
+  - `label`: for keyed histograms, the key the entry belongs to, or otherwise a blank string
+
+Keyed histograms have the same format as unkeyed histograms, but there can possibly be multiple metric objects with the same date, each with a different key (`label`).

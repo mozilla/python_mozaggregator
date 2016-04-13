@@ -1,2 +1,0 @@
-- name: delete miniconda installer
-  command: rm miniconda.sh chdir={{ansible_env.HOME}}

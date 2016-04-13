@@ -13,16 +13,18 @@ from nose.tools import nottest
 SERVICE_URI = "http://localhost:5000"
 
 
+logger = logging.getLogger("py4j")
+logger.setLevel(logging.ERROR)
+
+
 def setup_module():
     global aggregates
     global sc
 
-    logger = logging.getLogger("py4j")
-    logger.setLevel(logging.ERROR)
-
     sc = pyspark.SparkContext(master="local[*]")
     raw_pings = list(generate_pings())
     aggregates = _aggregate_metrics(sc.parallelize(raw_pings))
+    submit_aggregates(aggregates)
 
 
 def teardown_module():
@@ -36,7 +38,6 @@ def test_connection():
 
 def test_submit():
     # Multiple submissions should not alter the aggregates in the db
-    submit_aggregates(aggregates)
     build_id_count, submission_date_count = submit_aggregates(aggregates)
 
     n_submission_dates = len(ping_dimensions["submission_date"])
