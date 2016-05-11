@@ -242,8 +242,14 @@ def _map_ping_to_dimensions(ping):
         os = ping["environment"]["system"]["os"]["name"]
         os_version = ping["environment"]["system"]["os"]["version"]
         e10s = ping["environment"]["settings"]["e10sEnabled"]
+
         if os == "Linux":
             os_version = str(os_version)[:3]
+
+        try:
+            int(build_id)
+        except:
+            return None
 
         subset = {}
         subset["payload"] = _trim_payload(ping["payload"])
