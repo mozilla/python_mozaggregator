@@ -48,26 +48,29 @@ def _map_build_id_key_to_submission_date_key(aggregate):
 
 
 def _sample_clients(ping):
-    sample_id = ping.get("meta", {}).get("sampleId", None)
+    try:
+        sample_id = ping.get("meta", {}).get("sampleId", None)
 
-    if not isinstance(sample_id, (int, float, long)):
+        if not isinstance(sample_id, (int, float, long)):
+            return False
+
+        # Check if telemetry is enabled
+        if not ping.get("environment", {}).get("settings", {}).get("telemetryEnabled", False):
+            return False
+
+        channel = ping.get("application", {}).get("channel", None)
+        percentage = {"nightly": 100,
+                    "aurora": 100,
+                    "beta": 100,
+                    "release": 100}
+
+        if channel not in percentage:
+            return False
+
+        # Use meta/sampleid once Heka spits it out correctly
+        return sample_id < percentage[channel]
+    except:
         return False
-
-    # Check if telemetry is enabled
-    if not ping.get("environment", {}).get("settings", {}).get("telemetryEnabled", False):
-        return False
-
-    channel = ping.get("application", {}).get("channel", None)
-    percentage = {"nightly": 100,
-                  "aurora": 100,
-                  "beta": 100,
-                  "release": 100}
-
-    if channel not in percentage:
-        return False
-
-    # Use meta/sampleid once Heka spits it out correctly
-    return sample_id < percentage[channel]
 
 
 def _extract_histograms(state, payload, is_child=False):
@@ -239,8 +242,14 @@ def _map_ping_to_dimensions(ping):
         os = ping["environment"]["system"]["os"]["name"]
         os_version = ping["environment"]["system"]["os"]["version"]
         e10s = ping["environment"]["settings"]["e10sEnabled"]
+
         if os == "Linux":
             os_version = str(os_version)[:3]
+
+        try:
+            int(build_id)
+        except:
+            return None
 
         subset = {}
         subset["payload"] = _trim_payload(ping["payload"])
