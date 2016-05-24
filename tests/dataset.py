@@ -86,6 +86,19 @@ keyed_histograms_template = {u'BLOCKED_ON_PLUGIN_INSTANCE_DESTROY_MS':
                                                                          u'785': 1,
                                                                          u'8': 8}}}}
 
+ignored_keyed_histograms_template = {u'MESSAGE_MANAGER_MESSAGE_SIZE':
+                                     {u'foo': {u'bucket_count': 20,
+                                               u'histogram_type': 0,
+                                               u'sum': 0,
+                                               u'values': {u'0': 0}
+                                     }},
+                                     "VIDEO_DETAILED_DROPPED_FRAMES_PROPORTION":
+                                     {u'foo': {u'bucket_count': 20,
+                                               u'histogram_type': 0,
+                                               u'sum': 0,
+                                               u'values': {u'0': 0}
+                                     }}}
+
 simple_measurements_template = {"uptime": SCALAR_VALUE, "addonManager": {u'XPIDB_parseDB_MS': SCALAR_VALUE}}
 
 
@@ -111,7 +124,8 @@ def generate_payload(dimensions):
 
     payload = {u"simpleMeasurements": simple_measurements_template,
                u"histograms": histograms_template,
-               u"keyedHistograms": keyed_histograms_template,
+               u"keyedHistograms": dict(keyed_histograms_template.items() +
+                                        ignored_keyed_histograms_template.items()),
                u"childPayloads": child_payloads}
     environment = {u"system": {u"os": {u"name": dimensions["os"],
                                        u"version": dimensions["os_version"]}},

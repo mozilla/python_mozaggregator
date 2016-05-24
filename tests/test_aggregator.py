@@ -171,6 +171,8 @@ def test_keyed_histograms():
                 assert(set(histogram_template.keys()) == set(value["histogram"].keys()))
                 assert((pd.Series(histogram_template)*value["count"] == pd.Series(value["histogram"])).all())
 
+            assert(metric not in ignored_keyed_histograms_template.keys())
+
     assert(len(metric_count) == len(keyed_histograms_template))  # Assume one label per keyed histogram
     for v in metric_count.values():
         assert(v == 2*len(build_id_aggregates))  # Count both child and parent metrics
