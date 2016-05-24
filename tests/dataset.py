@@ -1,5 +1,7 @@
 import uuid
 
+from itertools import product, repeat
+
 NUM_CHILDREN_PER_PING = 3
 NUM_PINGS_PER_DIMENSIONS = 2
 SCALAR_VALUE = 42
@@ -84,30 +86,26 @@ keyed_histograms_template = {u'BLOCKED_ON_PLUGIN_INSTANCE_DESTROY_MS':
                                                                          u'785': 1,
                                                                          u'8': 8}}}}
 
+ignored_keyed_histograms_template = {u'MESSAGE_MANAGER_MESSAGE_SIZE':
+                                     {u'foo': {u'bucket_count': 20,
+                                               u'histogram_type': 0,
+                                               u'sum': 0,
+                                               u'values': {u'0': 0}
+                                     }},
+                                     "VIDEO_DETAILED_DROPPED_FRAMES_PROPORTION":
+                                     {u'foo': {u'bucket_count': 20,
+                                               u'histogram_type': 0,
+                                               u'sum': 0,
+                                               u'values': {u'0': 0}
+                                     }}}
+
 simple_measurements_template = {"uptime": SCALAR_VALUE, "addonManager": {u'XPIDB_parseDB_MS': SCALAR_VALUE}}
 
 
 def generate_pings():
-    for submission_date in ping_dimensions["submission_date"]:
-        for channel in ping_dimensions["channel"]:
-            for version in ping_dimensions["version"]:
-                for build_id in ping_dimensions["build_id"]:
-                    for application in ping_dimensions["application"]:
-                        for arch in ping_dimensions["arch"]:
-                            for os in ping_dimensions["os"]:
-                                for os_version in ping_dimensions["os_version"]:
-                                    for e10s in ping_dimensions["e10s"]:
-                                        for i in range(NUM_PINGS_PER_DIMENSIONS):
-                                            dimensions = {u"submission_date": submission_date,
-                                                            u"channel": channel,
-                                                            u"version": version,
-                                                            u"build_id": build_id,
-                                                            u"application": application,
-                                                            u"arch": arch,
-                                                            u"os": os,
-                                                            u"os_version": os_version,
-                                                            u"e10s": e10s}
-                                            yield generate_payload(dimensions)
+    for dimensions in [dict(x) for x in product(*[zip(repeat(k), v) for k, v in ping_dimensions.iteritems()])]:
+        for i in range(NUM_PINGS_PER_DIMENSIONS):
+            yield generate_payload(dimensions)
 
 
 def generate_payload(dimensions):
@@ -126,7 +124,8 @@ def generate_payload(dimensions):
 
     payload = {u"simpleMeasurements": simple_measurements_template,
                u"histograms": histograms_template,
-               u"keyedHistograms": keyed_histograms_template,
+               u"keyedHistograms": dict(keyed_histograms_template.items() +
+                                        ignored_keyed_histograms_template.items()),
                u"childPayloads": child_payloads}
     environment = {u"system": {u"os": {u"name": dimensions["os"],
                                        u"version": dimensions["os_version"]}},

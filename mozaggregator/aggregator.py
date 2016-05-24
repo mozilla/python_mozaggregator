@@ -85,6 +85,10 @@ def _extract_histograms(state, payload, is_child=False):
         return
 
     for name, histograms in keyed_histograms.iteritems():
+        # See Bug 1275010 and 1275019
+        if name in ["MESSAGE_MANAGER_MESSAGE_SIZE",
+                    "VIDEO_DETAILED_DROPPED_FRAMES_PROPORTION"]:
+            continue
         _extract_keyed_histograms(state, name, histograms, is_child)
 
 
