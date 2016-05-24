@@ -1,5 +1,7 @@
 import uuid
 
+from itertools import product, repeat
+
 NUM_CHILDREN_PER_PING = 3
 NUM_PINGS_PER_DIMENSIONS = 2
 SCALAR_VALUE = 42
@@ -88,26 +90,9 @@ simple_measurements_template = {"uptime": SCALAR_VALUE, "addonManager": {u'XPIDB
 
 
 def generate_pings():
-    for submission_date in ping_dimensions["submission_date"]:
-        for channel in ping_dimensions["channel"]:
-            for version in ping_dimensions["version"]:
-                for build_id in ping_dimensions["build_id"]:
-                    for application in ping_dimensions["application"]:
-                        for arch in ping_dimensions["arch"]:
-                            for os in ping_dimensions["os"]:
-                                for os_version in ping_dimensions["os_version"]:
-                                    for e10s in ping_dimensions["e10s"]:
-                                        for i in range(NUM_PINGS_PER_DIMENSIONS):
-                                            dimensions = {u"submission_date": submission_date,
-                                                            u"channel": channel,
-                                                            u"version": version,
-                                                            u"build_id": build_id,
-                                                            u"application": application,
-                                                            u"arch": arch,
-                                                            u"os": os,
-                                                            u"os_version": os_version,
-                                                            u"e10s": e10s}
-                                            yield generate_payload(dimensions)
+    for dimensions in [dict(x) for x in product(*[zip(repeat(k), v) for k, v in ping_dimensions.iteritems()])]:
+        for i in range(NUM_PINGS_PER_DIMENSIONS):
+            yield generate_payload(dimensions)
 
 
 def generate_payload(dimensions):
