@@ -73,6 +73,8 @@ def test_simple_measurements():
             if metric.startswith("SIMPLE_MEASURES_"):
                 metric_count[metric] += 1
                 assert(label == "")
+                # Simple measurements are still in childPayloads.
+                # expected_count() is correct only for child dimensions in processes.content.
                 assert(value["count"] == NUM_PINGS_PER_DIMENSIONS*(NUM_CHILDREN_PER_PING if child else 1))
                 assert(value["sum"] == value["count"]*SCALAR_VALUE)
                 assert(value["histogram"][str(SIMPLE_SCALAR_BUCKET)] == value["count"])
@@ -94,7 +96,7 @@ def test_classic_histograms():
             if histogram:
                 metric_count[metric] += 1
                 assert(label == "")
-                assert(value["count"] == NUM_PINGS_PER_DIMENSIONS*(NUM_CHILDREN_PER_PING if child else 1))
+                assert(value["count"] == expected_count(child))
                 assert(value["sum"] == value["count"]*histogram["sum"])
                 assert(set(histogram["values"].keys()) == set(value["histogram"].keys()))
                 assert((pd.Series(histogram["values"])*value["count"] == pd.Series(value["histogram"])).all())
@@ -116,7 +118,7 @@ def test_count_histograms():
             if histogram:
                 metric_count[metric] += 1
                 assert(label == "")
-                assert(value["count"] == NUM_PINGS_PER_DIMENSIONS*(NUM_CHILDREN_PER_PING if child else 1))
+                assert(value["count"] == expected_count(child))
                 assert(value["sum"] == value["count"]*histogram["sum"])
                 assert(value["histogram"][str(COUNT_SCALAR_BUCKET)] == value["count"])
 
@@ -140,7 +142,7 @@ def test_use_counter2_histogram():
             if histogram:
                 metric_count[metric] += 1
                 assert(label == "")
-                assert(value["count"] == NUM_PINGS_PER_DIMENSIONS*(NUM_CHILDREN_PER_PING if child else 1))
+                assert(value["count"] == expected_count(child))
                 assert(value["sum"] == value["count"]*histogram["sum"])
 
                 if metric.endswith("_DOCUMENT"):
@@ -164,7 +166,7 @@ def test_keyed_histograms():
             if metric in keyed_histograms_template.keys():
                 metric_count["{}_{}".format(metric, label)] += 1
                 assert(label != "")
-                assert(value["count"] == NUM_PINGS_PER_DIMENSIONS*(NUM_CHILDREN_PER_PING if child else 1))
+                assert(value["count"] == expected_count(child))
                 assert(value["sum"] == value["count"]*keyed_histograms_template[metric][label]["sum"])
 
                 histogram_template = keyed_histograms_template[metric][label]["values"]

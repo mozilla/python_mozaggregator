@@ -231,6 +231,7 @@ def _aggregate_ping(state, ping):
     _extract_histograms(state, ping.get("payload", {}))
     _extract_simple_measures(state, ping.get("payload", {}).get("simpleMeasurements", {}))
     _extract_child_payloads(state, ping.get("payload", {}).get("childPayloads", {}))
+    _extract_histograms(state, ping.get("payload", {}).get("processes", {}).get("content", {}), True)
     return state
 
 
@@ -250,7 +251,7 @@ def _aggregate_aggregates(agg1, agg2):
 
 
 def _trim_payload(payload):
-    return {k: v for k, v in payload.iteritems() if k in ["histograms", "keyedHistograms", "simpleMeasurements"]}
+    return {k: v for k, v in payload.iteritems() if k in ["histograms", "keyedHistograms", "simpleMeasurements", "processes"]}
 
 
 def _map_ping_to_dimensions(ping):
