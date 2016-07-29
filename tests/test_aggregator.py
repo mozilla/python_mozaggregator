@@ -73,6 +73,8 @@ def test_simple_measurements():
             if metric.startswith("SIMPLE_MEASURES_"):
                 metric_count[metric] += 1
                 assert(label == "")
+                if value["count"] != expected_count(child):
+                    print "count %d expected_count %d child %s" % (value["count"], expected_count(child), child)
                 assert(value["count"] == expected_count(child))
                 assert(value["sum"] == value["count"]*SCALAR_VALUE)
                 assert(value["histogram"][str(SIMPLE_SCALAR_BUCKET)] == value["count"])
