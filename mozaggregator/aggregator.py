@@ -277,7 +277,6 @@ def _map_ping_to_dimensions(ping):
         subset = {}
         subset["payload"] = _trim_payload(ping["payload"])
         subset["payload"]["childPayloads"] = [_trim_payload(c) for c in ping["payload"].get("childPayloads", [])]
-        subset["payload"]["childPayloads"].append(_trim_payload(ping["payload"].get("processes", {}).get("content", {})))
 
         # Note that some dimensions don't vary within a single submissions
         # (e.g. channel) while some do (e.g. process type).
