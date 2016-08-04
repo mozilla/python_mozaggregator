@@ -153,6 +153,7 @@ def generate_payload(dimensions, aggregated_child_histograms):
             u"application": application,
             u"payload": payload,
             u"environment": environment}
+fyou = False
 
 def expected_count(is_child):
     if not is_child:
