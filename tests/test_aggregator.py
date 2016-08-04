@@ -98,7 +98,6 @@ def test_classic_histograms():
                 assert(label == "")
                 if value["count"] != expected_count(child):
                   print "metric %s child %s count %d expected_count %d" % (metric, child, value["count"], expected_count(child))
-                  print "%s" % raw_pings
                   print "%s" % build_id_aggregates
                 assert(value["count"] == expected_count(child))
                 assert(value["sum"] == value["count"]*histogram["sum"])
