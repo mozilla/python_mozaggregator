@@ -226,12 +226,13 @@ def _extract_child_payloads(state, child_payloads):
 
 def _aggregate_ping(state, ping):
     if not isinstance(ping, dict):
+        print "_aggregate_ping not dict"
         return
 
     _extract_histograms(state, ping.get("payload", {}))
     _extract_simple_measures(state, ping.get("payload", {}).get("simpleMeasurements", {}))
     _extract_child_payloads(state, ping.get("payload", {}).get("childPayloads", {}))
-    print "%s" % ping.get("payload", {}).get("processes", {}).get("content", -1)
+    print "%s" % ping.get("payload", {}).get("processes", {}).get("content", {})
     _extract_histograms(state, ping.get("payload", {}).get("processes", {}).get("content", {}), True)
     return state
 

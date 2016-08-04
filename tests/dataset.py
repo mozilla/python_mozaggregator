@@ -110,7 +110,6 @@ def generate_pings():
 
 
 def generate_payload(dimensions, aggregated_child_histograms):
-    print "aggregated_child_histograms %s" % aggregated_child_histograms
     meta = {u"submissionDate": dimensions["submission_date"],
             u"sampleId": 42}
     application = {u"channel": dimensions["channel"],
