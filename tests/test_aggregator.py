@@ -96,7 +96,7 @@ def test_classic_histograms():
                 metric_count[metric] += 1
                 assert(label == "")
                 if value["count"] != expected_count(child):
-                  print "metric %s child %s count %d expected_count %d" % (metric, child, count, expected_count(child))
+                  print "metric %s child %s count %d expected_count %d" % (metric, child, value["count"], expected_count(child))
                 assert(value["count"] == expected_count(child))
                 assert(value["sum"] == value["count"]*histogram["sum"])
                 assert(set(histogram["values"].keys()) == set(value["histogram"].keys()))
@@ -120,7 +120,7 @@ def test_count_histograms():
                 metric_count[metric] += 1
                 assert(label == "")
                 if value["count"] != expected_count(child):
-                  print "metric %s child %s count %d expected_count %d" % (metric, child, count, expected_count(child))
+                  print "metric %s child %s count %d expected_count %d" % (metric, child, value["count"], expected_count(child))
                 assert(value["count"] == expected_count(child))
                 assert(value["sum"] == value["count"]*histogram["sum"])
                 assert(value["histogram"][str(COUNT_SCALAR_BUCKET)] == value["count"])
@@ -146,7 +146,7 @@ def test_use_counter2_histogram():
                 metric_count[metric] += 1
                 assert(label == "")
                 if value["count"] != expected_count(child):
-                  print "metric %s child %s count %d expected_count %d" % (metric, child, count, expected_count(child))
+                  print "metric %s child %s count %d expected_count %d" % (metric, child, value["count"], expected_count(child))
                 assert(value["count"] == expected_count(child))
                 assert(value["sum"] == value["count"]*histogram["sum"])
 
@@ -172,7 +172,7 @@ def test_keyed_histograms():
                 metric_count["{}_{}".format(metric, label)] += 1
                 assert(label != "")
                 if value["count"] != expected_count(child):
-                  print "metric %s child %s count %d expected_count %d" % (metric, child, count, expected_count(child))
+                  print "metric %s child %s count %d expected_count %d" % (metric, child, value["count"], expected_count(child))
                 assert(value["count"] == expected_count(child))
                 assert(value["sum"] == value["count"]*keyed_histograms_template[metric][label]["sum"])
 
