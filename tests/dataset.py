@@ -154,4 +154,4 @@ def generate_payload(dimensions, aggregated_child_histograms):
 def expected_count(is_child):
     if not is_child:
         return NUM_PINGS_PER_DIMENSIONS
-    return (NUM_PINGS_PER_DIMENSIONS - NUM_AGGREGATED_CHILD_PINGS) * NUM_CHILDREN_PER_PING + NUM_AGGREGATED_CHILD_PINGS * 2
+    return (NUM_PINGS_PER_DIMENSIONS - NUM_AGGREGATED_CHILD_PINGS) * NUM_CHILDREN_PER_PING + NUM_AGGREGATED_CHILD_PINGS
