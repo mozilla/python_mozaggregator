@@ -104,6 +104,7 @@ simple_measurements_template = {"uptime": SCALAR_VALUE, "addonManager": {u'XPIDB
 
 
 def generate_pings():
+    fyou = False
     for dimensions in [dict(x) for x in product(*[zip(repeat(k), v) for k, v in ping_dimensions.iteritems()])]:
         for i in range(NUM_PINGS_PER_DIMENSIONS):
             yield generate_payload(dimensions, i < NUM_AGGREGATED_CHILD_PINGS)
@@ -153,7 +154,6 @@ def generate_payload(dimensions, aggregated_child_histograms):
             u"application": application,
             u"payload": payload,
             u"environment": environment}
-fyou = False
 
 def expected_count(is_child):
     if not is_child:
