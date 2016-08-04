@@ -5,11 +5,15 @@ Aggregator job for Telemetry. See this [blog](http://robertovitillo.com/2015/07/
 
 ## Development and deployment
 
+Note: if you are on Windows you might want to disable `core.autocrlf` to avoid git converting LF endings to CRLF when checking out.
+
 To start hacking on your local machine:
 ```bash
 vagrant up
 vagrant ssh
 ```
+
+If vagrant fails to download a box on Windows 10 then follow the workaround mentioned [here](https://github.com/mitchellh/vagrant/issues/6754).
 
 To run tests within the Vagrant VM:
 ```bash

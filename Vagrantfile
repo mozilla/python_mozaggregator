@@ -25,7 +25,7 @@ Vagrant.configure("2") do |config|
     dev.vm.box = "ubuntu/trusty64"
     dev.vm.network :forwarded_port, host: 5000, guest: 5000
     dev.vm.network :forwarded_port, host: 5432, guest: 5432
-    dev.vm.provision "ansible" do |ansible|
+    dev.vm.provision "ansible_local" do |ansible|
       ansible.playbook = "ansible/dev.yml"
     end
   end

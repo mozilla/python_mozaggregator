@@ -70,4 +70,4 @@ wait_for_line "* Running " ${PGSQL_DATA}/out_service || {
     exit 1
 }
 
-~/miniconda2/bin/python "$(which nosetests)" ./tests/
+~/miniconda2/bin/python "$(which nosetests)" ./tests/*.py
