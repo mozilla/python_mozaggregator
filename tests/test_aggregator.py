@@ -64,7 +64,6 @@ def test_keys():
 
 
 def test_simple_measurements():
-    setup_module() # call again so we can read the log
     metric_count = defaultdict(int)
 
     for aggregate in build_id_aggregates:
@@ -74,9 +73,8 @@ def test_simple_measurements():
             if metric.startswith("SIMPLE_MEASURES_"):
                 metric_count[metric] += 1
                 assert(label == "")
-                if value["count"] != expected_count(child):
-                    print "count %d expected_count %d child %s" % (value["count"], expected_count(child), child)
-                assert(value["count"] == expected_count(child))
+                # simple measurements are still in childPayloads
+                assert(value["count"] == (NUM_CHILDREN_PER_PING if child else 1) * NUM_PINGS_PER_DIMENSIONS)
                 assert(value["sum"] == value["count"]*SCALAR_VALUE)
                 assert(value["histogram"][str(SIMPLE_SCALAR_BUCKET)] == value["count"])
 
