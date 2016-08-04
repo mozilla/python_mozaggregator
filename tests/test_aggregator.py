@@ -64,6 +64,7 @@ def test_keys():
 
 
 def test_simple_measurements():
+    setup_module() # call again so we can read the log
     metric_count = defaultdict(int)
 
     for aggregate in build_id_aggregates:
