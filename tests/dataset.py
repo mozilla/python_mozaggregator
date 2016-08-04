@@ -144,6 +144,10 @@ def generate_payload(dimensions, aggregated_child_histograms):
                    u"settings": {u"telemetryEnabled": True,
                                  u"e10sEnabled": dimensions["e10s"]}}
 
+    global fyou
+    if not fyou:
+      fyou = True
+      print "%s" % payload
     return {u"clientId": str(uuid.uuid4()),
             u"meta": meta,
             u"application": application,
