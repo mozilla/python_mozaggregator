@@ -10,7 +10,6 @@ from dataset import *
 def setup_module():
     global build_id_aggregates
     global submission_date_aggregates
-    global raw_pings
 
     logger = logging.getLogger("py4j")
     logger.setLevel(logging.ERROR)
@@ -85,6 +84,7 @@ def test_simple_measurements():
 
 
 def test_classic_histograms():
+    setup_module()
     metric_count = defaultdict(int)
     histograms = {k: v for k, v in histograms_template.iteritems() if v["histogram_type"] != 4 and not k.startswith("USE_COUNTER2_")}
 
@@ -98,7 +98,6 @@ def test_classic_histograms():
                 assert(label == "")
                 if value["count"] != expected_count(child):
                   print "metric %s child %s count %d expected_count %d" % (metric, child, value["count"], expected_count(child))
-                  print "%s" % build_id_aggregates
                 assert(value["count"] == expected_count(child))
                 assert(value["sum"] == value["count"]*histogram["sum"])
                 assert(set(histogram["values"].keys()) == set(value["histogram"].keys()))
