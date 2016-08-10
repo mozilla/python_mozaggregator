@@ -3,7 +3,9 @@ import uuid
 from itertools import product, repeat
 
 NUM_CHILDREN_PER_PING = 3
+NUM_AGGREGATED_CHILD_PINGS = 1
 NUM_PINGS_PER_DIMENSIONS = 2
+assert(NUM_AGGREGATED_CHILD_PINGS <= NUM_PINGS_PER_DIMENSIONS)
 SCALAR_VALUE = 42
 SIMPLE_SCALAR_BUCKET = 35
 COUNT_SCALAR_BUCKET = 40
@@ -105,10 +107,10 @@ simple_measurements_template = {"uptime": SCALAR_VALUE, "addonManager": {u'XPIDB
 def generate_pings():
     for dimensions in [dict(x) for x in product(*[zip(repeat(k), v) for k, v in ping_dimensions.iteritems()])]:
         for i in range(NUM_PINGS_PER_DIMENSIONS):
-            yield generate_payload(dimensions)
+            yield generate_payload(dimensions, i < NUM_AGGREGATED_CHILD_PINGS)
 
 
-def generate_payload(dimensions):
+def generate_payload(dimensions, aggregated_child_histograms):
     meta = {u"submissionDate": dimensions["submission_date"],
             u"sampleId": 42}
     application = {u"channel": dimensions["channel"],
@@ -117,9 +119,7 @@ def generate_payload(dimensions):
                    u"name": dimensions["application"],
                    u"architecture": dimensions["arch"]}
 
-    child_payloads = [{"histograms": histograms_template,
-                       "keyedHistograms": keyed_histograms_template,
-                       "simpleMeasurements": simple_measurements_template}
+    child_payloads = [{"simpleMeasurements": simple_measurements_template}
                       for i in range(NUM_CHILDREN_PER_PING)]
 
     payload = {u"simpleMeasurements": simple_measurements_template,
@@ -127,6 +127,19 @@ def generate_payload(dimensions):
                u"keyedHistograms": dict(keyed_histograms_template.items() +
                                         ignored_keyed_histograms_template.items()),
                u"childPayloads": child_payloads}
+
+    if aggregated_child_histograms:
+        payload[u"processes"] = {
+            u"content": {
+                u"histograms": histograms_template,
+                u"keyedHistograms": keyed_histograms_template,
+            }
+        }
+    else:
+        for i in range(NUM_CHILDREN_PER_PING):
+            payload[u"childPayloads"][i][u"histograms"] = histograms_template
+            payload[u"childPayloads"][i][u"keyedHistograms"] = keyed_histograms_template
+
     environment = {u"system": {u"os": {u"name": dimensions["os"],
                                        u"version": dimensions["os_version"]}},
                    u"settings": {u"telemetryEnabled": True,
@@ -137,3 +150,8 @@ def generate_payload(dimensions):
             u"application": application,
             u"payload": payload,
             u"environment": environment}
+
+def expected_count(is_child):
+    if not is_child:
+        return NUM_PINGS_PER_DIMENSIONS
+    return (NUM_PINGS_PER_DIMENSIONS - NUM_AGGREGATED_CHILD_PINGS) * NUM_CHILDREN_PER_PING + NUM_AGGREGATED_CHILD_PINGS

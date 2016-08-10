@@ -160,7 +160,11 @@ def test_histogram(prefix, channel, version, dates, metric, value, expected_coun
     bucket_index = count_histogram_labels.index(COUNT_SCALAR_BUCKET)
 
     for res in reply["data"]:
-        assert(res["count"] == expected_count*(NUM_CHILDREN_PER_PING + 1))
+        # From pings before bug 1218576 (old), `count` is the number of processes.
+        # From pings after bug 1218576 (new), `count` is the number of process types.
+        old_pings_expected_count = expected_count * (NUM_PINGS_PER_DIMENSIONS - NUM_AGGREGATED_CHILD_PINGS) / NUM_PINGS_PER_DIMENSIONS
+        new_pings_expected_count = expected_count * NUM_AGGREGATED_CHILD_PINGS / NUM_PINGS_PER_DIMENSIONS
+        assert(res["count"] == new_pings_expected_count*2 + old_pings_expected_count*(NUM_CHILDREN_PER_PING + 1))
 
         if value["histogram_type"] == 4:  # Count histogram
             current = pd.Series(res["histogram"], index=map(int, reply["buckets"]))
@@ -219,7 +223,9 @@ def test_keyed_histogram(prefix, channel, version, dates, metric, histograms, ex
         assert(len(reply["data"]) == len(dates))
 
         for res in reply["data"]:
-            assert(res["count"] == expected_count*(NUM_CHILDREN_PER_PING + 1))
+            old_pings_expected_count = expected_count * (NUM_PINGS_PER_DIMENSIONS - NUM_AGGREGATED_CHILD_PINGS) / NUM_PINGS_PER_DIMENSIONS
+            new_pings_expected_count = expected_count * NUM_AGGREGATED_CHILD_PINGS / NUM_PINGS_PER_DIMENSIONS
+            assert(res["count"] == new_pings_expected_count*2 + old_pings_expected_count*(NUM_CHILDREN_PER_PING + 1))
 
             current = pd.Series(res["histogram"], index=map(int, reply["buckets"]))
             expected = Histogram(metric, value).get_value()*res["count"]
