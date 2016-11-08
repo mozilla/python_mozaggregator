@@ -64,7 +64,12 @@ histograms_template = {u"EVENTLOOP_UI_ACTIVITY_EXP_MS": {u'bucket_count': 20,
                                                                u'histogram_type': 2,
                                                                u'range': [1, 2],
                                                                u'sum': 1,
-                                                               u'values': {u'0': 0, u'1': 1}}}
+                                                               u'values': {u'0': 0, u'1': 1}},
+                       u"TELEMETRY_TEST_CATEGORICAL": {u'bucket_count': 4,
+                                                       u'histogram_type': 5,
+                                                       u'range': [1, 2],
+                                                       u'sum': 3,
+                                                       u'values': {u'0': 1, u'1': 1, u'2':1, u'3':0}}}
 
 keyed_histograms_template = {u'BLOCKED_ON_PLUGIN_INSTANCE_DESTROY_MS':
                              {u'Shockwave Flash17.0.0.188': {u'bucket_count': 20,
