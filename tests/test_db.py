@@ -187,7 +187,8 @@ def test_histogram(prefix, channel, version, dates, metric, value, expected_coun
             assert((current == expected).all())
             assert(res["sum"] == value["sum"]*res["count"])
         else:
-            current = pd.Series(res["histogram"], index=map(int, reply["buckets"]))
+            ind_type = int if value["histogram_type"] != 5 else str #categorical histograms
+            current = pd.Series(res["histogram"], index=map(ind_type, reply["buckets"]))
             expected = Histogram(metric, value).get_value()*res["count"]
 
             assert((current == expected).all())
