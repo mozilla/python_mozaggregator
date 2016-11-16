@@ -27,15 +27,22 @@ def aggregate_metrics(sc, channels, submission_date, fraction=1):
     if not isinstance(channels, (tuple, list)):
         channels = [channels]
 
+
+    def telemetry_enabled(ping):
+        return ping.get('environment', {}) \
+                   .get('settings', {}) \
+                   .get('telemetryEnabled', False)
+
     channels = set(channels)
     pings = Dataset.from_source('telemetry') \
                   .where(appUpdateChannel=lambda x : x in channels, 
                          submissionDate=submission_date,
-                         docType="saved_session",
+                         docType="main",
                          sourceVersion='4') \
-                  .records(sc, sample=fraction)
-    return _aggregate_metrics(pings)
+                  .records(sc, sample=fraction) \
+                  .filter(telemetry_enabled)
 
+    return _aggregate_metrics(pings)
 
 def _aggregate_metrics(pings):
     # Use few reducers only when running the test-suite to speed execution up.
