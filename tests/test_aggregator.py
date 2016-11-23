@@ -83,6 +83,24 @@ def test_simple_measurements():
     for v in metric_count.values():
         assert(v == 2*len(build_id_aggregates)) # Count both child and parent metrics
 
+def test_numerical_scalars():
+    metric_count = defaultdict(int)
+
+    for aggregate in build_id_aggregates:
+        for key, value in aggregate[1].iteritems():
+            metric, label, child = key
+
+            if metric.startswith("NUMERIC_SCALAR_"):
+                metric_count[metric] += 1
+                assert(label == "")
+                assert(value["count"] == (NUM_PINGS_PER_DIMENSIONS - NUM_AGGREGATED_CHILD_PINGS))
+                assert(value["sum"] == value["count"]*SCALAR_VALUE)
+                assert(value["histogram"][str(SIMPLE_SCALAR_BUCKET)] == value["count"])
+
+    assert len(metric_count) == len(scalars_template)
+    for v in metric_count.values():
+        assert v == len(build_id_aggregates)
+
 
 def test_classic_histograms():
     metric_count = defaultdict(int)
