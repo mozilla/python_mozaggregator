@@ -2,7 +2,7 @@ import pyspark
 import logging
 import pandas as pd
 
-from mozaggregator.aggregator import _aggregate_metrics
+from mozaggregator.aggregator import _aggregate_metrics, simple_measures_prefix, numeric_scalars_prefix, count_histogram_prefix
 from collections import defaultdict
 from dataset import *
 
@@ -70,7 +70,7 @@ def test_simple_measurements():
         for key, value in aggregate[1].iteritems():
             metric, label, child = key
 
-            if metric.startswith("SIMPLE_MEASURES_"):
+            if metric.startswith(simple_measures_prefix):
                 metric_count[metric] += 1
                 assert(label == "")
                 # Simple measurements are still in childPayloads.
@@ -82,6 +82,24 @@ def test_simple_measurements():
     assert len(metric_count) == len(simple_measurements_template)
     for v in metric_count.values():
         assert(v == 2*len(build_id_aggregates)) # Count both child and parent metrics
+
+def test_numerical_scalars():
+    metric_count = defaultdict(int)
+
+    for aggregate in build_id_aggregates:
+        for key, value in aggregate[1].iteritems():
+            metric, label, child = key
+
+            if metric.startswith(numeric_scalars_prefix):
+                metric_count[metric] += 1
+                assert(label == "")
+                assert(value["count"] == expected_count(child))
+                assert(value["sum"] == value["count"]*SCALAR_VALUE)
+                assert(value["histogram"][str(COUNT_SCALAR_BUCKET)] == value["count"])
+
+    assert len(metric_count) == len(scalars_template)
+    for v in metric_count.values():
+        assert v == len(build_id_aggregates)
 
 
 def test_classic_histograms():
@@ -108,7 +126,7 @@ def test_classic_histograms():
 
 def test_count_histograms():
     metric_count = defaultdict(int)
-    histograms = {"[[COUNT]]_{}".format(k): v for k, v in histograms_template.iteritems() if v["histogram_type"] == 4 and not k.endswith("CONTENT_DOCUMENTS_DESTROYED")}
+    histograms = {"{}_{}".format(count_histogram_prefix, k): v for k, v in histograms_template.iteritems() if v["histogram_type"] == 4 and not k.endswith("CONTENT_DOCUMENTS_DESTROYED")}
 
     for aggregate in build_id_aggregates:
         for key, value in aggregate[1].iteritems():
