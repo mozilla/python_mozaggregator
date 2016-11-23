@@ -108,6 +108,8 @@ ignored_keyed_histograms_template = {u'MESSAGE_MANAGER_MESSAGE_SIZE':
 
 simple_measurements_template = {"uptime": SCALAR_VALUE, "addonManager": {u'XPIDB_parseDB_MS': SCALAR_VALUE}}
 
+scalars_template = {"browser.engagement.total_uri_count": SCALAR_VALUE, "browser.engagement": {"test": SCALAR_VALUE}}
+
 
 def generate_pings():
     for dimensions in [dict(x) for x in product(*[zip(repeat(k), v) for k, v in ping_dimensions.iteritems()])]:
@@ -138,6 +140,9 @@ def generate_payload(dimensions, aggregated_child_histograms):
             u"content": {
                 u"histograms": histograms_template,
                 u"keyedHistograms": keyed_histograms_template,
+            },
+            u"parent": {
+                u"scalars": scalars_template
             }
         }
     else:

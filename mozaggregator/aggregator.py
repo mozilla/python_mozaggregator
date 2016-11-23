@@ -13,6 +13,7 @@ from collections import defaultdict
 
 # Simple measurement and count histogram labels
 simple_measures_labels = cached_exponential_buckets(1, 30000, 50)
+numeric_scalars_labels = cached_exponential_buckets(1, 30000, 50)
 count_histogram_labels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 23, 25, 27, 29, 31, 34, 37, 40, 43, 46, 50, 54, 58, 63, 68, 74, 80, 86, 93, 101, 109, 118, 128, 138, 149, 161, 174, 188, 203, 219, 237, 256, 277, 299, 323, 349, 377, 408, 441, 477, 516, 558, 603, 652, 705, 762, 824, 891, 963, 1041, 1125, 1216, 1315, 1422, 1537, 1662, 1797, 1943, 2101, 2271, 2455, 2654, 2869, 3102, 3354, 3626, 3920, 4238, 4582, 4954, 5356, 5791, 6261, 6769, 7318, 7912, 8554, 9249, 10000]
 
 
@@ -185,17 +186,22 @@ def _extract_keyed_histograms(state, histogram_name, histograms, is_child):
 
 
 def _extract_simple_measures(state, simple, is_child=False):
-    if not isinstance(simple, dict):
+    return _extract_scalar_values(state, simple, "SIMPLE_MEASURES", simple_measures_labels, is_child)
+
+def _extract_numeric_scalars(state, scalar_dict, is_child=False):
+    return _extract_scalar_values(state, scalar_dict, "NUMERIC_SCALAR", numeric_scalars_labels, is_child)
+
+def _extract_scalar_values(state, scalar_dict, name_prefix, labels, is_child=False):
+    if not isinstance(scalar_dict, dict):
         return
 
-    for name, value in simple.iteritems():
+    for name, value in scalar_dict.iteritems():
         if isinstance(value, dict):
             for sub_name, sub_value in value.iteritems():
                 if isinstance(sub_value, (int, float, long)):
-                    _extract_scalar_value(state, u"SIMPLE_MEASURES_{}_{}".format(name.upper(), sub_name.upper()), u"", sub_value, simple_measures_labels, is_child)
+                    _extract_scalar_value(state, "_".join((name_prefix, name.upper(), sub_name.upper())), u"", sub_value, labels, is_child)
         elif isinstance(value, (int, float, long)):
-            _extract_scalar_value(state, u"SIMPLE_MEASURES_{}".format(name.upper()), u"", value, simple_measures_labels, is_child)
-
+            _extract_scalar_value(state, u"_".join((name_prefix, name.upper())), u"", value, labels, is_child)
 
 def _extract_scalar_value(state, name, label, value, bucket_labels, is_child=False):
     if value < 0:  # Afaik we are collecting only positive values
@@ -228,6 +234,7 @@ def _aggregate_ping(state, ping):
     if not isinstance(ping, dict):
         return
 
+    _extract_numeric_scalars(state, ping.get("payload", {}).get("processes", {}).get("parent", {}).get("scalars", {}))
     _extract_histograms(state, ping.get("payload", {}))
     _extract_simple_measures(state, ping.get("payload", {}).get("simpleMeasurements", {}))
     _extract_child_payloads(state, ping.get("payload", {}).get("childPayloads", {}))
