@@ -27,11 +27,13 @@ def aggregate_metrics(sc, channels, submission_date, fraction=1):
     if not isinstance(channels, (tuple, list)):
         channels = [channels]
 
-
     def telemetry_enabled(ping):
-        return ping.get('environment', {}) \
-                   .get('settings', {}) \
-                   .get('telemetryEnabled', False)
+        try:
+            return ping.get('environment', {}) \
+                       .get('settings', {}) \
+                       .get('telemetryEnabled', False)
+        except:
+            return False
 
     channels = set(channels)
     pings = Dataset.from_source('telemetry') \
