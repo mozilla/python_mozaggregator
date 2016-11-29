@@ -61,12 +61,14 @@ def submit_aggregates(aggregates, dry_run=False):
 
     build_id_count = aggregates[0].\
                      map(lambda x: (x[0][:4], _aggregate_to_sql(x))).\
+                     filter(lambda x: x[1]).\
                      reduceByKey(lambda x, y: x + y).\
                      map(lambda x: _upsert_build_id_aggregates(x[0], x[1], connection_string, dry_run=dry_run)).\
                      count()
 
     submission_date_count = aggregates[1].\
                             map(lambda x: (x[0][:3], _aggregate_to_sql(x))).\
+                            filter(lambda x: x[1]).\
                             reduceByKey(lambda x, y: x + y).\
                             map(lambda x: _upsert_submission_date_aggregates(x[0], x[1], connection_string, dry_run=dry_run)).\
                             count()
@@ -111,6 +113,9 @@ def _aggregate_to_sql(aggregate):
         if not set(metric).issubset(_metric_printable):
             continue  # Ignore metrics with non printable characters...
 
+        if u'\x00' in label:
+            continue # Ignore labels with null character
+
         try:
             # Make sure values fit within a pgsql bigint
             # TODO: we should probably log this event
@@ -119,7 +124,8 @@ def _aggregate_to_sql(aggregate):
 
             histogram = _get_complete_histogram(channel, metric, payload["histogram"]) + [payload["sum"], payload["count"]]
             histogram = [str(long(x)) for x in histogram]
-        except KeyError:
+        except KeyError as e:
+            # Should eventually log errors
             continue
 
         dimensions["metric"] = metric
@@ -133,7 +139,6 @@ def _aggregate_to_sql(aggregate):
         json_dimensions = json_dimensions.replace("\\", "\\\\")
 
         result.write("{}\t{}\n".format(json_dimensions, "{" + ",".join(histogram) + "}"))
-
     return result.getvalue()
 
 
