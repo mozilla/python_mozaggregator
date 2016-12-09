@@ -149,6 +149,19 @@ def test_submission_dates_metrics():
                 test_keyed_histogram("submission_date", channel, version, template_submission_date, metric, histograms, expected_count)
 
 
+def test_null_label_character_submit():
+    metric_info = ("SIMPLE_MEASURES_NULL_METRIC_LABEL", u"\u0001\u0000\u0000\u0000\u7000\ub82c", False)
+    payload = {"sum": 4, "count": 2, "histogram": {2: 2}}
+    key = ('20161111', 'nightly', '52', '20161111', 'Firefox', 'arch', 'linux', '42', 'false')
+    aggregate = (key, {metric_info: payload})
+
+    aggregates = [sc.parallelize([aggregate]), sc.parallelize([aggregate])]
+    build_id_count, submission_date_count = submit_aggregates(aggregates)
+
+    assert build_id_count == 0, "Build id count should be 0, was {}".format(build_id_count)
+    assert submission_date_count == 0, "submission date count should be 0, was {}".format(build_id_count)
+
+
 @nottest
 def test_histogram(prefix, channel, version, dates, metric, value, expected_count):
     if metric.endswith("CONTENT_DOCUMENTS_DESTROYED"):  # Ignore USE_COUNTER2_ support histograms
