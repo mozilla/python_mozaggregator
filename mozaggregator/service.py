@@ -1,5 +1,6 @@
 import ujson as json
 import config
+import logging
 
 from flask import Flask, Response, request, abort
 from flask.ext.cors import CORS
@@ -13,6 +14,8 @@ from psycogreen.gevent import patch_psycopg
 from psycopg2.pool import SimpleConnectionPool
 from aggregator import simple_measures_labels, count_histogram_labels
 from db import get_db_connection_string, histogram_revision_map
+from logging.handlers import SysLogHandler
+
 
 pool = None
 app = Flask(__name__)
@@ -25,6 +28,16 @@ sslify = SSLify(app, skips=['status'])
 patch_all()
 patch_psycopg()
 cache.clear()
+
+### Papertrail Logging Config ###
+logger = logging.getLogger('RequestLogger')
+logger.setLevel(logging.INFO)
+
+syslog = SysLogHandler(address=('logs5.papertrailapp.com', 47698))
+formatter = logging.Formatter('%(asctime)s -- %(message)s')
+
+syslog.setFormatter(formatter)
+logger.addHandler(syslog)
 
 
 def cache_request(f):
@@ -59,6 +72,20 @@ def execute_query(query, params=tuple()):
         abort(404)
     finally:
         pool.putconn(db)
+
+
+@app.before_request
+def log_request():
+    """Log format: Referrer URL, Referrer, IP Address, URL
+    """
+    ip_addr = request.access_route[0] or request.remote_addr 
+    data  = (request.values.get('url', ''),
+            request.values.get('Referer', ''),
+            ip_addr,
+            request.url)
+
+    if ip_addr != '127.0.0.1':
+        logger.info(','.join([d.replace(',', '\,') for d in data]))
 
 
 @app.route('/status')
