@@ -12,7 +12,9 @@ from functools import wraps
 from gevent.monkey import patch_all
 from psycogreen.gevent import patch_psycopg
 from psycopg2.pool import SimpleConnectionPool
-from aggregator import simple_measures_labels, count_histogram_labels
+from aggregator import simple_measures_labels, count_histogram_labels, numeric_scalars_labels, \
+                        simple_measures_prefix, count_histogram_prefix, numeric_scalars_prefix, \
+                        scalar_measure_map
 from db import get_db_connection_string, histogram_revision_map
 from logging.handlers import SysLogHandler
 
@@ -166,10 +168,12 @@ def get_dates_metrics(prefix, channel):
         abort(404)
 
     # Get bucket labels
-    if metric.startswith("SIMPLE_MEASURES_"):
-        labels = simple_measures_labels
-        kind = "exponential"
-        description = ""
+    for _prefix, _labels in scalar_measure_map.iteritems():
+        if metric.startswith(_prefix) and _prefix != count_histogram_prefix:
+            labels = _labels
+            kind = "exponential"
+            description = ""
+            break
     else:
         revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
         try:
@@ -183,7 +187,7 @@ def get_dates_metrics(prefix, channel):
 
         if kind == "count":
             labels = count_histogram_labels
-            dimensions["metric"] = "[[COUNT]]_{}".format(metric)
+            dimensions["metric"] = "{}_{}".format(count_histogram_prefix, metric)
         elif kind == "flag":
             labels = [0, 1]
         else:
