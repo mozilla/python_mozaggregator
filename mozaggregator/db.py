@@ -17,7 +17,8 @@ import config
 from moztelemetry.spark import Histogram
 from boto.s3.connection import S3Connection
 from cStringIO import StringIO
-from mozaggregator.aggregator import simple_measures_labels, count_histogram_labels
+from mozaggregator.aggregator import simple_measures_labels, count_histogram_labels, numeric_scalars_labels, \
+                                    simple_measures_prefix, count_histogram_prefix, numeric_scalars_prefix
 
 # Use latest revision, we don't really care about histograms that have
 # been removed. This only works though if histogram definitions are
@@ -27,7 +28,11 @@ histogram_revision_map = {"nightly": "https://hg.mozilla.org/mozilla-central/rev
                           "beta": "https://hg.mozilla.org/releases/mozilla-beta/rev/tip",
                           "release": "https://hg.mozilla.org/releases/mozilla-release/rev/tip"}
 
-_metric_printable = set(string.ascii_uppercase + string.ascii_lowercase + string.digits + "_-[]")
+histogram_labels_map = {simple_measures_prefix: simple_measures_labels,
+                        count_histogram_prefix: count_histogram_labels,
+                        numeric_scalars_prefix: numeric_scalars_labels}
+
+_metric_printable = set(string.ascii_uppercase + string.ascii_lowercase + string.digits + "_-[].")
 
 def get_db_connection_string():
     if os.getenv("DB_TEST_URL"):
@@ -87,10 +92,10 @@ def _preparedb():
 def _get_complete_histogram(channel, metric, values):
     revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
 
-    if metric.startswith("SIMPLE_MEASURES"):
-        histogram = pd.Series({int(k): v for k, v in values.iteritems()}, index=simple_measures_labels).fillna(0).values
-    elif metric.startswith("[[COUNT]]_"):  # Count histogram
-        histogram = pd.Series({int(k): v for k, v in values.iteritems()}, index=count_histogram_labels).fillna(0).values
+    for prefix, labels in histogram_labels_map.iteritems():
+        if metric.startswith(prefix):
+            histogram = pd.Series({int(k): v for k, v in values.iteritems()}, index=labels).fillna(0).values
+            break
     else:
         histogram = Histogram(metric, {"values": values}, revision=revision).get_value(autocast=False).values
 

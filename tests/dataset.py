@@ -9,6 +9,7 @@ assert(NUM_AGGREGATED_CHILD_PINGS <= NUM_PINGS_PER_DIMENSIONS)
 SCALAR_VALUE = 42
 SIMPLE_SCALAR_BUCKET = 35
 COUNT_SCALAR_BUCKET = 40
+NUMERIC_SCALAR_BUCKET = 40
 
 ping_dimensions = {"submission_date": [u"20150601", u"20150603"],
                    "channel": [u"nightly", u"aurora"],
@@ -108,6 +109,10 @@ ignored_keyed_histograms_template = {u'MESSAGE_MANAGER_MESSAGE_SIZE':
 
 simple_measurements_template = {"uptime": SCALAR_VALUE, "addonManager": {u'XPIDB_parseDB_MS': SCALAR_VALUE}}
 
+scalars_template = {
+    "browser.engagement.total_uri_count": SCALAR_VALUE, 
+    "browser.engagement.tab_open_event_count": SCALAR_VALUE
+}
 
 def generate_pings():
     for dimensions in [dict(x) for x in product(*[zip(repeat(k), v) for k, v in ping_dimensions.iteritems()])]:
@@ -127,23 +132,29 @@ def generate_payload(dimensions, aggregated_child_histograms):
     child_payloads = [{"simpleMeasurements": simple_measurements_template}
                       for i in range(NUM_CHILDREN_PER_PING)]
 
+    processes_payload = {
+        u"parent": {
+            u"scalars": scalars_template
+        }
+    }
+
+
+    if aggregated_child_histograms:
+        processes_payload[u"content"] = {
+            u"histograms": histograms_template,
+            u"keyedHistograms": keyed_histograms_template,
+        }
+    else:
+        for i in range(NUM_CHILDREN_PER_PING):
+            child_payloads[i][u"histograms"] = histograms_template
+            child_payloads[i][u"keyedHistograms"] = keyed_histograms_template
+
     payload = {u"simpleMeasurements": simple_measurements_template,
                u"histograms": histograms_template,
                u"keyedHistograms": dict(keyed_histograms_template.items() +
                                         ignored_keyed_histograms_template.items()),
-               u"childPayloads": child_payloads}
-
-    if aggregated_child_histograms:
-        payload[u"processes"] = {
-            u"content": {
-                u"histograms": histograms_template,
-                u"keyedHistograms": keyed_histograms_template,
-            }
-        }
-    else:
-        for i in range(NUM_CHILDREN_PER_PING):
-            payload[u"childPayloads"][i][u"histograms"] = histograms_template
-            payload[u"childPayloads"][i][u"keyedHistograms"] = keyed_histograms_template
+               u"childPayloads": child_payloads,
+               u"processes": processes_payload}
 
     environment = {u"system": {u"os": {u"name": dimensions["os"],
                                        u"version": dimensions["os_version"]}},

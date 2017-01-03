@@ -3,7 +3,7 @@ import logging
 import requests
 import pandas as pd
 
-from mozaggregator.aggregator import _aggregate_metrics, count_histogram_labels, simple_measures_labels
+from mozaggregator.aggregator import _aggregate_metrics, count_histogram_labels, simple_measures_labels, numeric_scalars_labels, simple_measures_prefix, numeric_scalars_prefix
 from mozaggregator.db import _create_connection, submit_aggregates
 from dataset import *
 from moztelemetry.histogram import Histogram
@@ -116,8 +116,15 @@ def test_build_id_metrics():
                     if not isinstance(value, int):
                         continue
 
-                    metric = "SIMPLE_MEASURES_{}".format(simple_measure.upper())
+                    metric = "{}_{}".format(simple_measures_prefix, simple_measure.upper())
                     test_simple_measure("build_id", channel, version, template_build_id, metric, value, expected_count)
+
+                for scalar, value in scalars_template.iteritems():
+                    if not isinstance(value, int):
+                        continue
+
+                    metric = '{}_{}'.format(numeric_scalars_prefix, scalar.upper())
+                    test_numeric_scalar("build_id", channel, version, template_build_id, metric, value, expected_count)
 
                 for metric, histograms in keyed_histograms_template.iteritems():
                     test_keyed_histogram("build_id", channel, version, template_build_id, metric, histograms, expected_count)
@@ -142,8 +149,15 @@ def test_submission_dates_metrics():
                 if not isinstance(value, int):
                     continue
 
-                metric = "SIMPLE_MEASURES_{}".format(simple_measure.upper())
+                metric = "{}_{}".format(simple_measures_prefix, simple_measure.upper())
                 test_simple_measure("submission_date", channel, version, template_submission_date, metric, value, expected_count)
+
+            for scalar, value in scalars_template.iteritems():
+                if not isinstance(value, int):
+                    continue
+
+                metric = '{}_{}'.format(numeric_scalars_prefix, scalar.upper())
+                test_numeric_scalar("submission_date", channel, version, template_submission_date, metric, value, expected_count)
 
             for metric, histograms in keyed_histograms_template.iteritems():
                 test_keyed_histogram("submission_date", channel, version, template_submission_date, metric, histograms, expected_count)
@@ -210,17 +224,26 @@ def test_histogram(prefix, channel, version, dates, metric, value, expected_coun
 
 @nottest
 def test_simple_measure(prefix, channel, version, dates, metric, value, expected_count):
-    reply = requests.get("{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}".format(SERVICE_URI, prefix, channel, version, ",".join(dates), metric)).json()
+    _test_numeric_scalar(prefix, channel, version, dates, metric, value, expected_count, SIMPLE_SCALAR_BUCKET, simple_measures_labels, True)
+
+@nottest
+def test_numeric_scalar(prefix, channel, version, dates, metric, value, expected_count):
+    _test_numeric_scalar(prefix, channel, version, dates, metric, value, expected_count, NUMERIC_SCALAR_BUCKET, numeric_scalars_labels, False)
+
+@nottest
+def _test_numeric_scalar(prefix, channel, version, dates, metric, value, expected_count, bucket, labels, is_child):
+    endpoint = "{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}".format(SERVICE_URI, prefix, channel, version, ",".join(dates), metric)
+    reply = requests.get(endpoint).json()
     assert(len(reply["data"]) == len(dates))
 
-    bucket_index = simple_measures_labels.index(SIMPLE_SCALAR_BUCKET)
+    bucket_index = labels.index(bucket)
 
     for res in reply["data"]:
-        assert(res["count"] == expected_count*(NUM_CHILDREN_PER_PING + 1))
+        assert(res["count"] == expected_count * (1 if not is_child else NUM_CHILDREN_PER_PING + 1))
 
         current = pd.Series(res["histogram"], index=map(int, reply["buckets"]))
-        expected = pd.Series(index=simple_measures_labels, data=0)
-        expected[SIMPLE_SCALAR_BUCKET] = res["count"]
+        expected = pd.Series(index=labels, data=0)
+        expected[bucket] = res["count"]
 
         assert(res["histogram"][bucket_index] == res["count"])
         assert(res["sum"] == value*res["count"])
