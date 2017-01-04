@@ -114,6 +114,17 @@ scalars_template = {
     "browser.engagement.tab_open_event_count": SCALAR_VALUE
 }
 
+keyed_scalars_template = { 
+    "browser.engagement.navigation.searchbar": {
+        "search_enter": SCALAR_VALUE
+    },
+    "test.keyed.scalar": {
+        "first": SCALAR_VALUE,
+        "second": SCALAR_VALUE
+    }
+}
+
+
 def generate_pings():
     for dimensions in [dict(x) for x in product(*[zip(repeat(k), v) for k, v in ping_dimensions.iteritems()])]:
         for i in range(NUM_PINGS_PER_DIMENSIONS):
@@ -134,7 +145,8 @@ def generate_payload(dimensions, aggregated_child_histograms):
 
     processes_payload = {
         u"parent": {
-            u"scalars": scalars_template
+            u"scalars": scalars_template,
+            u"keyedScalars": keyed_scalars_template
         }
     }
 

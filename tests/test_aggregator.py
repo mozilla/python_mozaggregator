@@ -85,22 +85,31 @@ def test_simple_measurements():
 
 def test_numerical_scalars():
     metric_count = defaultdict(int)
+    scalar_metrics, keyed_scalar_metrics = set([k.upper() for k in scalars_template.keys()]), set([k.upper() for k in keyed_scalars_template.keys()])
 
     for aggregate in build_id_aggregates:
         for key, value in aggregate[1].iteritems():
             metric, label, child = key
 
             if metric.startswith(numeric_scalars_prefix):
+                orig_name = metric.replace(numeric_scalars_prefix + '_', "")
+                assert(orig_name in scalar_metrics | keyed_scalar_metrics)
+
+                if orig_name in scalar_metrics:
+                    assert(label == "")
+                else:
+                    assert(label != "")
+                    metric = "{}_{}".format(metric, label) 
+
                 metric_count[metric] += 1
-                assert(label == "")
                 assert(value["count"] == expected_count(child))
-                assert(value["sum"] == value["count"]*SCALAR_VALUE)
+                assert(value["sum"] == value["count"] * SCALAR_VALUE)
                 assert(value["histogram"][str(NUMERIC_SCALAR_BUCKET)] == value["count"])
 
-    assert len(metric_count) == len(scalars_template)
+    keyed_scalars_template_len = len([key for metric, dic in keyed_scalars_template.iteritems() for key in dic])
+    assert len(metric_count) == len(scalars_template) + keyed_scalars_template_len
     for v in metric_count.values():
         assert v == len(build_id_aggregates)
-
 
 def test_classic_histograms():
     metric_count = defaultdict(int)

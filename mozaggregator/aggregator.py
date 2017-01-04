@@ -193,7 +193,6 @@ def _extract_main_histograms(state, histograms, is_child):
 
         _extract_histogram(state, histogram, histogram_name, u"", is_child)
 
-
 def _extract_keyed_histograms(state, histogram_name, histograms, is_child):
     if not isinstance(histograms, dict):
         return
@@ -201,24 +200,31 @@ def _extract_keyed_histograms(state, histogram_name, histograms, is_child):
     for key, histogram in histograms.iteritems():
         _extract_histogram(state, histogram, histogram_name, key, is_child)
 
-
 def _extract_simple_measures(state, simple, is_child=False):
-    return _extract_scalar_values(state, simple, simple_measures_prefix, simple_measures_labels, is_child)
+    if not isinstance(simple, dict):
+        return
+
+    for name, value in simple.iteritems():
+        if isinstance(value, dict):
+            for sub_name, sub_value in value.iteritems():
+                if isinstance(sub_value, (int, float, long)):
+                    _extract_scalar_value(state, "_".join((simple_measures_prefix, name.upper(), sub_name.upper())), u"", sub_value, simple_measures_labels, is_child)
+        elif isinstance(value, (int, float, long)):
+            _extract_scalar_value(state, u"_".join((simple_measures_prefix, name.upper())), u"", value, simple_measures_labels, is_child)
 
 def _extract_numeric_scalars(state, scalar_dict, is_child=False):
-    return _extract_scalar_values(state, scalar_dict, numeric_scalars_prefix, numeric_scalars_labels, is_child)
-
-def _extract_scalar_values(state, scalar_dict, name_prefix, labels, is_child=False):
     if not isinstance(scalar_dict, dict):
         return
 
     for name, value in scalar_dict.iteritems():
+        scalar_name = u"_".join((numeric_scalars_prefix, name.upper()))
         if isinstance(value, dict):
             for sub_name, sub_value in value.iteritems():
                 if isinstance(sub_value, (int, float, long)):
-                    _extract_scalar_value(state, "_".join((name_prefix, name.upper(), sub_name.upper())), u"", sub_value, labels, is_child)
+                    _extract_scalar_value(state, scalar_name, sub_name.upper(), sub_value, numeric_scalars_labels, is_child)
         elif isinstance(value, (int, float, long)):
-            _extract_scalar_value(state, u"_".join((name_prefix, name.upper())), u"", value, labels, is_child)
+            _extract_scalar_value(state, scalar_name, u"", value, numeric_scalars_labels, is_child)
+
 
 def _extract_scalar_value(state, name, label, value, bucket_labels, is_child=False):
     if value < 0:  # Afaik we are collecting only positive values
@@ -252,6 +258,7 @@ def _aggregate_ping(state, ping):
         return
 
     _extract_numeric_scalars(state, ping.get("payload", {}).get("processes", {}).get("parent", {}).get("scalars", {}))
+    _extract_numeric_scalars(state, ping.get("payload", {}).get("processes", {}).get("parent", {}).get("keyedScalars", {}))
     _extract_histograms(state, ping.get("payload", {}))
     _extract_simple_measures(state, ping.get("payload", {}).get("simpleMeasurements", {}))
     _extract_child_payloads(state, ping.get("payload", {}).get("childPayloads", {}))
