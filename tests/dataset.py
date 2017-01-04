@@ -1,6 +1,6 @@
 import uuid
 
-from itertools import product, repeat
+from itertools import product, repeat, chain
 
 NUM_CHILDREN_PER_PING = 3
 NUM_AGGREGATED_CHILD_PINGS = 1
@@ -114,11 +114,23 @@ scalars_template = {
     "browser.engagement.tab_open_event_count": SCALAR_VALUE
 }
 
-keyed_scalars_template = {
-    "browser.engagement.navigation.searchbar": {
+ignored_scalars_template = {
+    "browser.engagement.navigation": SCALAR_VALUE,
+    "browser.engagement.navigation.test": SCALAR_VALUE 
+}
+
+keyed_scalars_template = { 
+    "browser.engagement.searchbar": {
         "search_enter": SCALAR_VALUE
     },
     "test.keyed.scalar": {
+        "first": SCALAR_VALUE,
+        "second": SCALAR_VALUE
+    }
+}
+
+ignored_keyed_scalars_template = {
+    "browser.engagement.navigation.keyed": {
         "first": SCALAR_VALUE,
         "second": SCALAR_VALUE
     }
@@ -145,8 +157,8 @@ def generate_payload(dimensions, aggregated_child_histograms):
 
     processes_payload = {
         u"parent": {
-            u"scalars": scalars_template,
-            u"keyedScalars": keyed_scalars_template
+            u"scalars": dict(chain(scalars_template.iteritems(), ignored_scalars_template.iteritems())),
+            u"keyedScalars": dict(chain(keyed_scalars_template.iteritems(), ignored_keyed_scalars_template.iteritems()))        
         }
     }
 
@@ -154,7 +166,7 @@ def generate_payload(dimensions, aggregated_child_histograms):
     if aggregated_child_histograms:
         processes_payload[u"content"] = {
             u"histograms": histograms_template,
-            u"keyedHistograms": keyed_histograms_template,
+            u"keyedHistograms": keyed_histograms_template 
         }
     else:
         for i in range(NUM_CHILDREN_PER_PING):
