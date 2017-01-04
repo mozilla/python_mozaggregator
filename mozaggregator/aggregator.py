@@ -226,6 +226,9 @@ def _extract_numeric_scalars(state, scalar_dict, is_child=False):
         if not isinstance(value, (int, float, long)):
             continue
 
+        if name.startswith("browser.engagement.navigation"):
+            continue
+
         scalar_name = u"_".join((numeric_scalars_prefix, name.upper()))
         _extract_scalar_value(state, scalar_name, u"", value, numeric_scalars_labels, is_child)
 
@@ -237,6 +240,9 @@ def _extract_keyed_numeric_scalars(state, scalar_dict, is_child=False):
     for name, value in scalar_dict.iteritems():
         if not isinstance(value, dict):
            continue
+
+        if name.startswith("browser.engagement.navigation"):
+            continue
 
         scalar_name = u"_".join((numeric_scalars_prefix, name.upper()))
         for sub_name, sub_value in value.iteritems():
