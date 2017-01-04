@@ -217,6 +217,9 @@ def _extract_numeric_scalars(state, scalar_dict, is_child=False):
         return
 
     for name, value in scalar_dict.iteritems():
+        if name.startswith("browser.engagement.navigation"):
+            continue
+
         scalar_name = u"_".join((numeric_scalars_prefix, name.upper()))
         if isinstance(value, dict):
             for sub_name, sub_value in value.iteritems():
