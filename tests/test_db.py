@@ -126,6 +126,10 @@ def test_build_id_metrics():
                     metric = '{}_{}'.format(numeric_scalars_prefix, scalar.upper())
                     test_numeric_scalar("build_id", channel, version, template_build_id, metric, value, expected_count)
 
+                for metric, _dict in keyed_scalars_template.iteritems():
+                    metric_name = '{}_{}'.format(numeric_scalars_prefix, metric.upper())
+                    test_keyed_numeric_scalar("build_id", channel, version, template_build_id, metric_name, _dict, expected_count)
+
                 for metric, histograms in keyed_histograms_template.iteritems():
                     test_keyed_histogram("build_id", channel, version, template_build_id, metric, histograms, expected_count)
 
@@ -158,6 +162,10 @@ def test_submission_dates_metrics():
 
                 metric = '{}_{}'.format(numeric_scalars_prefix, scalar.upper())
                 test_numeric_scalar("submission_date", channel, version, template_submission_date, metric, value, expected_count)
+
+            for metric, _dict in keyed_scalars_template.iteritems():
+                metric_name = '{}_{}'.format(numeric_scalars_prefix, metric.upper())
+                test_keyed_numeric_scalar("submission_date", channel, version, template_submission_date, metric_name, _dict, expected_count)
 
             for metric, histograms in keyed_histograms_template.iteritems():
                 test_keyed_histogram("submission_date", channel, version, template_submission_date, metric, histograms, expected_count)
@@ -250,6 +258,25 @@ def _test_numeric_scalar(prefix, channel, version, dates, metric, value, expecte
         assert(res["sum"] == value*res["count"])
         assert((current == expected).all())
 
+
+@nottest
+def test_keyed_numeric_scalar(prefix, channel, version, dates, metric, histograms, expected_count):
+    reply = requests.get("{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}".format(SERVICE_URI, prefix, channel, version, ",".join(dates), metric)).json()
+    assert(len(reply["data"]) == len(histograms) * len(dates))
+
+    for label, value in histograms.iteritems():
+        reply = requests.get("{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}&label={}".format(SERVICE_URI, prefix, channel, version, ",".join(dates), metric, label.upper())).json()
+
+        assert(len(reply["data"]) == len(dates))
+        for res in reply["data"]:
+            assert(res["count"] == expected_count)
+
+            current = pd.Series(res["histogram"], index=map(int, reply["buckets"]))
+            expected = pd.Series(index=numeric_scalars_labels, data=0)
+            expected[NUMERIC_SCALAR_BUCKET] = expected_count
+
+            assert((current == expected).all())
+            assert(res["sum"] == SCALAR_VALUE * res["count"])
 
 @nottest
 def test_keyed_histogram(prefix, channel, version, dates, metric, histograms, expected_count):
