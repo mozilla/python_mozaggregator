@@ -119,8 +119,8 @@ def get_filter_options(channel, version, filters, filter):
         pretty_opts = []
         for option in options:
             option = option[0]
-            if filter == "metric" and option.startswith("[[COUNT]]_"):
-                pretty_opts.append(option[10:])
+            if filter == "metric" and option.startswith(count_histogram_prefix):
+                pretty_opts.append(option[len(count_histogram_prefix) + 1:])
             else:
                 pretty_opts.append(option)
 
