@@ -1,6 +1,8 @@
 import ujson as json
 import config
 import logging
+import requests
+import yaml
 
 from flask import Flask, Response, request, abort
 from flask.ext.cors import CORS
@@ -15,9 +17,11 @@ from psycopg2.pool import SimpleConnectionPool
 from aggregator import simple_measures_labels, count_histogram_labels, numeric_scalars_labels, \
                         simple_measures_prefix, count_histogram_prefix, numeric_scalars_prefix, \
                         scalar_measure_map
-from db import get_db_connection_string, histogram_revision_map
+from db import get_db_connection_string, histogram_revision_map, scalar_revision_map
+from expiringdict import ExpiringDict
 from logging.handlers import SysLogHandler
 
+definition_cache = ExpiringDict(max_len=2**10, max_age_seconds=3600)
 
 pool = None
 app = Flask(__name__)
@@ -149,6 +153,41 @@ def get_filters_options():
 
     return Response(json.dumps(filters), mimetype="application/json")
 
+def _yaml_unnest(defs, prefix=''):
+    """The yaml definition file is nested - this functions unnests it.
+    # example
+    >>> test = {'browser.nav': {'clicks': {'description': 'a description', 'expires': 'never'}}}
+    >>> yaml_unnest(test)
+    # prints {'browser.nav.clicks': {'description': 'a description', 'expires': 'never'}}
+    """
+    stop = lambda x: type(x) is not dict or any((key in x for key in ['description', 'expires', 'kind']))
+    new_defs, found = {}, list(defs.iteritems())
+
+    while found:
+        key, value = found.pop()
+        if stop(value):
+            new_defs[key] = value
+        else:
+            found += [('{}.{}'.format(key, k), v) for k, v in value.iteritems()]
+
+    return new_defs
+
+def _get_description(channel, prefix, metric):
+    if prefix != numeric_scalars_prefix:
+        return ''
+
+    metric = metric.replace(prefix + '_', '').lower()
+    revision = scalar_revision_map.get(channel, 'nightly')
+
+    if revision not in definition_cache:
+        content = requests.get(revision).content
+        definitions = _yaml_unnest(yaml.load(content))
+        definition_cache[revision] = json.dumps(definitions)
+    else:
+        definitions = json.loads(definition_cache[revision])
+
+    return definitions.get(metric, {}).get('description', '').strip()
+
 
 @app.route('/aggregates_by/<prefix>/channels/<channel>/', methods=["GET"])
 @cache_request
@@ -172,7 +211,7 @@ def get_dates_metrics(prefix, channel):
         if metric.startswith(_prefix) and _prefix != count_histogram_prefix:
             labels = _labels
             kind = "exponential"
-            description = ""
+            description = _get_description(channel, _prefix, metric) 
             break
     else:
         revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
