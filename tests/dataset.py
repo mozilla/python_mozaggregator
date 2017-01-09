@@ -120,17 +120,17 @@ ignored_scalars_template = {
 }
 
 keyed_scalars_template = { 
-    "browser.engagement.searchbar": {
+    "telemetry.test.keyed_release_optout": {
         "search_enter": SCALAR_VALUE
     },
-    "test.keyed.scalar": {
+    "telemetry.test.keyed_unsigned_int": {
         "first": SCALAR_VALUE,
         "second": SCALAR_VALUE
     }
 }
 
 ignored_keyed_scalars_template = {
-    "browser.engagement.navigation.keyed": {
+    "browser.engagement.navigation.searchbar": {
         "first": SCALAR_VALUE,
         "second": SCALAR_VALUE
     }

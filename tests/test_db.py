@@ -232,17 +232,19 @@ def test_histogram(prefix, channel, version, dates, metric, value, expected_coun
 
 @nottest
 def test_simple_measure(prefix, channel, version, dates, metric, value, expected_count):
-    _test_numeric_scalar(prefix, channel, version, dates, metric, value, expected_count, SIMPLE_SCALAR_BUCKET, simple_measures_labels, True)
+    _test_numeric_scalar(prefix, channel, version, dates, metric, value, expected_count, SIMPLE_SCALAR_BUCKET, simple_measures_labels, True, False)
 
 @nottest
 def test_numeric_scalar(prefix, channel, version, dates, metric, value, expected_count):
-    _test_numeric_scalar(prefix, channel, version, dates, metric, value, expected_count, NUMERIC_SCALAR_BUCKET, numeric_scalars_labels, False)
+    _test_numeric_scalar(prefix, channel, version, dates, metric, value, expected_count, NUMERIC_SCALAR_BUCKET, numeric_scalars_labels, False, True)
 
 @nottest
-def _test_numeric_scalar(prefix, channel, version, dates, metric, value, expected_count, bucket, labels, is_child):
+def _test_numeric_scalar(prefix, channel, version, dates, metric, value, expected_count, bucket, labels, is_child, has_def):
     endpoint = "{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}".format(SERVICE_URI, prefix, channel, version, ",".join(dates), metric)
     reply = requests.get(endpoint).json()
     assert(len(reply["data"]) == len(dates))
+
+    assert(not has_def or reply["description"] != "")
 
     bucket_index = labels.index(bucket)
 
@@ -267,6 +269,7 @@ def test_keyed_numeric_scalar(prefix, channel, version, dates, metric, histogram
     for label, value in histograms.iteritems():
         reply = requests.get("{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}&label={}".format(SERVICE_URI, prefix, channel, version, ",".join(dates), metric, label.upper())).json()
 
+        assert(reply["description"] != "")
         assert(len(reply["data"]) == len(dates))
         for res in reply["data"]:
             assert(res["count"] == expected_count)
