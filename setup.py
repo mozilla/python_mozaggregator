@@ -32,6 +32,9 @@ setup(name='python_mozaggregator',
         'boto',
         'ujson',
         'nose',
-        'pandas>=0.15.2'
+        'pandas>=0.15.2',
+        'expiringdict',
+        'requests',
+        'pytest'
     ]
 )

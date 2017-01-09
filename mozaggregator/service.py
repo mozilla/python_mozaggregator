@@ -16,8 +16,8 @@ from aggregator import simple_measures_labels, count_histogram_labels, numeric_s
                         simple_measures_prefix, count_histogram_prefix, numeric_scalars_prefix, \
                         scalar_measure_map
 from db import get_db_connection_string, histogram_revision_map
+from scalar import Scalar
 from logging.handlers import SysLogHandler
-
 
 pool = None
 app = Flask(__name__)
@@ -150,6 +150,14 @@ def get_filters_options():
     return Response(json.dumps(filters), mimetype="application/json")
 
 
+def _get_description(channel, prefix, metric):
+    if prefix != numeric_scalars_prefix:
+        return ''
+
+    metric = metric.replace(prefix + '_', '').lower()
+    return Scalar(metric, 0, channel=channel).get_definition().get('description', '')
+
+
 @app.route('/aggregates_by/<prefix>/channels/<channel>/', methods=["GET"])
 @cache_request
 def get_dates_metrics(prefix, channel):
@@ -172,7 +180,7 @@ def get_dates_metrics(prefix, channel):
         if metric.startswith(_prefix) and _prefix != count_histogram_prefix:
             labels = _labels
             kind = "exponential"
-            description = ""
+            description = _get_description(channel, _prefix, metric) 
             break
     else:
         revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
