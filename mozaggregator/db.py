@@ -17,9 +17,9 @@ import config
 from moztelemetry.spark import Histogram
 from boto.s3.connection import S3Connection
 from cStringIO import StringIO
-from mozaggregator.aggregator import simple_measures_labels, count_histogram_labels, numeric_scalars_labels, \
-                                    simple_measures_prefix, count_histogram_prefix, numeric_scalars_prefix, \
-                                    scalar_measure_map
+from mozaggregator.aggregator import SIMPLE_MEASURES_LABELS, COUNT_HISTOGRAM_LABELS, NUMERIC_SCALARS_LABELS, \
+                                    SIMPLE_MEASURES_PREFIX, COUNT_HISTOGRAM_PREFIX, NUMERIC_SCALARS_PREFIX, \
+                                    SCALAR_MEASURE_MAP
 
 # Use latest revision, we don't really care about histograms that have
 # been removed. This only works though if histogram definitions are
@@ -89,7 +89,7 @@ def _preparedb():
 def _get_complete_histogram(channel, metric, values):
     revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
 
-    for prefix, labels in scalar_measure_map.iteritems():
+    for prefix, labels in SCALAR_MEASURE_MAP.iteritems():
         if metric.startswith(prefix):
             histogram = pd.Series({int(k): v for k, v in values.iteritems()}, index=labels).fillna(0).values
             break
