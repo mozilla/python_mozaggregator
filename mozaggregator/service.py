@@ -12,9 +12,9 @@ from functools import wraps
 from gevent.monkey import patch_all
 from psycogreen.gevent import patch_psycopg
 from psycopg2.pool import SimpleConnectionPool
-from aggregator import simple_measures_labels, count_histogram_labels, numeric_scalars_labels, \
-                        simple_measures_prefix, count_histogram_prefix, numeric_scalars_prefix, \
-                        scalar_measure_map
+from aggregator import SIMPLE_MEASURES_LABELS, COUNT_HISTOGRAM_LABELS, NUMERIC_SCALARS_LABELS, \
+                        SIMPLE_MEASURES_PREFIX, COUNT_HISTOGRAM_PREFIX, NUMERIC_SCALARS_PREFIX, \
+                        SCALAR_MEASURE_MAP
 from db import get_db_connection_string, histogram_revision_map
 from scalar import Scalar
 from logging.handlers import SysLogHandler
@@ -119,8 +119,8 @@ def get_filter_options(channel, version, filters, filter):
         pretty_opts = []
         for option in options:
             option = option[0]
-            if filter == "metric" and option.startswith(count_histogram_prefix):
-                pretty_opts.append(option[len(count_histogram_prefix) + 1:])
+            if filter == "metric" and option.startswith(COUNT_HISTOGRAM_PREFIX):
+                pretty_opts.append(option[len(COUNT_HISTOGRAM_PREFIX) + 1:])
             else:
                 pretty_opts.append(option)
 
@@ -151,7 +151,7 @@ def get_filters_options():
 
 
 def _get_description(channel, prefix, metric):
-    if prefix != numeric_scalars_prefix:
+    if prefix != NUMERIC_SCALARS_PREFIX:
         return ''
 
     metric = metric.replace(prefix + '_', '').lower()
@@ -176,8 +176,8 @@ def get_dates_metrics(prefix, channel):
         abort(404)
 
     # Get bucket labels
-    for _prefix, _labels in scalar_measure_map.iteritems():
-        if metric.startswith(_prefix) and _prefix != count_histogram_prefix:
+    for _prefix, _labels in SCALAR_MEASURE_MAP.iteritems():
+        if metric.startswith(_prefix) and _prefix != COUNT_HISTOGRAM_PREFIX:
             labels = _labels
             kind = "exponential"
             description = _get_description(channel, _prefix, metric) 
@@ -194,8 +194,8 @@ def get_dates_metrics(prefix, channel):
         description = definition.definition.description()
 
         if kind == "count":
-            labels = count_histogram_labels
-            dimensions["metric"] = "{}_{}".format(count_histogram_prefix, metric)
+            labels = COUNT_HISTOGRAM_LABELS
+            dimensions["metric"] = "{}_{}".format(COUNT_HISTOGRAM_PREFIX, metric)
         elif kind == "flag":
             labels = [0, 1]
         else:

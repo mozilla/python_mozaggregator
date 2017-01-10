@@ -2,7 +2,7 @@ import pyspark
 import logging
 import pandas as pd
 
-from mozaggregator.aggregator import _aggregate_metrics, simple_measures_prefix, numeric_scalars_prefix, count_histogram_prefix
+from mozaggregator.aggregator import _aggregate_metrics, SIMPLE_MEASURES_PREFIX, NUMERIC_SCALARS_PREFIX, COUNT_HISTOGRAM_PREFIX
 from collections import defaultdict
 from dataset import *
 
@@ -70,7 +70,7 @@ def test_simple_measurements():
         for key, value in aggregate[1].iteritems():
             metric, label, child = key
 
-            if metric.startswith(simple_measures_prefix):
+            if metric.startswith(SIMPLE_MEASURES_PREFIX):
                 metric_count[metric] += 1
                 assert(label == "")
                 # Simple measurements are still in childPayloads.
@@ -91,8 +91,8 @@ def test_numerical_scalars():
         for key, value in aggregate[1].iteritems():
             metric, label, child = key
 
-            if metric.startswith(numeric_scalars_prefix):
-                orig_name = metric.replace(numeric_scalars_prefix + '_', "")
+            if metric.startswith(NUMERIC_SCALARS_PREFIX):
+                orig_name = metric.replace(NUMERIC_SCALARS_PREFIX + '_', "")
                 assert(orig_name in scalar_metrics | keyed_scalar_metrics)
 
                 if orig_name in scalar_metrics:
@@ -135,7 +135,7 @@ def test_classic_histograms():
 
 def test_count_histograms():
     metric_count = defaultdict(int)
-    histograms = {"{}_{}".format(count_histogram_prefix, k): v for k, v in histograms_template.iteritems() if v["histogram_type"] == 4 and not k.endswith("CONTENT_DOCUMENTS_DESTROYED")}
+    histograms = {"{}_{}".format(COUNT_HISTOGRAM_PREFIX, k): v for k, v in histograms_template.iteritems() if v["histogram_type"] == 4 and not k.endswith("CONTENT_DOCUMENTS_DESTROYED")}
 
     for aggregate in build_id_aggregates:
         for key, value in aggregate[1].iteritems():
