@@ -12,18 +12,18 @@ from moztelemetry.histogram import cached_exponential_buckets
 from collections import defaultdict
 
 # Simple measurement, count histogram, and numeric scalars labels & prefixes
-simple_measures_labels = cached_exponential_buckets(1, 30000, 50)
-count_histogram_labels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 23, 25, 27, 29, 31, 34, 37, 40, 43, 46, 50, 54, 58, 63, 68, 74, 80, 86, 93, 101, 109, 118, 128, 138, 149, 161, 174, 188, 203, 219, 237, 256, 277, 299, 323, 349, 377, 408, 441, 477, 516, 558, 603, 652, 705, 762, 824, 891, 963, 1041, 1125, 1216, 1315, 1422, 1537, 1662, 1797, 1943, 2101, 2271, 2455, 2654, 2869, 3102, 3354, 3626, 3920, 4238, 4582, 4954, 5356, 5791, 6261, 6769, 7318, 7912, 8554, 9249, 10000]
-numeric_scalars_labels = count_histogram_labels
+SIMPLE_MEASURES_LABELS = cached_exponential_buckets(1, 30000, 50)
+COUNT_HISTOGRAM_LABELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 23, 25, 27, 29, 31, 34, 37, 40, 43, 46, 50, 54, 58, 63, 68, 74, 80, 86, 93, 101, 109, 118, 128, 138, 149, 161, 174, 188, 203, 219, 237, 256, 277, 299, 323, 349, 377, 408, 441, 477, 516, 558, 603, 652, 705, 762, 824, 891, 963, 1041, 1125, 1216, 1315, 1422, 1537, 1662, 1797, 1943, 2101, 2271, 2455, 2654, 2869, 3102, 3354, 3626, 3920, 4238, 4582, 4954, 5356, 5791, 6261, 6769, 7318, 7912, 8554, 9249, 10000]
+NUMERIC_SCALARS_LABELS = COUNT_HISTOGRAM_LABELS
 
-simple_measures_prefix = 'SIMPLE_MEASURES'
-count_histogram_prefix = '[[COUNT]]'
-numeric_scalars_prefix = 'SCALARS'
+SIMPLE_MEASURES_PREFIX = 'SIMPLE_MEASURES'
+COUNT_HISTOGRAM_PREFIX = '[[COUNT]]'
+NUMERIC_SCALARS_PREFIX = 'SCALARS'
 
-scalar_measure_map = {
-    simple_measures_prefix: simple_measures_labels,
-    count_histogram_prefix: count_histogram_labels,
-    numeric_scalars_prefix: numeric_scalars_labels
+SCALAR_MEASURE_MAP = {
+    SIMPLE_MEASURES_PREFIX: SIMPLE_MEASURES_LABELS,
+    COUNT_HISTOGRAM_PREFIX: COUNT_HISTOGRAM_LABELS,
+    NUMERIC_SCALARS_PREFIX: NUMERIC_SCALARS_LABELS
 }
 
 def aggregate_metrics(sc, channels, submission_date, fraction=1):
@@ -133,7 +133,7 @@ def _extract_histogram(state, histogram, histogram_name, label, is_child):
         return
 
     if histogram_type == 4:  # Count histogram
-        return _extract_scalar_value(state, u'_'.join((count_histogram_prefix, histogram_name)), label, sum, count_histogram_labels, is_child=is_child)
+        return _extract_scalar_value(state, u'_'.join((COUNT_HISTOGRAM_PREFIX, histogram_name)), label, sum, COUNT_HISTOGRAM_LABELS, is_child=is_child)
 
     # Note that some dimensions don't vary within a single submissions
     # (e.g. channel) while some do (e.g. process type).
@@ -214,9 +214,9 @@ def _extract_simple_measures(state, simple, is_child=False):
         if isinstance(value, dict):
             for sub_name, sub_value in value.iteritems():
                 if isinstance(sub_value, (int, float, long)):
-                    _extract_scalar_value(state, "_".join((simple_measures_prefix, name.upper(), sub_name.upper())), u"", sub_value, simple_measures_labels, is_child)
+                    _extract_scalar_value(state, "_".join((SIMPLE_MEASURES_PREFIX, name.upper(), sub_name.upper())), u"", sub_value, SIMPLE_MEASURES_LABELS, is_child)
         elif isinstance(value, (int, float, long)):
-            _extract_scalar_value(state, u"_".join((simple_measures_prefix, name.upper())), u"", value, simple_measures_labels, is_child)
+            _extract_scalar_value(state, u"_".join((SIMPLE_MEASURES_PREFIX, name.upper())), u"", value, SIMPLE_MEASURES_LABELS, is_child)
 
 def _extract_numeric_scalars(state, scalar_dict):
     if not isinstance(scalar_dict, dict):
@@ -229,8 +229,8 @@ def _extract_numeric_scalars(state, scalar_dict):
         if name.startswith("browser.engagement.navigation"):
             continue
 
-        scalar_name = u"_".join((numeric_scalars_prefix, name.upper()))
-        _extract_scalar_value(state, scalar_name, u"", value, numeric_scalars_labels, False)
+        scalar_name = u"_".join((NUMERIC_SCALARS_PREFIX, name.upper()))
+        _extract_scalar_value(state, scalar_name, u"", value, NUMERIC_SCALARS_LABELS, False)
 
 
 def _extract_keyed_numeric_scalars(state, scalar_dict):
@@ -244,12 +244,12 @@ def _extract_keyed_numeric_scalars(state, scalar_dict):
         if name.startswith("browser.engagement.navigation"):
             continue
 
-        scalar_name = u"_".join((numeric_scalars_prefix, name.upper()))
+        scalar_name = u"_".join((NUMERIC_SCALARS_PREFIX, name.upper()))
         for sub_name, sub_value in value.iteritems():
             if not isinstance(sub_value, (int, float, long)):
                 continue
 
-            _extract_scalar_value(state, scalar_name, sub_name.upper(), sub_value, numeric_scalars_labels, False)
+            _extract_scalar_value(state, scalar_name, sub_name.upper(), sub_value, NUMERIC_SCALARS_LABELS, False)
 
 
 def _extract_scalar_value(state, name, label, value, bucket_labels, is_child=False):
