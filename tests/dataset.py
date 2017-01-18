@@ -11,10 +11,10 @@ SIMPLE_SCALAR_BUCKET = 35
 COUNT_SCALAR_BUCKET = 40
 NUMERIC_SCALAR_BUCKET = 40
 
-ping_dimensions = {"submission_date": [u"20150601", u"20150603"],
+ping_dimensions = {"submission_date": [u"20170601", u"20170603"],
                    "channel": [u"nightly", u"aurora"],
                    "version": [u"40.0a1", u"41"],
-                   "build_id": [u"20150601000000", u"20150602000000"],
+                   "build_id": [u"20170201000000", u"20170202000000"],
                    "application": [u"Firefox", u"Fennec"],
                    "arch": [u"x86", u"x86-64"],
                    "os": [u"Linux", u"Windows_NT"],
