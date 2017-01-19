@@ -3,9 +3,10 @@ import uuid
 from itertools import product, repeat, chain
 
 NUM_CHILDREN_PER_PING = 3
-NUM_AGGREGATED_CHILD_PINGS = 1
-NUM_PINGS_PER_DIMENSIONS = 2
+NUM_AGGREGATED_CHILD_PINGS = 2
+NUM_PINGS_PER_DIMENSIONS = 3
 assert(NUM_AGGREGATED_CHILD_PINGS <= NUM_PINGS_PER_DIMENSIONS)
+NUM_PROCESS_TYPES = 3 # parent, content, gpu
 SCALAR_VALUE = 42
 SIMPLE_SCALAR_BUCKET = 35
 COUNT_SCALAR_BUCKET = 40
@@ -166,7 +167,11 @@ def generate_payload(dimensions, aggregated_child_histograms):
     if aggregated_child_histograms:
         processes_payload[u"content"] = {
             u"histograms": histograms_template,
-            u"keyedHistograms": keyed_histograms_template 
+            u"keyedHistograms": keyed_histograms_template
+        }
+        processes_payload[u"gpu"] = {
+            u"histograms": histograms_template,
+            u"keyedHistograms": keyed_histograms_template
         }
     else:
         for i in range(NUM_CHILDREN_PER_PING):
@@ -191,7 +196,12 @@ def generate_payload(dimensions, aggregated_child_histograms):
             u"payload": payload,
             u"environment": environment}
 
-def expected_count(is_child):
-    if not is_child:
+def expected_count(process_type):
+    if process_type == "parent":
         return NUM_PINGS_PER_DIMENSIONS
-    return (NUM_PINGS_PER_DIMENSIONS - NUM_AGGREGATED_CHILD_PINGS) * NUM_CHILDREN_PER_PING + NUM_AGGREGATED_CHILD_PINGS
+    elif process_type == "gpu":
+        return NUM_AGGREGATED_CHILD_PINGS
+    elif process_type == "content":
+        return (NUM_PINGS_PER_DIMENSIONS - NUM_AGGREGATED_CHILD_PINGS) * NUM_CHILDREN_PER_PING + NUM_AGGREGATED_CHILD_PINGS
+    else:
+        return -1
