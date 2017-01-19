@@ -124,6 +124,13 @@ def get_filter_options(channel, version, filters, filter):
             else:
                 pretty_opts.append(option)
 
+        if filter == "child":
+            # In the db, child is true, false, and other things.
+            # We want to have content = true and parent = false.
+            pretty_opts = ["content" if x == "true"
+                           else "parent" if x == "false"
+                           else x for x in pretty_opts]
+
         filters[filter] = pretty_opts
     except:
         pass

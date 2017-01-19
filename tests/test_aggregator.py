@@ -64,32 +64,34 @@ def test_keys():
 
 
 def test_simple_measurements():
-    metric_count = defaultdict(int)
+    metric_count = defaultdict(lambda: defaultdict(int))
 
     for aggregate in build_id_aggregates:
         for key, value in aggregate[1].iteritems():
-            metric, label, child = key
+            metric, label, process_type = key
 
             if metric.startswith(SIMPLE_MEASURES_PREFIX):
-                metric_count[metric] += 1
+                metric_count[metric][process_type] += 1
                 assert(label == "")
                 # Simple measurements are still in childPayloads.
                 # expected_count() is correct only for child dimensions in processes.content.
-                assert(value["count"] == NUM_PINGS_PER_DIMENSIONS*(NUM_CHILDREN_PER_PING if child else 1))
+                assert(value["count"] == NUM_PINGS_PER_DIMENSIONS*(NUM_CHILDREN_PER_PING if process_type != "parent" else 1))
                 assert(value["sum"] == value["count"]*SCALAR_VALUE)
                 assert(value["histogram"][str(SIMPLE_SCALAR_BUCKET)] == value["count"])
 
     assert len(metric_count) == len(simple_measurements_template)
-    for v in metric_count.values():
-        assert(v == 2*len(build_id_aggregates)) # Count both child and parent metrics
+    for process_counts in metric_count.values():
+        assert(len(process_counts) == 2) # 1 for parent, 1 for childPayloads
+        for v in process_counts.values():
+          assert(v == len(build_id_aggregates))
 
 def test_numerical_scalars():
-    metric_count = defaultdict(int)
+    metric_count = defaultdict(lambda: defaultdict(int))
     scalar_metrics, keyed_scalar_metrics = set([k.upper() for k in scalars_template.keys()]), set([k.upper() for k in keyed_scalars_template.keys()])
 
     for aggregate in build_id_aggregates:
         for key, value in aggregate[1].iteritems():
-            metric, label, child = key
+            metric, label, process_type = key
 
             if metric.startswith(NUMERIC_SCALARS_PREFIX):
                 orig_name = metric.replace(NUMERIC_SCALARS_PREFIX + '_', "")
@@ -101,61 +103,67 @@ def test_numerical_scalars():
                     assert(label != "")
                     metric = "{}_{}".format(metric, label)
 
-                metric_count[metric] += 1
-                assert(value["count"] == expected_count(child))
+                metric_count[metric][process_type] += 1
+                assert(value["count"] == expected_count(process_type))
                 assert(value["sum"] == value["count"] * SCALAR_VALUE)
                 assert(value["histogram"][str(NUMERIC_SCALAR_BUCKET)] == value["count"])
 
     keyed_scalars_template_len = len([key for metric, dic in keyed_scalars_template.iteritems() for key in dic])
     assert len(metric_count) == len(scalars_template) + keyed_scalars_template_len
-    for v in metric_count.values():
-        assert v == len(build_id_aggregates)
+    for process_counts in metric_count.values():
+        assert(len(process_counts) == 1) # Only testing parent scalars ATM
+        for v in process_counts.values():
+          assert(v == len(build_id_aggregates))
 
 def test_classic_histograms():
-    metric_count = defaultdict(int)
+    metric_count = defaultdict(lambda: defaultdict(int))
     histograms = {k: v for k, v in histograms_template.iteritems() if v["histogram_type"] != 4 and not k.startswith("USE_COUNTER2_")}
 
     for aggregate in build_id_aggregates:
         for key, value in aggregate[1].iteritems():
-            metric, label, child = key
+            metric, label, process_type = key
             histogram = histograms.get(metric, None)
 
             if histogram:
-                metric_count[metric] += 1
+                metric_count[metric][process_type] += 1
                 assert(label == "")
-                assert(value["count"] == expected_count(child))
+                assert(value["count"] == expected_count(process_type))
                 assert(value["sum"] == value["count"]*histogram["sum"])
                 assert(set(histogram["values"].keys()) == set(value["histogram"].keys()))
                 assert((pd.Series(histogram["values"])*value["count"] == pd.Series(value["histogram"])).all())
 
     assert(len(metric_count) == len(histograms))
-    for v in metric_count.values():
-        assert(v == 2*len(build_id_aggregates))  # Count both child and parent metrics
+    for process_counts in metric_count.values():
+        assert(len(process_counts) == NUM_PROCESS_TYPES)
+        for v in process_counts.values():
+          assert(v == len(build_id_aggregates))
 
 
 def test_count_histograms():
-    metric_count = defaultdict(int)
+    metric_count = defaultdict(lambda: defaultdict(int))
     histograms = {"{}_{}".format(COUNT_HISTOGRAM_PREFIX, k): v for k, v in histograms_template.iteritems() if v["histogram_type"] == 4 and not k.endswith("CONTENT_DOCUMENTS_DESTROYED")}
 
     for aggregate in build_id_aggregates:
         for key, value in aggregate[1].iteritems():
-            metric, label, child = key
+            metric, label, process_type = key
             histogram = histograms.get(metric, None)
 
             if histogram:
-                metric_count[metric] += 1
+                metric_count[metric][process_type] += 1
                 assert(label == "")
-                assert(value["count"] == expected_count(child))
+                assert(value["count"] == expected_count(process_type))
                 assert(value["sum"] == value["count"]*histogram["sum"])
                 assert(value["histogram"][str(COUNT_SCALAR_BUCKET)] == value["count"])
 
     assert len(metric_count) == len(histograms)
-    for v in metric_count.values():
-        assert(v == 2*len(build_id_aggregates))  # Count both child and parent metrics
+    for process_counts in metric_count.values():
+        assert(len(process_counts) == NUM_PROCESS_TYPES)
+        for v in process_counts.values():
+          assert(v == len(build_id_aggregates))
 
 
 def test_use_counter2_histogram():
-    metric_count = defaultdict(int)
+    metric_count = defaultdict(lambda: defaultdict(int))
     histograms = {k: v for k, v in histograms_template.iteritems() if k.startswith("USE_COUNTER2_")}
 
     pages_destroyed = histograms_template["TOP_LEVEL_CONTENT_DOCUMENTS_DESTROYED"]["sum"]
@@ -163,13 +171,13 @@ def test_use_counter2_histogram():
 
     for aggregate in build_id_aggregates:
         for key, value in aggregate[1].iteritems():
-            metric, label, child = key
+            metric, label, process_type = key
             histogram = histograms.get(metric, None)
 
             if histogram:
-                metric_count[metric] += 1
+                metric_count[metric][process_type] += 1
                 assert(label == "")
-                assert(value["count"] == expected_count(child))
+                assert(value["count"] == expected_count(process_type))
                 assert(value["sum"] == value["count"]*histogram["sum"])
 
                 if metric.endswith("_DOCUMENT"):
@@ -179,21 +187,26 @@ def test_use_counter2_histogram():
 
 
     assert len(metric_count) == len(histograms)
-    for v in metric_count.values():
-        assert(v == 2*len(build_id_aggregates))  # Count both child and parent metrics
+    for process_counts in metric_count.values():
+        assert(len(process_counts) == NUM_PROCESS_TYPES)
+        for v in process_counts.values():
+          assert(v == len(build_id_aggregates))
 
 
 def test_keyed_histograms():
-    metric_count = defaultdict(int)
+    metric_count = defaultdict(lambda: defaultdict(int))
 
     for aggregate in build_id_aggregates:
         for key, value in aggregate[1].iteritems():
-            metric, label, child = key
+            metric, label, process_type = key
 
             if metric in keyed_histograms_template.keys():
-                metric_count["{}_{}".format(metric, label)] += 1
+                metric_label = "{}_{}".format(metric, label)
+                if metric_label not in metric_count:
+                    metric_count[metric_label] = defaultdict(int)
+                metric_count[metric_label][process_type] += 1
                 assert(label != "")
-                assert(value["count"] == expected_count(child))
+                assert(value["count"] == expected_count(process_type))
                 assert(value["sum"] == value["count"]*keyed_histograms_template[metric][label]["sum"])
 
                 histogram_template = keyed_histograms_template[metric][label]["values"]
@@ -203,5 +216,7 @@ def test_keyed_histograms():
             assert(metric not in ignored_keyed_histograms_template.keys())
 
     assert(len(metric_count) == len(keyed_histograms_template))  # Assume one label per keyed histogram
-    for v in metric_count.values():
-        assert(v == 2*len(build_id_aggregates))  # Count both child and parent metrics
+    for process_counts in metric_count.values():
+        assert(len(process_counts) == NUM_PROCESS_TYPES)
+        for v in process_counts.values():
+          assert(v == len(build_id_aggregates))

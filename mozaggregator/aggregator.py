@@ -97,12 +97,12 @@ def _sample_clients(ping):
         return False
 
 
-def _extract_histograms(state, payload, is_child=False):
+def _extract_histograms(state, payload, process_type="parent"):
     if not isinstance(payload, dict):
         return
 
     histograms = payload.get("histograms", {})
-    _extract_main_histograms(state, histograms, is_child)
+    _extract_main_histograms(state, histograms, process_type)
 
     keyed_histograms = payload.get("keyedHistograms", {})
     if not isinstance(keyed_histograms, dict):
@@ -113,10 +113,10 @@ def _extract_histograms(state, payload, is_child=False):
         if name in ["MESSAGE_MANAGER_MESSAGE_SIZE",
                     "VIDEO_DETAILED_DROPPED_FRAMES_PROPORTION"]:
             continue
-        _extract_keyed_histograms(state, name, histograms, is_child)
+        _extract_keyed_histograms(state, name, histograms, process_type)
 
 
-def _extract_histogram(state, histogram, histogram_name, label, is_child):
+def _extract_histogram(state, histogram, histogram_name, label, process_type):
     if not isinstance(histogram, dict):
         return
 
@@ -133,12 +133,12 @@ def _extract_histogram(state, histogram, histogram_name, label, is_child):
         return
 
     if histogram_type == 4:  # Count histogram
-        return _extract_scalar_value(state, u'_'.join((COUNT_HISTOGRAM_PREFIX, histogram_name)), label, sum, COUNT_HISTOGRAM_LABELS, is_child=is_child)
+        return _extract_scalar_value(state, u'_'.join((COUNT_HISTOGRAM_PREFIX, histogram_name)), label, sum, COUNT_HISTOGRAM_LABELS, process_type=process_type)
 
     # Note that some dimensions don't vary within a single submissions
     # (e.g. channel) while some do (e.g. process type).
     # The latter should appear within the key of a single metric.
-    accessor = (histogram_name, label, is_child)
+    accessor = (histogram_name, label, process_type)
     aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
 
     state[accessor]["sum"] = state[accessor].get("sum", 0L) + sum
@@ -154,7 +154,7 @@ def _extract_histogram(state, histogram, histogram_name, label, is_child):
         aggregated_histogram[k] = aggregated_histogram.get(k, 0L) + v
 
 
-def _extract_main_histograms(state, histograms, is_child):
+def _extract_main_histograms(state, histograms, process_type):
     if not isinstance(histograms, dict):
         return
 
@@ -197,16 +197,16 @@ def _extract_main_histograms(state, histograms, is_child):
 
             histogram["values"]["0"] = docs_destroyed - used
 
-        _extract_histogram(state, histogram, histogram_name, u"", is_child)
+        _extract_histogram(state, histogram, histogram_name, u"", process_type)
 
-def _extract_keyed_histograms(state, histogram_name, histograms, is_child):
+def _extract_keyed_histograms(state, histogram_name, histograms, process_type):
     if not isinstance(histograms, dict):
         return
 
     for key, histogram in histograms.iteritems():
-        _extract_histogram(state, histogram, histogram_name, key, is_child)
+        _extract_histogram(state, histogram, histogram_name, key, process_type)
 
-def _extract_simple_measures(state, simple, is_child=False):
+def _extract_simple_measures(state, simple, process_type="parent"):
     if not isinstance(simple, dict):
         return
 
@@ -214,9 +214,9 @@ def _extract_simple_measures(state, simple, is_child=False):
         if isinstance(value, dict):
             for sub_name, sub_value in value.iteritems():
                 if isinstance(sub_value, (int, float, long)):
-                    _extract_scalar_value(state, "_".join((SIMPLE_MEASURES_PREFIX, name.upper(), sub_name.upper())), u"", sub_value, SIMPLE_MEASURES_LABELS, is_child)
+                    _extract_scalar_value(state, "_".join((SIMPLE_MEASURES_PREFIX, name.upper(), sub_name.upper())), u"", sub_value, SIMPLE_MEASURES_LABELS, process_type)
         elif isinstance(value, (int, float, long)):
-            _extract_scalar_value(state, u"_".join((SIMPLE_MEASURES_PREFIX, name.upper())), u"", value, SIMPLE_MEASURES_LABELS, is_child)
+            _extract_scalar_value(state, u"_".join((SIMPLE_MEASURES_PREFIX, name.upper())), u"", value, SIMPLE_MEASURES_LABELS, process_type)
 
 def _extract_numeric_scalars(state, scalar_dict):
     if not isinstance(scalar_dict, dict):
@@ -230,7 +230,7 @@ def _extract_numeric_scalars(state, scalar_dict):
             continue
 
         scalar_name = u"_".join((NUMERIC_SCALARS_PREFIX, name.upper()))
-        _extract_scalar_value(state, scalar_name, u"", value, NUMERIC_SCALARS_LABELS, False)
+        _extract_scalar_value(state, scalar_name, u"", value, NUMERIC_SCALARS_LABELS, "parent")
 
 
 def _extract_keyed_numeric_scalars(state, scalar_dict):
@@ -249,14 +249,14 @@ def _extract_keyed_numeric_scalars(state, scalar_dict):
             if not isinstance(sub_value, (int, float, long)):
                 continue
 
-            _extract_scalar_value(state, scalar_name, sub_name.upper(), sub_value, NUMERIC_SCALARS_LABELS, False)
+            _extract_scalar_value(state, scalar_name, sub_name.upper(), sub_value, NUMERIC_SCALARS_LABELS, "parent")
 
 
-def _extract_scalar_value(state, name, label, value, bucket_labels, is_child=False):
+def _extract_scalar_value(state, name, label, value, bucket_labels, process_type="parent"):
     if value < 0:  # Afaik we are collecting only positive values
         return
 
-    accessor = (name, label, is_child)
+    accessor = (name, label, process_type)
     aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
     state[accessor]["sum"] = state[accessor].get("sum", 0L) + value
     state[accessor]["count"] = state[accessor].get("count", 0L) + 1L
@@ -275,8 +275,8 @@ def _extract_child_payloads(state, child_payloads):
         return
 
     for child in child_payloads:
-        _extract_histograms(state, child, True)
-        _extract_simple_measures(state, child.get("simpleMeasurements", {}), True)
+        _extract_histograms(state, child, "content")
+        _extract_simple_measures(state, child.get("simpleMeasurements", {}), "content")
 
 
 def _aggregate_ping(state, ping):
@@ -288,7 +288,8 @@ def _aggregate_ping(state, ping):
     _extract_histograms(state, ping.get("payload", {}))
     _extract_simple_measures(state, ping.get("payload", {}).get("simpleMeasurements", {}))
     _extract_child_payloads(state, ping.get("payload", {}).get("childPayloads", {}))
-    _extract_histograms(state, ping.get("payload", {}).get("processes", {}).get("content", {}), True)
+    _extract_histograms(state, ping.get("payload", {}).get("processes", {}).get("content", {}), "content")
+    _extract_histograms(state, ping.get("payload", {}).get("processes", {}).get("gpu", {}), "gpu")
     return state
 
 

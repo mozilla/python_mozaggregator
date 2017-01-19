@@ -110,7 +110,7 @@ def _aggregate_to_sql(aggregate):
                   "e10sEnabled": e10s}
 
     for metric, payload in metrics.iteritems():
-        metric, label, child = metric
+        metric, label, process_type = metric
 
         if not set(metric).issubset(_metric_printable):
             continue  # Ignore metrics with non printable characters...
@@ -132,7 +132,11 @@ def _aggregate_to_sql(aggregate):
 
         dimensions["metric"] = metric
         dimensions["label"] = label
-        dimensions["child"] = child
+        # Have to special-case content and parent here to maintain
+        # backwards compatibility.
+        dimensions["child"] = "true" if process_type == "content" \
+                              else "false" if process_type == "parent" \
+                              else process_type
 
         json_dimensions = json.dumps(dimensions)
         # json.dumps takes care of properly escaping the text but a SQL command
