@@ -168,6 +168,10 @@ def generate_payload(dimensions, aggregated_child_histograms):
             u"histograms": histograms_template,
             u"keyedHistograms": keyed_histograms_template 
         }
+        processes_payload[u"gpu"] = {
+            u"histograms": histograms_template,
+            u"keyedHistograms": keyed_histograms_template
+        }
     else:
         for i in range(NUM_CHILDREN_PER_PING):
             child_payloads[i][u"histograms"] = histograms_template
@@ -191,7 +195,7 @@ def generate_payload(dimensions, aggregated_child_histograms):
             u"payload": payload,
             u"environment": environment}
 
-def expected_count(is_child):
-    if not is_child:
+def expected_count(process_type):
+    if process_type == "parent":
         return NUM_PINGS_PER_DIMENSIONS
     return (NUM_PINGS_PER_DIMENSIONS - NUM_AGGREGATED_CHILD_PINGS) * NUM_CHILDREN_PER_PING + NUM_AGGREGATED_CHILD_PINGS
