@@ -3,9 +3,10 @@ import uuid
 from itertools import product, repeat, chain
 
 NUM_CHILDREN_PER_PING = 3
-NUM_AGGREGATED_CHILD_PINGS = 1
-NUM_PINGS_PER_DIMENSIONS = 2
+NUM_AGGREGATED_CHILD_PINGS = 2
+NUM_PINGS_PER_DIMENSIONS = 3
 assert(NUM_AGGREGATED_CHILD_PINGS <= NUM_PINGS_PER_DIMENSIONS)
+NUM_CHILD_PROCESS_TYPES = 2
 SCALAR_VALUE = 42
 SIMPLE_SCALAR_BUCKET = 35
 COUNT_SCALAR_BUCKET = 40
@@ -198,4 +199,6 @@ def generate_payload(dimensions, aggregated_child_histograms):
 def expected_count(process_type):
     if process_type == "parent":
         return NUM_PINGS_PER_DIMENSIONS
+    elif process_type == "gpu":
+        return NUM_AGGREGATED_CHILD_PINGS
     return (NUM_PINGS_PER_DIMENSIONS - NUM_AGGREGATED_CHILD_PINGS) * NUM_CHILDREN_PER_PING + NUM_AGGREGATED_CHILD_PINGS

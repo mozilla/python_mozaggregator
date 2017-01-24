@@ -94,7 +94,7 @@ def test_filters():
             assert set(options["application"]) == set(ping_dimensions["application"])
             assert set(options["architecture"]) == set(ping_dimensions["arch"])
             assert set(options["e10sEnabled"]) == set(["true", "false"])
-            assert set(options["child"]) == set(["true", "false"])
+            assert set(options["child"]) == set(["gpu", "content", "parent"])
 
 
 def test_build_id_metrics():
@@ -199,7 +199,7 @@ def test_histogram(prefix, channel, version, dates, metric, value, expected_coun
         # From pings after bug 1218576 (new), `count` is the number of process types.
         old_pings_expected_count = expected_count * (NUM_PINGS_PER_DIMENSIONS - NUM_AGGREGATED_CHILD_PINGS) / NUM_PINGS_PER_DIMENSIONS
         new_pings_expected_count = expected_count * NUM_AGGREGATED_CHILD_PINGS / NUM_PINGS_PER_DIMENSIONS
-        assert(res["count"] == new_pings_expected_count*2 + old_pings_expected_count*(NUM_CHILDREN_PER_PING + 1))
+        assert(res["count"] == new_pings_expected_count*(1 + NUM_CHILD_PROCESS_TYPES) + old_pings_expected_count*(NUM_CHILDREN_PER_PING + 1))
 
         if value["histogram_type"] == 4:  # Count histogram
             current = pd.Series(res["histogram"], index=map(int, reply["buckets"]))
@@ -250,7 +250,7 @@ def _test_numeric_scalar(prefix, channel, version, dates, metric, value, expecte
 
     for res in reply["data"]:
         # get `expected_count` for either just parent, or both parent and child
-        assert(res["count"] == expected_count * (1 if process_type != "parent" else NUM_CHILDREN_PER_PING + 1))
+        assert(res["count"] == expected_count * (1 if not process_type else NUM_CHILDREN_PER_PING + 1))
 
         current = pd.Series(res["histogram"], index=map(int, reply["buckets"]))
         expected = pd.Series(index=labels, data=0)
@@ -293,7 +293,7 @@ def test_keyed_histogram(prefix, channel, version, dates, metric, histograms, ex
         for res in reply["data"]:
             old_pings_expected_count = expected_count * (NUM_PINGS_PER_DIMENSIONS - NUM_AGGREGATED_CHILD_PINGS) / NUM_PINGS_PER_DIMENSIONS
             new_pings_expected_count = expected_count * NUM_AGGREGATED_CHILD_PINGS / NUM_PINGS_PER_DIMENSIONS
-            assert(res["count"] == new_pings_expected_count*2 + old_pings_expected_count*(NUM_CHILDREN_PER_PING + 1))
+            assert(res["count"] == new_pings_expected_count*(1 + NUM_CHILD_PROCESS_TYPES) + old_pings_expected_count*(NUM_CHILDREN_PER_PING + 1))
 
             current = pd.Series(res["histogram"], index=map(int, reply["buckets"]))
             expected = Histogram(metric, value).get_value()*res["count"]

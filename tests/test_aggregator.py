@@ -75,7 +75,7 @@ def test_simple_measurements():
                 assert(label == "")
                 # Simple measurements are still in childPayloads.
                 # expected_count() is correct only for child dimensions in processes.content.
-                assert(value["count"] == NUM_PINGS_PER_DIMENSIONS*(NUM_CHILDREN_PER_PING if child else 1))
+                assert(value["count"] == NUM_PINGS_PER_DIMENSIONS*(NUM_CHILDREN_PER_PING if child != "parent" else 1))
                 assert(value["sum"] == value["count"]*SCALAR_VALUE)
                 assert(value["histogram"][str(SIMPLE_SCALAR_BUCKET)] == value["count"])
 
@@ -130,7 +130,7 @@ def test_classic_histograms():
 
     assert(len(metric_count) == len(histograms))
     for v in metric_count.values():
-        assert(v == 2*len(build_id_aggregates))  # Count both child and parent metrics
+        assert(v == (1 + NUM_CHILD_PROCESS_TYPES)*len(build_id_aggregates))  # Count both child and parent metrics
 
 
 def test_count_histograms():
@@ -151,7 +151,7 @@ def test_count_histograms():
 
     assert len(metric_count) == len(histograms)
     for v in metric_count.values():
-        assert(v == 2*len(build_id_aggregates))  # Count both child and parent metrics
+        assert(v == (1 + NUM_CHILD_PROCESS_TYPES)*len(build_id_aggregates))  # Count both child and parent metrics
 
 
 def test_use_counter2_histogram():
@@ -180,7 +180,7 @@ def test_use_counter2_histogram():
 
     assert len(metric_count) == len(histograms)
     for v in metric_count.values():
-        assert(v == 2*len(build_id_aggregates))  # Count both child and parent metrics
+        assert(v == (1 + NUM_CHILD_PROCESS_TYPES)*len(build_id_aggregates))  # Count both child and parent metrics
 
 
 def test_keyed_histograms():
@@ -204,4 +204,4 @@ def test_keyed_histograms():
 
     assert(len(metric_count) == len(keyed_histograms_template))  # Assume one label per keyed histogram
     for v in metric_count.values():
-        assert(v == 2*len(build_id_aggregates))  # Count both child and parent metrics
+        assert(v == (1 + NUM_CHILD_PROCESS_TYPES)*len(build_id_aggregates))  # Count both child and parent metrics

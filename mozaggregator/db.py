@@ -132,7 +132,10 @@ def _aggregate_to_sql(aggregate):
 
         dimensions["metric"] = metric
         dimensions["label"] = label
-        dimensions["child"] = child
+        # Have to special-case content and parent here to maintain backwards compatibility.
+        dimensions["child"] = "true" if child == "content" \
+                                else "false" if child == "parent" \
+                                  else child
 
         json_dimensions = json.dumps(dimensions)
         # json.dumps takes care of properly escaping the text but a SQL command
