@@ -1,6 +1,8 @@
 import ujson as json
 import config
 import logging
+import boto3
+import time
 
 from flask import Flask, Response, request, abort
 from flask.ext.cors import CORS
@@ -18,6 +20,7 @@ from aggregator import SIMPLE_MEASURES_LABELS, COUNT_HISTOGRAM_LABELS, NUMERIC_S
 from db import get_db_connection_string, histogram_revision_map
 from scalar import Scalar
 from logging.handlers import SysLogHandler
+from botocore.exceptions import ClientError
 
 pool = None
 app = Flask(__name__)
@@ -31,16 +34,13 @@ patch_all()
 patch_psycopg()
 cache.clear()
 
-### Papertrail Logging Config ###
-logger = logging.getLogger('RequestLogger')
-logger.setLevel(logging.INFO)
+### Cloudwatch Logging Config ###
+MAX_RETRIES = 5
+LOG_GROUP_NAME = 'telemetry-aggregation-service'
+LOG_STREAM_NAME = 'requests'
 
-syslog = SysLogHandler(address=('logs5.papertrailapp.com', 47698))
-formatter = logging.Formatter('%(asctime)s -- %(message)s')
-
-syslog.setFormatter(formatter)
-logger.addHandler(syslog)
-
+sequence_token = None
+log_client = boto3.client("logs", region_name='us-west-2')
 
 def cache_request(f):
     @wraps(f)
@@ -80,14 +80,49 @@ def execute_query(query, params=tuple()):
 def log_request():
     """Log format: Referrer URL, Referrer, IP Address, URL
     """
+    global sequence_token, LOG_GROUP_NAME, LOG_STREAM_NAME
+
     ip_addr = request.access_route[0] or request.remote_addr 
     data  = (request.values.get('url', ''),
             request.values.get('Referer', ''),
             ip_addr,
             request.url)
 
+    millis = int(round(time.time() * 1000))
+    log_line = ','.join([d.replace(',', '\,') for d in data])
+
     if ip_addr != '127.0.0.1':
-        logger.info(','.join([d.replace(',', '\,') for d in data]))
+        # See https://github.com/kislyuk/watchtower for inspiration
+
+        kwargs = {
+            'logGroupName': LOG_GROUP_NAME,
+            'logStreamName': LOG_STREAM_NAME,
+            'logEvents': [
+                {
+                    'timestamp': millis,
+                    'message': log_line
+                }
+            ]
+        }
+
+        for retry in xrange(MAX_RETRIES + 1):
+            if sequence_token is not None:
+                kwargs['sequenceToken'] = sequence_token
+            try:
+                response = log_client.put_log_events(**kwargs)
+                break
+            except ClientError as e:
+                if e.response.get("Error", {}).get("Code") in \
+                   ("DataAlreadyAcceptedException", "InvalidSequenceTokenException"):
+                    stream_describe = log_client.describe_log_streams(
+                        logGroupName = LOG_GROUP_NAME,
+                        logStreamNamePrefix = LOG_STREAM_NAME)
+                    sequence_token = stream_describe['logStreams'][0]['uploadSequenceToken']
+                else:
+                    raise 
+
+        if response and response.get('nextSequenceToken'):
+            sequence_token = response['nextSequenceToken']
 
 
 @app.route('/status')
