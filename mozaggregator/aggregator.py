@@ -26,7 +26,7 @@ SCALAR_MEASURE_MAP = {
     NUMERIC_SCALARS_PREFIX: NUMERIC_SCALARS_LABELS
 }
 
-def aggregate_metrics(sc, channels, submission_date, fraction=1):
+def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1, fennec_ping_fraction=1):
     """ Returns the build-id and submission date aggregates for a given submission date.
 
     :param sc: A SparkContext instance
@@ -50,12 +50,22 @@ def aggregate_metrics(sc, channels, submission_date, fraction=1):
     pings = Dataset.from_source('telemetry') \
                   .where(appUpdateChannel=lambda x : x in channels, 
                          submissionDate=submission_date,
-                         docType="main",
-                         sourceVersion='4') \
-                  .records(sc, sample=fraction) \
+                         docType='main',
+                         sourceVersion='4',
+                         appName=lambda x: x != 'Fennec') \
+                  .records(sc, sample=main_ping_fraction) \
                   .filter(telemetry_enabled)
 
-    return _aggregate_metrics(pings)
+    fennec_pings = Dataset.from_source('telemetry') \
+                  .where(appUpdateChannel=lambda x : x in channels, 
+                         submissionDate=submission_date,
+                         docType='saved_session',
+                         sourceVersion='4',
+                         appName = 'Fennec') \
+                  .records(sc, sample=fennec_ping_fraction)
+
+    all_pings = pings.union(fennec_pings)
+    return _aggregate_metrics(all_pings)
 
 def _aggregate_metrics(pings):
     # Use few reducers only when running the test-suite to speed execution up.
