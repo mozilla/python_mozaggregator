@@ -18,6 +18,7 @@ from aggregator import SIMPLE_MEASURES_LABELS, COUNT_HISTOGRAM_LABELS, NUMERIC_S
 from db import get_db_connection_string, histogram_revision_map
 from scalar import Scalar
 from logging.handlers import SysLogHandler
+from datetime import datetime
 
 pool = None
 app = Flask(__name__)
@@ -165,6 +166,17 @@ def _get_description(channel, prefix, metric):
     return Scalar(metric, 0, channel=channel).get_definition().get('description', '')
 
 
+def filter_missing_data(kind, data):
+    """categorical data from before 2017-01-17 is all 0's,
+    so ignore it.
+    """
+    if kind != 'categorical':
+        return data
+
+    min_date = datetime.strptime('20170117', '%Y%m%d')
+    return [d for d in data if datetime.strptime(d['date'], '%Y%m%d') >= min_date]
+
+
 @app.route('/aggregates_by/<prefix>/channels/<channel>/', methods=["GET"])
 @cache_request
 def get_dates_metrics(prefix, channel):
@@ -222,6 +234,7 @@ def get_dates_metrics(prefix, channel):
         count = row[2][-1]
         pretty_result["data"].append({"date": date, "label": label, "histogram": histogram, "count": count, "sum": sum})
 
+    pretty_result["data"] = filter_missing_data(kind, pretty_result["data"])
     return Response(json.dumps(pretty_result), mimetype="application/json")
 
 
