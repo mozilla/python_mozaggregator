@@ -115,11 +115,19 @@ end
 $$ language plpgsql strict;
 
 
-create or replace function get_metric(prefix text, channel text, version text, date text, dimensions jsonb) returns table(label text, histogram bigint[]) as $$
+-- We have to explicitly drop the old get_metric function or else the new one will not be backwards compatible
+drop function if exists get_metric(text, text, text, text, jsonb);
+
+-- The default value for new_dimensions has to be something that will never match
+create or replace function get_metric(prefix text, channel text, version text, date text, dimensions jsonb, new_dimensions jsonb DEFAULT '{"metric":"METRIC???"}') returns table(label text, histogram bigint[]) as $$
 declare
     tablename text;
 begin
     if not dimensions ? 'metric' then
+        raise exception 'Missing metric field!';
+    end if;
+
+    if not new_dimensions ? 'metric' then
         raise exception 'Missing metric field!';
     end if;
 
@@ -129,8 +137,9 @@ begin
     E'select dimensions->>\'label\', aggregate_histograms(histogram)
         from ' || tablename || E'
         where dimensions @> $1
+           or dimensions @> $2
         group by dimensions->>\'label\''
-        using dimensions;
+        using dimensions, new_dimensions;
 end
 $$ language plpgsql strict stable;
 
@@ -138,9 +147,10 @@ $$ language plpgsql strict stable;
 drop type if exists metric_type;
 create type metric_type AS (label text, histogram bigint[]);
 
-create or replace function batched_get_metric(prefix text, channel text, version text, dates text[], dimensions jsonb) returns table(date text, label text, histogram bigint[]) as $$
+drop function if exists batched_get_metric(text, text, text, text[], jsonb);
+create or replace function batched_get_metric(prefix text, channel text, version text, dates text[], dimensions jsonb, new_dimensions jsonb DEFAULT '{"metric":"METRIC???"}') returns table(date text, label text, histogram bigint[]) as $$
 begin
-    return query select t.date, (get_metric(prefix, channel, version, t.date, dimensions)::text::metric_type).*
+    return query select t.date, (get_metric(prefix, channel, version, t.date, dimensions, new_dimensions)::text::metric_type).*
                  from (select unnest(dates)) as t(date);
 end
 $$ language plpgsql strict;
