@@ -21,6 +21,7 @@ from db import get_db_connection_string, histogram_revision_map
 from scalar import Scalar
 from logging.handlers import SysLogHandler
 from botocore.exceptions import ClientError
+from copy import deepcopy
 
 pool = None
 app = Flask(__name__)
@@ -222,7 +223,7 @@ def get_dates_metrics(prefix, channel):
         if metric.startswith(_prefix) and _prefix != COUNT_HISTOGRAM_PREFIX:
             labels = _labels
             kind = "exponential"
-            description = _get_description(channel, _prefix, metric) 
+            description = _get_description(channel, _prefix, metric)
             break
     else:
         revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
@@ -243,8 +244,15 @@ def get_dates_metrics(prefix, channel):
         else:
             labels = definition.get_value().keys().tolist()
 
+    altered_dimensions = deepcopy(dimensions)
+    if 'child' in dimensions:
+        # Bug 1339139 - when adding gpu processes, child process went from True/False to "true"/"false"/"gpu"
+        reverse_map = {True: 'true', False: 'false'}
+        altered_dimensions['child'] = reverse_map.get(altered_dimensions['child'], altered_dimensions['child'])
+
     # Fetch metrics
-    result = execute_query("select * from batched_get_metric(%s, %s, %s, %s, %s)", (prefix, channel, version, dates, json.dumps(dimensions)))
+    result = execute_query("select * from batched_get_metric(%s, %s, %s, %s, %s, %s)", (prefix, channel, version, dates, json.dumps(dimensions), json.dumps(altered_dimensions)))
+
     if not result:
         abort(404)
 

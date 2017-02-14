@@ -2,6 +2,7 @@ import pyspark
 import logging
 import requests
 import pandas as pd
+import json
 
 from mozaggregator.aggregator import _aggregate_metrics, COUNT_HISTOGRAM_LABELS, SIMPLE_MEASURES_LABELS, NUMERIC_SCALARS_LABELS, SIMPLE_MEASURES_PREFIX, NUMERIC_SCALARS_PREFIX
 from mozaggregator.db import _create_connection, submit_aggregates
@@ -182,6 +183,30 @@ def test_null_label_character_submit():
 
     assert build_id_count == 0, "Build id count should be 0, was {}".format(build_id_count)
     assert submission_date_count == 0, "submission date count should be 0, was {}".format(build_id_count)
+
+def test_changed_child_value():
+    # See bug 1339139
+    reply = requests.get("{}/aggregates_by/submission_date/channels/nightly?version=41&dates=20150603&metric=GC_MAX_PAUSE_MS&child=true".format(SERVICE_URI))
+    assert reply.ok
+    assert reply.json() is not None
+
+def test_new_db_functions_backwards_compatible():
+    conn = _create_connection()
+    cursor = conn.cursor()
+
+    old_query = 'SELECT * FROM batched_get_metric(%s, %s, %s, %s, %s)'
+    cursor.execute(old_query, ('submission_date', 'nightly', '41', ['20150603'], json.dumps({'metric': 'GC_MAX_PAUSE_MS', 'child': 'true'})))
+
+    # Just 1 result since this is 1 date and not a keyed histogram
+    assert len(cursor.fetchall()) == 1
+
+    new_query = 'SELECT * FROM batched_get_metric(%s, %s, %s, %s, %s, %s)'
+    cursor.execute(new_query, ('submission_date', 'nightly', '41', ['20150603'], json.dumps({'metric': 'GC_MAX_PAUSE_MS', 'child': 'true'}), json.dumps({'metric': 'BLOCKED_ON_PLUGIN_INSTANCE_DESTROY_MS'})))
+
+    # 1 for the non-keyed histogram, 1 for the 1 key of the keyed histogram
+    # Note we don't actually use batched_get_metric for multiple metrics,
+    # but this behavior is expected
+    assert len(cursor.fetchall()) == 2
 
 
 @nottest
