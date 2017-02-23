@@ -190,6 +190,21 @@ def test_changed_child_value():
     assert reply.ok
     assert reply.json() is not None
 
+def test_using_content_types():
+    reply = requests.get("{}/aggregates_by/submission_date/channels/nightly?version=41&dates=20150603&metric=GC_MAX_PAUSE_MS&child=content".format(SERVICE_URI))
+    assert reply.ok
+    assert reply.json() is not None
+
+def test_using_parent_types():
+    reply = requests.get("{}/aggregates_by/submission_date/channels/nightly?version=41&dates=20150603&metric=GC_MAX_PAUSE_MS&child=parent".format(SERVICE_URI))
+    assert reply.ok
+    assert reply.json() is not None
+
+def test_using_gpu_types():
+    reply = requests.get("{}/aggregates_by/submission_date/channels/nightly?version=41&dates=20150603&metric=GC_MAX_PAUSE_MS&child=gpu".format(SERVICE_URI))
+    assert reply.ok
+    assert reply.json() is not None
+
 def test_new_db_functions_backwards_compatible():
     conn = _create_connection()
     cursor = conn.cursor()

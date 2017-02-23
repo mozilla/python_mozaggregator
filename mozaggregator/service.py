@@ -209,6 +209,11 @@ def get_dates_metrics(prefix, channel):
     mapping = {"true": True, "false": False}
     dimensions = {k: mapping.get(v, v) for k, v in request.args.iteritems()}
 
+    if 'child' in dimensions:
+        # Process types in the db are true/false, not content/process
+        new_process_map = {"content": True, "parent": False}
+        dimensions['child'] = new_process_map.get(dimensions['child'], dimensions['child'])
+
     # Get dates
     dates = dimensions.pop('dates', "").split(',')
     version = dimensions.pop('version', None)
