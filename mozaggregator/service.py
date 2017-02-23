@@ -79,13 +79,15 @@ def execute_query(query, params=tuple()):
 
 @app.before_request
 def log_request():
-    """Log format: Referrer URL, Referrer, IP Address, URL
+    """Log format: Origin, Referrer, IP Address, URL
     """
     global sequence_token, LOG_GROUP_NAME, LOG_STREAM_NAME
 
-    ip_addr = request.access_route[0] or request.remote_addr 
-    data  = (request.values.get('url', ''),
-            request.values.get('Referer', ''),
+    origin  = request.headers.get('Origin') or ''
+    referrer = request.headers.get('Referer') or request.referrer or ''
+    ip_addr = request.access_route[0] or request.remote_addr or ''
+    data  = (origin,
+            referrer,
             ip_addr,
             request.url)
 
