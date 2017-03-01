@@ -25,7 +25,7 @@ from copy import deepcopy
 
 pool = None
 app = Flask(__name__)
-app.config.from_object('config')
+app.config.from_object('mozaggregator.config')
 
 CORS(app, resources=r'/*', allow_headers='Content-Type')
 cache = Cache(app, config={'CACHE_TYPE': app.config["CACHETYPE"]})
@@ -42,6 +42,58 @@ LOG_STREAM_NAME = 'requests'
 
 sequence_token = None
 log_client = boto3.client("logs", region_name='us-west-2')
+
+### For caching - change this if after backfilling submission_date data
+SUBMISSION_DATE_ETAG = "submission_date_v1"
+CLIENT_CACHE_SLACK_SECONDS = 3600
+
+
+def get_time_left_in_cache():
+    assert app.config["CACHETYPE"] == "simple", "Only simple caches can be used with get_time_left_in_cache"
+
+    # our cache (a flask cache), contains a cache (werkzeug SimpleCache), which contains a _cache (dict)
+    # see https://github.com/pallets/werkzeug/blob/master/werkzeug/contrib/cache.py#L307
+    expires_ts, _ = cache.cache._cache.get(request.url, (0, ""))
+
+    # get seconds until expiry
+    expires = int(expires_ts - time.time())
+
+    if expires <= 0:
+        return 0
+
+    # add some slack
+    expires += CLIENT_CACHE_SLACK_SECONDS
+    return expires
+
+
+def add_cache_header(add_etag=False):
+    def decorator_func(f):
+        @wraps(f)
+        def decorated_request(*args, **kwargs):
+            response = f(*args, **kwargs)
+
+            prefix = kwargs.get('prefix')
+            if prefix == 'submission_date' and add_etag:
+                response.cache_control.max_age = app.config["TIMEOUT"]
+                response.set_etag(SUBMISSION_DATE_ETAG)
+            else:
+                response.cache_control.max_age = get_time_left_in_cache()
+
+            return response
+        return decorated_request
+    return decorator_func
+
+
+def check_etag(f):
+    @wraps(f)
+    def decorated_request(*args, **kwargs):
+        etag = request.headers.get('If-None-Match')
+        prefix = kwargs.get('prefix')
+        if prefix == 'submission_date' and etag == SUBMISSION_DATE_ETAG:
+            return Response(status=304)
+        return f(*args, **kwargs)
+    return decorated_request
+
 
 def cache_request(f):
     @wraps(f)
@@ -127,13 +179,13 @@ def log_request():
         if response and response.get('nextSequenceToken'):
             sequence_token = response['nextSequenceToken']
 
-
 @app.route('/status')
 def status():
     return "OK"
 
 
 @app.route('/aggregates_by/<prefix>/channels/')
+@add_cache_header()
 @cache_request
 def get_channels(prefix):
     channels = execute_query("select * from list_channels(%s)", (prefix, ))
@@ -141,6 +193,7 @@ def get_channels(prefix):
 
 
 @app.route('/aggregates_by/<prefix>/channels/<channel>/dates/')
+@add_cache_header()
 @cache_request
 def get_dates(prefix, channel):
     result = execute_query("select * from list_buildids(%s, %s)", (prefix, channel))
@@ -175,6 +228,7 @@ def get_filter_options(channel, version, filters, filter):
 
 
 @app.route('/filters/', methods=["GET"])
+@add_cache_header()
 @cache_request
 def get_filters_options():
     channel = request.args.get("channel", None)
@@ -204,6 +258,8 @@ def _get_description(channel, prefix, metric):
 
 
 @app.route('/aggregates_by/<prefix>/channels/<channel>/', methods=["GET"])
+@add_cache_header(True)
+@check_etag
 @cache_request
 def get_dates_metrics(prefix, channel):
     mapping = {"true": True, "false": False}
@@ -273,7 +329,6 @@ def get_dates_metrics(prefix, channel):
         pretty_result["data"].append({"date": date, "label": label, "histogram": histogram, "count": count, "sum": sum})
 
     return Response(json.dumps(pretty_result), mimetype="application/json")
-
 
 if __name__ == "__main__":
     app.run("0.0.0.0", debug=True, threaded=True)

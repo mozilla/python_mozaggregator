@@ -3,9 +3,12 @@ import logging
 import requests
 import pandas as pd
 import json
+import re
 
 from mozaggregator.aggregator import _aggregate_metrics, COUNT_HISTOGRAM_LABELS, SIMPLE_MEASURES_LABELS, NUMERIC_SCALARS_LABELS, SIMPLE_MEASURES_PREFIX, NUMERIC_SCALARS_PREFIX
 from mozaggregator.db import _create_connection, submit_aggregates
+from mozaggregator.service import SUBMISSION_DATE_ETAG, CLIENT_CACHE_SLACK_SECONDS
+from mozaggregator import config
 from dataset import *
 from moztelemetry.histogram import Histogram
 from nose.tools import nottest
@@ -243,6 +246,51 @@ def test_new_db_functions_backwards_compatible():
     # Note we don't actually use batched_get_metric for multiple metrics,
     # but this behavior is expected
     assert len(cursor.fetchall()) == 2
+
+def test_submission_dates_cache_control():
+    reply = requests.get("{}/aggregates_by/submission_date/channels/nightly?version=41&dates=20150603&metric=GC_MAX_PAUSE_MS".format(SERVICE_URI))
+    assert reply.ok
+    assert reply.headers.get('Cache-Control') == 'max-age={}'.format(config.TIMEOUT)
+
+def test_submission_dates_etag():
+    reply = requests.get("{}/aggregates_by/submission_date/channels/nightly?version=41&dates=20150603&metric=GC_MAX_PAUSE_MS".format(SERVICE_URI))
+    assert reply.ok
+    assert reply.headers.get('etag').strip('"') == SUBMISSION_DATE_ETAG, "ETag expected {}, got {}".format(SUBMISSION_DATE_ETAG, reply.headers.get('etag'))
+
+def test_submission_dates_etag_header():
+    url = "{}/aggregates_by/submission_date/channels/nightly?version=41&dates=20150603&metric=GC_MAX_PAUSE_MS".format(SERVICE_URI)
+    headers = {'If-None-Match': SUBMISSION_DATE_ETAG}
+    reply = requests.get(url, headers=headers)
+    assert reply.ok
+    assert reply.status_code == 304, "Status code expected 304, was {}".format(reply.status_code)
+
+def test_submission_dates_etag_header_wrong():
+    url = "{}/aggregates_by/submission_date/channels/nightly?version=41&dates=20150603&metric=GC_MAX_PAUSE_MS".format(SERVICE_URI)
+    headers = {'If-None-Match': SUBMISSION_DATE_ETAG + "_"}
+    reply = requests.get(url, headers=headers)
+    assert reply.ok
+    assert reply.status_code == 200, "Status code expected 200, was {}".format(reply.status_code)
+
+def test_build_id_cache_control():
+    reply = requests.get("{}/aggregates_by/build_id/channels/nightly?version=41&dates=20150601&metric=GC_MAX_PAUSE_MS".format(SERVICE_URI))
+    assert reply.ok
+
+    matches = re.match(r'max-age=(\d+)', reply.headers.get('Cache-Control'))
+    assert matches is not None, "Cache Control response not set, but should be"
+    assert int(matches.group(1)) > 0, "max-age expected greater than 0, was {}".format(matches.group(1))
+    assert int(matches.group(1)) < config.TIMEOUT + CLIENT_CACHE_SLACK_SECONDS, "max-age expected less than TIMEOUT"
+
+def test_build_id_dates_no_etag():
+    reply = requests.get("{}/aggregates_by/build_id/channels/nightly?version=41&dates=20150601&metric=GC_MAX_PAUSE_MS".format(SERVICE_URI))
+    assert reply.ok
+    assert reply.headers.get('etag') is None
+
+def test_build_id_etag_header_ignored():
+    url = "{}/aggregates_by/build_id/channels/nightly?version=41&dates=20150601&metric=GC_MAX_PAUSE_MS".format(SERVICE_URI)
+    headers = {'If-None-Match': SUBMISSION_DATE_ETAG}
+    reply = requests.get(url, headers=headers)
+    assert reply.ok
+    assert reply.status_code == 200, "Etag should be ignored for build id"
 
 
 @nottest
