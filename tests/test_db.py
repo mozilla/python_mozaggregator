@@ -279,7 +279,7 @@ def test_numeric_scalar(prefix, channel, version, dates, metric, value, expected
     _test_numeric_scalar(prefix, channel, version, dates, metric, value, expected_count, NUMERIC_SCALAR_BUCKET, NUMERIC_SCALARS_LABELS, False, True)
 
 @nottest
-def _test_numeric_scalar(prefix, channel, version, dates, metric, value, expected_count, bucket, labels, is_child, has_def):
+def _test_numeric_scalar(prefix, channel, version, dates, metric, value, expected_count, bucket, labels, process_type, has_def):
     endpoint = "{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}".format(SERVICE_URI, prefix, channel, version, ",".join(dates), metric)
     reply = requests.get(endpoint).json()
     assert(len(reply["data"]) == len(dates))
@@ -290,7 +290,7 @@ def _test_numeric_scalar(prefix, channel, version, dates, metric, value, expecte
 
     for res in reply["data"]:
         # get `expected_count` for either just parent, or both parent and child
-        assert(res["count"] == expected_count * (1 if not is_child else NUM_CHILDREN_PER_PING + 1))
+        assert(res["count"] == expected_count * (1 if process_type != "parent" else NUM_CHILDREN_PER_PING + 1))
 
         current = pd.Series(res["histogram"], index=map(int, reply["buckets"]))
         expected = pd.Series(index=labels, data=0)

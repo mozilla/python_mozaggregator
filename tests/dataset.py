@@ -178,6 +178,10 @@ def generate_payload(dimensions, aggregated_child_histograms):
             u"histograms": histograms_template,
             u"keyedHistograms": keyed_histograms_template
         }
+        processes_payload[u"gpu"] = {
+            u"histograms": histograms_template,
+            u"keyedHistograms": keyed_histograms_template
+        }
     else:
         for i in range(NUM_CHILDREN_PER_PING):
             child_payloads[i][u"histograms"] = histograms_template
