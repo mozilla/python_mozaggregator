@@ -2,7 +2,7 @@ import pyspark
 import logging
 import pandas as pd
 
-from mozaggregator.aggregator import _aggregate_metrics, SIMPLE_MEASURES_PREFIX, NUMERIC_SCALARS_PREFIX, COUNT_HISTOGRAM_PREFIX
+from mozaggregator.aggregator import _aggregate_metrics, SIMPLE_MEASURES_PREFIX, NUMERIC_SCALARS_PREFIX, COUNT_HISTOGRAM_PREFIX, PROCESS_TYPES
 from collections import defaultdict
 from dataset import *
 
@@ -104,14 +104,14 @@ def test_numerical_scalars():
                     metric = "{}_{}".format(metric, label)
 
                 metric_count[metric][process_type] += 1
-                assert(value["count"] == expected_count(process_type))
+                assert value["count"] == expected_count(process_type, True), "Expected {}, Got {}, Process {}".format(expected_count(process_type, True), value["count"], process_type)
                 assert(value["sum"] == value["count"] * SCALAR_VALUE)
                 assert(value["histogram"][str(NUMERIC_SCALAR_BUCKET)] == value["count"])
 
     keyed_scalars_template_len = len([key for metric, dic in keyed_scalars_template.iteritems() for key in dic])
     assert len(metric_count) == len(scalars_template) + keyed_scalars_template_len
-    for process_counts in metric_count.values():
-        assert(len(process_counts) == 1) # Only testing parent scalars ATM
+    for metric, process_counts in metric_count.iteritems():
+        assert(process_counts.viewkeys() == PROCESS_TYPES)
         for v in process_counts.values():
           assert(v == len(build_id_aggregates))
 
@@ -134,7 +134,7 @@ def test_classic_histograms():
 
     assert(len(metric_count) == len(histograms))
     for process_counts in metric_count.values():
-        assert(len(process_counts) == NUM_PROCESS_TYPES)
+        assert(process_counts.viewkeys() == PROCESS_TYPES)
         for v in process_counts.values():
           assert(v == len(build_id_aggregates))
 
@@ -157,7 +157,7 @@ def test_count_histograms():
 
     assert len(metric_count) == len(histograms)
     for process_counts in metric_count.values():
-        assert(len(process_counts) == NUM_PROCESS_TYPES)
+        assert(process_counts.viewkeys() == PROCESS_TYPES)
         for v in process_counts.values():
           assert(v == len(build_id_aggregates))
 
@@ -188,7 +188,7 @@ def test_use_counter2_histogram():
 
     assert len(metric_count) == len(histograms)
     for process_counts in metric_count.values():
-        assert(len(process_counts) == NUM_PROCESS_TYPES)
+        assert(process_counts.viewkeys() == PROCESS_TYPES)
         for v in process_counts.values():
           assert(v == len(build_id_aggregates))
 
@@ -217,6 +217,6 @@ def test_keyed_histograms():
 
     assert(len(metric_count) == len(keyed_histograms_template))  # Assume one label per keyed histogram
     for process_counts in metric_count.values():
-        assert(len(process_counts) == NUM_PROCESS_TYPES)
+        assert(process_counts.viewkeys() == PROCESS_TYPES)
         for v in process_counts.values():
           assert(v == len(build_id_aggregates))

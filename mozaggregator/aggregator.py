@@ -26,6 +26,8 @@ SCALAR_MEASURE_MAP = {
     NUMERIC_SCALARS_PREFIX: NUMERIC_SCALARS_LABELS
 }
 
+PROCESS_TYPES = {"parent", "content", "gpu"}
+
 def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1, fennec_ping_fraction=1):
     """ Returns the build-id and submission date aggregates for a given submission date.
 
@@ -228,7 +230,14 @@ def _extract_simple_measures(state, simple, process_type="parent"):
         elif isinstance(value, (int, float, long)):
             _extract_scalar_value(state, u"_".join((SIMPLE_MEASURES_PREFIX, name.upper())), u"", value, SIMPLE_MEASURES_LABELS, process_type)
 
-def _extract_numeric_scalars(state, scalar_dict):
+
+def _extract_scalars(state, process_payloads):
+    for process in PROCESS_TYPES:
+        _extract_numeric_scalars(state, process_payloads.get(process, {}).get("scalars", {}), process)
+        _extract_keyed_numeric_scalars(state, process_payloads.get(process, {}).get("keyedScalars", {}), process)
+
+
+def _extract_numeric_scalars(state, scalar_dict, process):
     if not isinstance(scalar_dict, dict):
         return
 
@@ -240,10 +249,10 @@ def _extract_numeric_scalars(state, scalar_dict):
             continue
 
         scalar_name = u"_".join((NUMERIC_SCALARS_PREFIX, name.upper()))
-        _extract_scalar_value(state, scalar_name, u"", value, NUMERIC_SCALARS_LABELS, "parent")
+        _extract_scalar_value(state, scalar_name, u"", value, NUMERIC_SCALARS_LABELS, process)
 
 
-def _extract_keyed_numeric_scalars(state, scalar_dict):
+def _extract_keyed_numeric_scalars(state, scalar_dict, process):
     if not isinstance(scalar_dict, dict):
         return
 
@@ -259,7 +268,7 @@ def _extract_keyed_numeric_scalars(state, scalar_dict):
             if not isinstance(sub_value, (int, float, long)):
                 continue
 
-            _extract_scalar_value(state, scalar_name, sub_name.upper(), sub_value, NUMERIC_SCALARS_LABELS, "parent")
+            _extract_scalar_value(state, scalar_name, sub_name.upper(), sub_value, NUMERIC_SCALARS_LABELS, process)
 
 
 def _extract_scalar_value(state, name, label, value, bucket_labels, process_type="parent"):
@@ -288,13 +297,11 @@ def _extract_child_payloads(state, child_payloads):
         _extract_histograms(state, child, "content")
         _extract_simple_measures(state, child.get("simpleMeasurements", {}), "content")
 
-
 def _aggregate_ping(state, ping):
     if not isinstance(ping, dict):
         return
 
-    _extract_numeric_scalars(state, ping.get("payload", {}).get("processes", {}).get("parent", {}).get("scalars", {}))
-    _extract_keyed_numeric_scalars(state, ping.get("payload", {}).get("processes", {}).get("parent", {}).get("keyedScalars", {}))
+    _extract_scalars(state, ping.get("payload", {}).get("processes", {}))
     _extract_histograms(state, ping.get("payload", {}))
     _extract_simple_measures(state, ping.get("payload", {}).get("simpleMeasurements", {}))
     _extract_child_payloads(state, ping.get("payload", {}).get("childPayloads", {}))

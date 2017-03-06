@@ -103,36 +103,47 @@ def test_build_id_metrics():
     template_version = [x.split('.')[0] for x in ping_dimensions["version"]]
     template_build_id = [x[:-6] for x in ping_dimensions["build_id"]]
 
-    expected_count = NUM_PINGS_PER_DIMENSIONS
+    expected_count = 1
     for dimension, values in ping_dimensions.iteritems():
         if dimension not in ["channel", "version", "build_id"]:
             expected_count *= len(values)
 
     for channel in template_channel:
         for version in template_version:
+
+            histogram_expected_count = NUM_PINGS_PER_DIMENSIONS * expected_count
             for metric, value in histograms_template.iteritems():
-                test_histogram("build_id", channel, version, template_build_id, metric, value, expected_count)
+                test_histogram("build_id", channel, version, template_build_id, metric, value, histogram_expected_count)
 
-                for simple_measure, value in simple_measurements_template.iteritems():
-                    if not isinstance(value, int):
-                        continue
+            # Count = product(dimensions) * pings_per_dimensions
+            # 1 Count for parent, then 1 Count for each NUM_CHILDREN_PER_PING
+            simple_measure_expected_count = expected_count * NUM_PINGS_PER_DIMENSIONS * (NUM_CHILDREN_PER_PING + 1)
 
-                    metric = "{}_{}".format(SIMPLE_MEASURES_PREFIX, simple_measure.upper())
-                    test_simple_measure("build_id", channel, version, template_build_id, metric, value, expected_count)
+            for simple_measure, value in simple_measurements_template.iteritems():
+                if not isinstance(value, int):
+                    continue
 
-                for scalar, value in scalars_template.iteritems():
-                    if not isinstance(value, int):
-                        continue
+                metric = "{}_{}".format(SIMPLE_MEASURES_PREFIX, simple_measure.upper())
+                test_simple_measure("build_id", channel, version, template_build_id, metric, value, simple_measure_expected_count)
 
-                    metric = '{}_{}'.format(NUMERIC_SCALARS_PREFIX, scalar.upper())
-                    test_numeric_scalar("build_id", channel, version, template_build_id, metric, value, expected_count)
+            # for gpu and content process, NUM_AGGREGATED_CHILD_PINGS * expected_count gets the expected number of counts
+            # (we only add gpu and content scalars for aggregated child pings)
+            # for parent processes, NUM_PINGS_PER_DIMENSIONS * expected_count 
+            numeric_scalar_expected_count = ((2 * NUM_AGGREGATED_CHILD_PINGS) + NUM_PINGS_PER_DIMENSIONS) * expected_count
 
-                for metric, _dict in keyed_scalars_template.iteritems():
-                    metric_name = '{}_{}'.format(NUMERIC_SCALARS_PREFIX, metric.upper())
-                    test_keyed_numeric_scalar("build_id", channel, version, template_build_id, metric_name, _dict, expected_count)
+            for scalar, value in scalars_template.iteritems():
+                if not isinstance(value, int):
+                    continue
 
-                for metric, histograms in keyed_histograms_template.iteritems():
-                    test_keyed_histogram("build_id", channel, version, template_build_id, metric, histograms, expected_count)
+                metric = '{}_{}'.format(NUMERIC_SCALARS_PREFIX, scalar.upper())
+                test_numeric_scalar("build_id", channel, version, template_build_id, metric, value, numeric_scalar_expected_count)
+
+            for metric, _dict in keyed_scalars_template.iteritems():
+                metric_name = '{}_{}'.format(NUMERIC_SCALARS_PREFIX, metric.upper())
+                test_keyed_numeric_scalar("build_id", channel, version, template_build_id, metric_name, _dict, numeric_scalar_expected_count)
+
+            for metric, histograms in keyed_histograms_template.iteritems():
+                test_keyed_histogram("build_id", channel, version, template_build_id, metric, histograms, histogram_expected_count)
 
 
 def test_submission_dates_metrics():
@@ -140,36 +151,46 @@ def test_submission_dates_metrics():
     template_version = [x.split('.')[0] for x in ping_dimensions["version"]]
     template_submission_date = ping_dimensions["submission_date"]
 
-    expected_count = NUM_PINGS_PER_DIMENSIONS
+    expected_count = 1
     for dimension, values in ping_dimensions.iteritems():
         if dimension not in ["channel", "version", "submission_date"]:
             expected_count *= len(values)
 
     for channel in template_channel:
         for version in template_version:
+
+            histogram_expected_count = NUM_PINGS_PER_DIMENSIONS * expected_count
             for metric, value in histograms_template.iteritems():
-                test_histogram("submission_date", channel, version, template_submission_date, metric, value, expected_count)
+                test_histogram("submission_date", channel, version, template_submission_date, metric, value, histogram_expected_count)
+
+            # Count = product(dimensions) * pings_per_dimensions
+            # 1 Count for parent, then 1 Count for each NUM_CHILDREN_PER_PING
+            simple_measure_expected_count = expected_count * NUM_PINGS_PER_DIMENSIONS * (NUM_CHILDREN_PER_PING + 1)
 
             for simple_measure, value in simple_measurements_template.iteritems():
                 if not isinstance(value, int):
                     continue
 
                 metric = "{}_{}".format(SIMPLE_MEASURES_PREFIX, simple_measure.upper())
-                test_simple_measure("submission_date", channel, version, template_submission_date, metric, value, expected_count)
+                test_simple_measure("submission_date", channel, version, template_submission_date, metric, value, simple_measure_expected_count)
+
+            # for gpu and content process, NUM_AGGREGATED_CHILD_PINGS * expected_count gets the expected number of counts
+            # (we only add gpu and content scalars for aggregated child pings)
+            # for parent processes, NUM_PINGS_PER_DIMENSIONS * expected_count 
+            numeric_scalar_expected_count = ((2 * NUM_AGGREGATED_CHILD_PINGS) + NUM_PINGS_PER_DIMENSIONS) * expected_count
 
             for scalar, value in scalars_template.iteritems():
                 if not isinstance(value, int):
                     continue
-
                 metric = '{}_{}'.format(NUMERIC_SCALARS_PREFIX, scalar.upper())
-                test_numeric_scalar("submission_date", channel, version, template_submission_date, metric, value, expected_count)
+                test_numeric_scalar("submission_date", channel, version, template_submission_date, metric, value, numeric_scalar_expected_count)
 
             for metric, _dict in keyed_scalars_template.iteritems():
                 metric_name = '{}_{}'.format(NUMERIC_SCALARS_PREFIX, metric.upper())
-                test_keyed_numeric_scalar("submission_date", channel, version, template_submission_date, metric_name, _dict, expected_count)
+                test_keyed_numeric_scalar("submission_date", channel, version, template_submission_date, metric_name, _dict, numeric_scalar_expected_count)
 
             for metric, histograms in keyed_histograms_template.iteritems():
-                test_keyed_histogram("submission_date", channel, version, template_submission_date, metric, histograms, expected_count)
+                test_keyed_histogram("submission_date", channel, version, template_submission_date, metric, histograms, histogram_expected_count)
 
 
 def test_null_label_character_submit():
@@ -272,14 +293,14 @@ def test_histogram(prefix, channel, version, dates, metric, value, expected_coun
 
 @nottest
 def test_simple_measure(prefix, channel, version, dates, metric, value, expected_count):
-    _test_numeric_scalar(prefix, channel, version, dates, metric, value, expected_count, SIMPLE_SCALAR_BUCKET, SIMPLE_MEASURES_LABELS, True, False)
+    _test_numeric_scalar(prefix, channel, version, dates, metric, value, expected_count, SIMPLE_SCALAR_BUCKET, SIMPLE_MEASURES_LABELS, False)
 
 @nottest
 def test_numeric_scalar(prefix, channel, version, dates, metric, value, expected_count):
-    _test_numeric_scalar(prefix, channel, version, dates, metric, value, expected_count, NUMERIC_SCALAR_BUCKET, NUMERIC_SCALARS_LABELS, False, True)
+    _test_numeric_scalar(prefix, channel, version, dates, metric, value, expected_count, NUMERIC_SCALAR_BUCKET, NUMERIC_SCALARS_LABELS, True)
 
 @nottest
-def _test_numeric_scalar(prefix, channel, version, dates, metric, value, expected_count, bucket, labels, is_child, has_def):
+def _test_numeric_scalar(prefix, channel, version, dates, metric, value, expected_count, bucket, labels, has_def):
     endpoint = "{}/aggregates_by/{}/channels/{}?version={}&dates={}&metric={}".format(SERVICE_URI, prefix, channel, version, ",".join(dates), metric)
     reply = requests.get(endpoint).json()
     assert(len(reply["data"]) == len(dates))
@@ -289,8 +310,7 @@ def _test_numeric_scalar(prefix, channel, version, dates, metric, value, expecte
     bucket_index = labels.index(bucket)
 
     for res in reply["data"]:
-        # get `expected_count` for either just parent, or both parent and child
-        assert(res["count"] == expected_count * (1 if not is_child else NUM_CHILDREN_PER_PING + 1))
+        assert(res["count"] == expected_count)
 
         current = pd.Series(res["histogram"], index=map(int, reply["buckets"]))
         expected = pd.Series(index=labels, data=0)

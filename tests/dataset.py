@@ -1,12 +1,13 @@
 import uuid
 
 from itertools import product, repeat, chain
+from mozaggregator.aggregator import PROCESS_TYPES
 
 NUM_CHILDREN_PER_PING = 3
 NUM_AGGREGATED_CHILD_PINGS = 2
 NUM_PINGS_PER_DIMENSIONS = 3
 assert(NUM_AGGREGATED_CHILD_PINGS <= NUM_PINGS_PER_DIMENSIONS)
-NUM_PROCESS_TYPES = 3 # parent, content, gpu
+NUM_PROCESS_TYPES = len(PROCESS_TYPES)
 SCALAR_VALUE = 42
 SIMPLE_SCALAR_BUCKET = 35
 COUNT_SCALAR_BUCKET = 40
@@ -116,16 +117,17 @@ ignored_keyed_histograms_template = {u'MESSAGE_MANAGER_MESSAGE_SIZE':
 simple_measurements_template = {"uptime": SCALAR_VALUE, "addonManager": {u'XPIDB_parseDB_MS': SCALAR_VALUE}}
 
 scalars_template = {
-    "browser.engagement.total_uri_count": SCALAR_VALUE, 
+    "browser.engagement.total_uri_count": SCALAR_VALUE,
     "browser.engagement.tab_open_event_count": SCALAR_VALUE
 }
 
 ignored_scalars_template = {
     "browser.engagement.navigation": SCALAR_VALUE,
-    "browser.engagement.navigation.test": SCALAR_VALUE 
+    "browser.engagement.navigation.test": SCALAR_VALUE,
+    "telemetry.test.string_kind": "IGNORED_STRING"
 }
 
-keyed_scalars_template = { 
+keyed_scalars_template = {
     "telemetry.test.keyed_release_optout": {
         "search_enter": SCALAR_VALUE
     },
@@ -139,6 +141,9 @@ ignored_keyed_scalars_template = {
     "browser.engagement.navigation.searchbar": {
         "first": SCALAR_VALUE,
         "second": SCALAR_VALUE
+    },
+    "fake.keyed.string": {
+        "first": "IGNORE_ME"
     }
 }
 
@@ -161,10 +166,13 @@ def generate_payload(dimensions, aggregated_child_histograms):
     child_payloads = [{"simpleMeasurements": simple_measurements_template}
                       for i in range(NUM_CHILDREN_PER_PING)]
 
+    scalars = dict(chain(scalars_template.iteritems(), ignored_scalars_template.iteritems()))
+    keyed_scalars = dict(chain(keyed_scalars_template.iteritems(), ignored_keyed_scalars_template.iteritems()))
+
     processes_payload = {
         u"parent": {
-            u"scalars": dict(chain(scalars_template.iteritems(), ignored_scalars_template.iteritems())),
-            u"keyedScalars": dict(chain(keyed_scalars_template.iteritems(), ignored_keyed_scalars_template.iteritems()))        
+            u"scalars": scalars,
+            u"keyedScalars": keyed_scalars
         }
     }
 
@@ -172,11 +180,15 @@ def generate_payload(dimensions, aggregated_child_histograms):
     if aggregated_child_histograms:
         processes_payload[u"content"] = {
             u"histograms": histograms_template,
-            u"keyedHistograms": keyed_histograms_template
+            u"keyedHistograms": keyed_histograms_template,
+            u"scalars": scalars,
+            u"keyedScalars": keyed_scalars
         }
         processes_payload[u"gpu"] = {
             u"histograms": histograms_template,
-            u"keyedHistograms": keyed_histograms_template
+            u"keyedHistograms": keyed_histograms_template,
+            u"scalars": scalars,
+            u"keyedScalars": keyed_scalars
         }
     else:
         for i in range(NUM_CHILDREN_PER_PING):
@@ -201,12 +213,14 @@ def generate_payload(dimensions, aggregated_child_histograms):
             u"payload": payload,
             u"environment": environment}
 
-def expected_count(process_type):
+def expected_count(process_type, scalar=False):
     if process_type == "parent":
         return NUM_PINGS_PER_DIMENSIONS
     elif process_type == "gpu":
         return NUM_AGGREGATED_CHILD_PINGS
-    elif process_type == "content":
+    elif process_type == "content" and not scalar:
         return (NUM_PINGS_PER_DIMENSIONS - NUM_AGGREGATED_CHILD_PINGS) * NUM_CHILDREN_PER_PING + NUM_AGGREGATED_CHILD_PINGS
+    elif process_type == "content" and scalar:
+        return NUM_AGGREGATED_CHILD_PINGS
     else:
         return -1
