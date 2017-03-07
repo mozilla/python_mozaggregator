@@ -8,7 +8,7 @@
 - name: get spark
   command: "{{item}} chdir={{ansible_env.HOME}} creates=spark.tgz"
   with_items:
-    - wget https://d3kbcqa49mib13.cloudfront.net/spark-{{spark_version}}-bin-hadoop2.4.tgz -O spark.tgz
+    - wget https://d3kbcqa49mib13.cloudfront.net/spark-{{spark_version}}-bin-hadoop2.7.tgz -O spark.tgz
 
 - name: install spark
   unarchive: src={{ansible_env.HOME}}/spark.tgz dest={{ansible_env.HOME}} copy=no
@@ -17,7 +17,7 @@
   lineinfile: >
     dest={{ansible_env.HOME}}/.bashrc
     regexp="^export SPARK_HOME"
-    line="export SPARK_HOME={{ansible_env.HOME}}/spark-{{spark_version}}-bin-hadoop2.4"
+    line="export SPARK_HOME={{ansible_env.HOME}}/spark-{{spark_version}}-bin-hadoop2.7"
 
 - name: source pyspark
   lineinfile: >
