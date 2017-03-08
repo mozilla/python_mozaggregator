@@ -18,7 +18,7 @@ from aggregator import SIMPLE_MEASURES_LABELS, COUNT_HISTOGRAM_LABELS, NUMERIC_S
                         SIMPLE_MEASURES_PREFIX, COUNT_HISTOGRAM_PREFIX, NUMERIC_SCALARS_PREFIX, \
                         SCALAR_MEASURE_MAP
 from db import get_db_connection_string, histogram_revision_map
-from scalar import Scalar
+from moztelemetry.scalar import Scalar
 from logging.handlers import SysLogHandler
 from botocore.exceptions import ClientError
 from copy import deepcopy
