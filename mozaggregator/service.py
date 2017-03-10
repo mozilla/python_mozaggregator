@@ -111,7 +111,10 @@ def cache_request(f):
 def create_pool():
     global pool
     if pool is None:
-        pool = SimpleConnectionPool(app.config["MINCONN"], app.config["MAXCONN"], dsn=get_db_connection_string())
+        pool = SimpleConnectionPool(
+            app.config["MINCONN"],
+            app.config["MAXCONN"],
+            dsn=get_db_connection_string(read_only=True))
     return pool
 
 
@@ -174,7 +177,7 @@ def log_request():
                         logStreamNamePrefix = LOG_STREAM_NAME)
                     sequence_token = stream_describe['logStreams'][0]['uploadSequenceToken']
                 else:
-                    raise 
+                    raise
 
         if response and response.get('nextSequenceToken'):
             sequence_token = response['nextSequenceToken']
