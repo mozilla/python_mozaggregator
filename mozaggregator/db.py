@@ -31,14 +31,15 @@ histogram_revision_map = {"nightly": "https://hg.mozilla.org/mozilla-central/rev
 
 _metric_printable = set(string.ascii_uppercase + string.ascii_lowercase + string.digits + "_-[].")
 
-def get_db_connection_string():
+def get_db_connection_string(read_only=False):
     if os.getenv("DB_TEST_URL"):
         return os.getenv("DB_TEST_URL")
     elif config.USE_PRODUCTION_DB:
         s3 = S3Connection(host="s3-us-west-2.amazonaws.com")
         secret = json.loads(s3.get_bucket(config.BUCKET).get_key(config.SECRET).get_contents_as_string())["password"]
         rds = boto.rds2.connect_to_region(config.REGION)
-        db = rds.describe_db_instances(config.RDS)["DescribeDBInstancesResponse"]["DescribeDBInstancesResult"]["DBInstances"][0]
+        rds_name = config.READ_RDS if read_only else config.WRITE_RDS
+        db = rds.describe_db_instances(rds_name)["DescribeDBInstancesResponse"]["DescribeDBInstancesResult"]["DBInstances"][0]
         return "dbname={} user={} password={} host={}".format(db["DBName"], db["MasterUsername"], secret, db["Endpoint"]["Address"])
     else:
         return "dbname={} user={} password={} host={}".format(config.DBNAME, config.DBUSER, config.DBPASS, config.DBHOST)
@@ -48,7 +49,7 @@ def _create_connection(autocommit=True, connection_string_override=None):
     if connection_string_override:
         conn = psycopg2.connect(connection_string_override)
     else:
-        conn = psycopg2.connect(get_db_connection_string())
+        conn = psycopg2.connect(get_db_connection_string(False))
 
     if autocommit:
         conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
@@ -59,7 +60,7 @@ def _create_connection(autocommit=True, connection_string_override=None):
 def submit_aggregates(aggregates, dry_run=False):
     _preparedb()
 
-    connection_string = get_db_connection_string()
+    connection_string = get_db_connection_string(False)
 
     build_id_count = aggregates[0].\
                      map(lambda x: (x[0][:4], _aggregate_to_sql(x))).\
