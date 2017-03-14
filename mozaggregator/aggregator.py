@@ -6,6 +6,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import sys
+import boto3
 
 from moztelemetry.dataset import Dataset 
 from moztelemetry.histogram import cached_exponential_buckets
@@ -38,17 +39,8 @@ def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1, fenne
     """
     if not isinstance(channels, (tuple, list)):
         channels = [channels]
-
-
-    def telemetry_enabled(ping):
-        try:
-            return ping.get('environment', {}) \
-                       .get('settings', {}) \
-                       .get('telemetryEnabled', False)
-        except Exception:
-            return False
-
     channels = set(channels)
+
     pings = Dataset.from_source('telemetry') \
                   .where(appUpdateChannel=lambda x : x in channels, 
                          submissionDate=submission_date,
@@ -56,7 +48,7 @@ def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1, fenne
                          sourceVersion='4',
                          appName=lambda x: x != 'Fennec') \
                   .records(sc, sample=main_ping_fraction) \
-                  .filter(telemetry_enabled)
+                  .filter(_telemetry_enabled)
 
     fennec_pings = Dataset.from_source('telemetry') \
                   .where(appUpdateChannel=lambda x : x in channels, 
@@ -66,8 +58,40 @@ def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1, fenne
                          appName = 'Fennec') \
                   .records(sc, sample=fennec_ping_fraction)
 
-    all_pings = pings.union(fennec_pings)
+    all_pings = pings.union(fennec_pings).filter(_get_allowed_client_filter())
     return _aggregate_metrics(all_pings)
+
+
+def _get_ignore_clients():
+    """Get clients to ignore. Fails hard on missing file"""
+    s3_client = boto3.client('s3')
+    s3_client.download_file('telemetry-aggregates', 'ignore-clients','ignore-clients.txt')
+    with open('ignore-clients.txt', 'r') as f:
+        return [c.strip() for c in ','.join(f.readlines()).split(',')]
+
+
+def _get_allowed_client_filter():
+    """Get a ping filter for allowed client ids"""
+    ignore = _get_ignore_clients()
+
+    def _allowed_client_filter(ping):
+        try:
+            client_id = ping.get('clientId')
+            return client_id is not None and client_id not in ignore
+        except Exception:
+            return False
+
+    return _allowed_client_filter    
+
+
+def _telemetry_enabled(ping):
+    try:
+        return ping.get('environment', {}) \
+                   .get('settings', {}) \
+                   .get('telemetryEnabled', False)
+    except Exception:
+        return False
+
 
 def _aggregate_metrics(pings):
     # Use few reducers only when running the test-suite to speed execution up.
