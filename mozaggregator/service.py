@@ -163,6 +163,8 @@ def log_request():
             ]
         }
 
+        response = None
+
         for retry in xrange(MAX_RETRIES + 1):
             if sequence_token is not None:
                 kwargs['sequenceToken'] = sequence_token
@@ -177,7 +179,7 @@ def log_request():
                         logStreamNamePrefix = LOG_STREAM_NAME)
                     sequence_token = stream_describe['logStreams'][0]['uploadSequenceToken']
                 else:
-                    raise
+                    pass
 
         if response and response.get('nextSequenceToken'):
             sequence_token = response['nextSequenceToken']
