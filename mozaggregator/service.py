@@ -36,7 +36,7 @@ patch_psycopg()
 cache.clear()
 
 ### Cloudwatch Logging Config ###
-MAX_RETRIES = 5
+MAX_RETRIES = 3
 LOG_GROUP_NAME = 'telemetry-aggregation-service'
 LOG_STREAM_NAME = 'requests'
 
@@ -174,10 +174,13 @@ def log_request():
             except ClientError as e:
                 if e.response.get("Error", {}).get("Code") in \
                    ("DataAlreadyAcceptedException", "InvalidSequenceTokenException"):
-                    stream_describe = log_client.describe_log_streams(
-                        logGroupName = LOG_GROUP_NAME,
-                        logStreamNamePrefix = LOG_STREAM_NAME)
-                    sequence_token = stream_describe['logStreams'][0]['uploadSequenceToken']
+                    try:
+                        stream_describe = log_client.describe_log_streams(
+                            logGroupName = LOG_GROUP_NAME,
+                            logStreamNamePrefix = LOG_STREAM_NAME)
+                        sequence_token = stream_describe['logStreams'][0]['uploadSequenceToken']
+                    except ClientError:
+                        pass
                 else:
                     pass
 
