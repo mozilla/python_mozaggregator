@@ -5,14 +5,13 @@ import pandas as pd
 import json
 import re
 
-from mozaggregator.aggregator import _aggregate_metrics, COUNT_HISTOGRAM_LABELS, SIMPLE_MEASURES_LABELS, NUMERIC_SCALARS_LABELS, SIMPLE_MEASURES_PREFIX, NUMERIC_SCALARS_PREFIX
+from mozaggregator.aggregator import _aggregate_metrics, COUNT_HISTOGRAM_LABELS, SIMPLE_MEASURES_LABELS, NUMERIC_SCALARS_LABELS, SIMPLE_MEASURES_PREFIX, SCALARS_PREFIX
 from mozaggregator.db import _create_connection, submit_aggregates
 from mozaggregator.service import SUBMISSION_DATE_ETAG, CLIENT_CACHE_SLACK_SECONDS
 from mozaggregator import config
 from dataset import *
 from moztelemetry.histogram import Histogram
 from nose.tools import nottest
-
 
 SERVICE_URI = "http://localhost:5000"
 
@@ -28,7 +27,7 @@ def setup_module():
     sc = pyspark.SparkContext(master="local[*]")
     raw_pings = list(generate_pings())
     aggregates = _aggregate_metrics(sc.parallelize(raw_pings))
-    submit_aggregates(aggregates)
+    build_id_count, submission_date_count = submit_aggregates(aggregates)
 
 
 def teardown_module():
@@ -134,15 +133,15 @@ def test_build_id_metrics():
             # for parent processes, NUM_PINGS_PER_DIMENSIONS * expected_count 
             numeric_scalar_expected_count = ((2 * NUM_AGGREGATED_CHILD_PINGS) + NUM_PINGS_PER_DIMENSIONS) * expected_count
 
-            for scalar, value in scalars_template.iteritems():
+            for scalar, value in numeric_scalars_template.iteritems():
                 if not isinstance(value, int):
                     continue
 
-                metric = '{}_{}'.format(NUMERIC_SCALARS_PREFIX, scalar.upper())
+                metric = '{}_{}'.format(SCALARS_PREFIX, scalar.upper())
                 test_numeric_scalar("build_id", channel, version, template_build_id, metric, value, numeric_scalar_expected_count)
 
             for metric, _dict in keyed_scalars_template.iteritems():
-                metric_name = '{}_{}'.format(NUMERIC_SCALARS_PREFIX, metric.upper())
+                metric_name = '{}_{}'.format(SCALARS_PREFIX, metric.upper())
                 test_keyed_numeric_scalar("build_id", channel, version, template_build_id, metric_name, _dict, numeric_scalar_expected_count)
 
             for metric, histograms in keyed_histograms_template.iteritems():
@@ -182,14 +181,14 @@ def test_submission_dates_metrics():
             # for parent processes, NUM_PINGS_PER_DIMENSIONS * expected_count 
             numeric_scalar_expected_count = ((2 * NUM_AGGREGATED_CHILD_PINGS) + NUM_PINGS_PER_DIMENSIONS) * expected_count
 
-            for scalar, value in scalars_template.iteritems():
+            for scalar, value in numeric_scalars_template.iteritems():
                 if not isinstance(value, int):
                     continue
-                metric = '{}_{}'.format(NUMERIC_SCALARS_PREFIX, scalar.upper())
+                metric = '{}_{}'.format(SCALARS_PREFIX, scalar.upper())
                 test_numeric_scalar("submission_date", channel, version, template_submission_date, metric, value, numeric_scalar_expected_count)
 
             for metric, _dict in keyed_scalars_template.iteritems():
-                metric_name = '{}_{}'.format(NUMERIC_SCALARS_PREFIX, metric.upper())
+                metric_name = '{}_{}'.format(SCALARS_PREFIX, metric.upper())
                 test_keyed_numeric_scalar("submission_date", channel, version, template_submission_date, metric_name, _dict, numeric_scalar_expected_count)
 
             for metric, histograms in keyed_histograms_template.iteritems():

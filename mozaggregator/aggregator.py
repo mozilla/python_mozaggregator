@@ -18,12 +18,12 @@ NUMERIC_SCALARS_LABELS = COUNT_HISTOGRAM_LABELS
 
 SIMPLE_MEASURES_PREFIX = 'SIMPLE_MEASURES'
 COUNT_HISTOGRAM_PREFIX = '[[COUNT]]'
-NUMERIC_SCALARS_PREFIX = 'SCALARS'
+SCALARS_PREFIX = 'SCALARS'
 
 SCALAR_MEASURE_MAP = {
     SIMPLE_MEASURES_PREFIX: SIMPLE_MEASURES_LABELS,
     COUNT_HISTOGRAM_PREFIX: COUNT_HISTOGRAM_LABELS,
-    NUMERIC_SCALARS_PREFIX: NUMERIC_SCALARS_LABELS
+    SCALARS_PREFIX: NUMERIC_SCALARS_LABELS
 }
 
 PROCESS_TYPES = {"parent", "content", "gpu"}
@@ -233,23 +233,27 @@ def _extract_simple_measures(state, simple, process_type="parent"):
 
 def _extract_scalars(state, process_payloads):
     for process in PROCESS_TYPES:
-        _extract_numeric_scalars(state, process_payloads.get(process, {}).get("scalars", {}), process)
-        _extract_keyed_numeric_scalars(state, process_payloads.get(process, {}).get("keyedScalars", {}), process)
+        payload = process_payloads.get(process, {})
+        _extract_unkeyed_scalars(state, payload.get("scalars", {}), process)
+        _extract_keyed_numeric_scalars(state, payload.get("keyedScalars", {}), process)
 
 
-def _extract_numeric_scalars(state, scalar_dict, process):
+def _extract_unkeyed_scalars(state, scalar_dict, process):
     if not isinstance(scalar_dict, dict):
         return
 
     for name, value in scalar_dict.iteritems():
-        if not isinstance(value, (int, float, long)):
+        if not isinstance(value, (str, int, float, long)):
             continue
 
         if name.startswith("browser.engagement.navigation"):
             continue
 
-        scalar_name = u"_".join((NUMERIC_SCALARS_PREFIX, name.upper()))
-        _extract_scalar_value(state, scalar_name, u"", value, NUMERIC_SCALARS_LABELS, process)
+        scalar_name = u"_".join((SCALARS_PREFIX, name.upper()))
+        if isinstance(value, str):
+            _extract_scalar_value(state, scalar_name, value, 1, NUMERIC_SCALARS_LABELS, process)
+        else:
+            _extract_scalar_value(state, scalar_name, u"", value, NUMERIC_SCALARS_LABELS, process)
 
 
 def _extract_keyed_numeric_scalars(state, scalar_dict, process):
@@ -263,7 +267,7 @@ def _extract_keyed_numeric_scalars(state, scalar_dict, process):
         if name.startswith("browser.engagement.navigation"):
             continue
 
-        scalar_name = u"_".join((NUMERIC_SCALARS_PREFIX, name.upper()))
+        scalar_name = u"_".join((SCALARS_PREFIX, name.upper()))
         for sub_name, sub_value in value.iteritems():
             if not isinstance(sub_value, (int, float, long)):
                 continue

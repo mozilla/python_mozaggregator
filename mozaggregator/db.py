@@ -17,9 +17,7 @@ import config
 from moztelemetry.spark import Histogram
 from boto.s3.connection import S3Connection
 from cStringIO import StringIO
-from mozaggregator.aggregator import SIMPLE_MEASURES_LABELS, COUNT_HISTOGRAM_LABELS, NUMERIC_SCALARS_LABELS, \
-                                    SIMPLE_MEASURES_PREFIX, COUNT_HISTOGRAM_PREFIX, NUMERIC_SCALARS_PREFIX, \
-                                    SCALAR_MEASURE_MAP
+from mozaggregator.aggregator import SCALAR_MEASURE_MAP
 
 # Use latest revision, we don't really care about histograms that have
 # been removed. This only works though if histogram definitions are
