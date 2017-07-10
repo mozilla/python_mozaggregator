@@ -5,7 +5,8 @@ import pandas as pd
 import json
 import re
 
-from mozaggregator.aggregator import _aggregate_metrics, COUNT_HISTOGRAM_LABELS, SIMPLE_MEASURES_LABELS, NUMERIC_SCALARS_LABELS, SIMPLE_MEASURES_PREFIX, SCALARS_PREFIX
+from mozaggregator.constants import *
+from mozaggregator.aggregator import _aggregate_metrics
 from mozaggregator.db import _create_connection, submit_aggregates
 from mozaggregator.service import SUBMISSION_DATE_ETAG, CLIENT_CACHE_SLACK_SECONDS
 from mozaggregator import config
