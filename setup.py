@@ -17,7 +17,7 @@ setup(name='python_mozaggregator',
     package_dir={'mozaggregator': 'mozaggregator'},
     install_requires=[
         'awscli',
-        'python_moztelemetry',
+        'python_moztelemetry >= 0.8.3',
         'Flask',
         'flask-cors',
         'flask-cache',

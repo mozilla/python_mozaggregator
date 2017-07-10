@@ -14,10 +14,8 @@ from functools import wraps
 from gevent.monkey import patch_all
 from psycogreen.gevent import patch_psycopg
 from psycopg2.pool import SimpleConnectionPool
-from aggregator import SIMPLE_MEASURES_LABELS, COUNT_HISTOGRAM_LABELS, NUMERIC_SCALARS_LABELS, \
-                        SIMPLE_MEASURES_PREFIX, COUNT_HISTOGRAM_PREFIX, NUMERIC_SCALARS_PREFIX, \
-                        SCALAR_MEASURE_MAP
-from db import get_db_connection_string, histogram_revision_map
+from constants import *
+from db import get_db_connection_string
 from moztelemetry.scalar import Scalar
 from logging.handlers import SysLogHandler
 from botocore.exceptions import ClientError
@@ -258,7 +256,7 @@ def get_filters_options():
 
 
 def _get_description(channel, prefix, metric):
-    if prefix != NUMERIC_SCALARS_PREFIX:
+    if prefix != SCALARS_PREFIX:
         return ''
 
     metric = metric.replace(prefix + '_', '').lower()
@@ -297,7 +295,7 @@ def get_dates_metrics(prefix, channel):
             description = _get_description(channel, _prefix, metric)
             break
     else:
-        revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
+        revision = HISTOGRAM_REVISION_MAP.get(channel, "nightly")  # Use nightly revision if the channel is unknown
         try:
             definition = Histogram(metric, {"values": {}}, revision=revision)
         except KeyError:

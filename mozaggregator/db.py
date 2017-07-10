@@ -17,17 +17,7 @@ import config
 from moztelemetry.spark import Histogram
 from boto.s3.connection import S3Connection
 from cStringIO import StringIO
-from mozaggregator.aggregator import SIMPLE_MEASURES_LABELS, COUNT_HISTOGRAM_LABELS, NUMERIC_SCALARS_LABELS, \
-                                    SIMPLE_MEASURES_PREFIX, COUNT_HISTOGRAM_PREFIX, NUMERIC_SCALARS_PREFIX, \
-                                    SCALAR_MEASURE_MAP
-
-# Use latest revision, we don't really care about histograms that have
-# been removed. This only works though if histogram definitions are
-# immutable, which has been the case so far.
-histogram_revision_map = {"nightly": "https://hg.mozilla.org/mozilla-central/rev/tip",
-                          "aurora": "https://hg.mozilla.org/releases/mozilla-aurora/rev/tip",
-                          "beta": "https://hg.mozilla.org/releases/mozilla-beta/rev/tip",
-                          "release": "https://hg.mozilla.org/releases/mozilla-release/rev/tip"}
+from constants import *
 
 _metric_printable = set(string.ascii_uppercase + string.ascii_lowercase + string.digits + "_-[].")
 
@@ -88,7 +78,7 @@ def _preparedb():
 
 
 def _get_complete_histogram(channel, metric, values):
-    revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
+    revision = HISTOGRAM_REVISION_MAP.get(channel, "nightly")  # Use nightly revision if the channel is unknown
 
     for prefix, labels in SCALAR_MEASURE_MAP.iteritems():
         if metric.startswith(prefix):

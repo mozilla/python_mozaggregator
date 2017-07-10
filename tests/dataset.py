@@ -12,6 +12,8 @@ SCALAR_VALUE = 42
 SIMPLE_SCALAR_BUCKET = 35
 COUNT_SCALAR_BUCKET = 40
 NUMERIC_SCALAR_BUCKET = 40
+STRING_SCALAR_VALUE = "theempiredidnothingwrong"
+STRING_SCALAR_BUCKET = "1"
 
 ping_dimensions = {"submission_date": [u"20150601", u"20150603"],
                    "channel": [u"nightly", u"aurora"],
@@ -116,15 +118,18 @@ ignored_keyed_histograms_template = {u'MESSAGE_MANAGER_MESSAGE_SIZE':
 
 simple_measurements_template = {"uptime": SCALAR_VALUE, "addonManager": {u'XPIDB_parseDB_MS': SCALAR_VALUE}}
 
-scalars_template = {
+numeric_scalars_template = {
     "browser.engagement.total_uri_count": SCALAR_VALUE,
     "browser.engagement.tab_open_event_count": SCALAR_VALUE
 }
 
+string_scalars_template = {
+    "telemetry.test.string_kind": STRING_SCALAR_VALUE
+}
+
 ignored_scalars_template = {
     "browser.engagement.navigation": SCALAR_VALUE,
-    "browser.engagement.navigation.test": SCALAR_VALUE,
-    "telemetry.test.string_kind": "IGNORED_STRING"
+    "browser.engagement.navigation.test": SCALAR_VALUE
 }
 
 keyed_scalars_template = {
@@ -166,8 +171,14 @@ def generate_payload(dimensions, aggregated_child_histograms):
     child_payloads = [{"simpleMeasurements": simple_measurements_template}
                       for i in range(NUM_CHILDREN_PER_PING)]
 
-    scalars = dict(chain(scalars_template.iteritems(), ignored_scalars_template.iteritems()))
-    keyed_scalars = dict(chain(keyed_scalars_template.iteritems(), ignored_keyed_scalars_template.iteritems()))
+    scalars = dict(chain(
+        numeric_scalars_template.iteritems(),
+        string_scalars_template.iteritems(),
+        ignored_scalars_template.iteritems()))
+
+    keyed_scalars = dict(chain(
+        keyed_scalars_template.iteritems(),
+        ignored_keyed_scalars_template.iteritems()))
 
     processes_payload = {
         u"parent": {
