@@ -5,21 +5,29 @@ Aggregator job for Telemetry. See this [blog](http://robertovitillo.com/2015/07/
 
 ## Development and deployment
 
-Note: if you are on Windows you might want to disable `core.autocrlf` to avoid git converting LF endings to CRLF when checking out.
-
-To start hacking on your local machine:
-```bash
-vagrant up
-vagrant ssh
+To clean, build, and run all containers:
+```make up
 ```
 
-If vagrant fails to download a box on Windows 10 then follow the workaround mentioned [here](https://github.com/mitchellh/vagrant/issues/6754).
-
-To run tests within the Vagrant VM:
-```bash
-cd /vagrant
-./run-tests.sh
+To build containers and ssh into web container:
+```make shell
 ```
+
+To manually ssh into running web container (e.g. after a 'make up'):
+```docker ps
+docker exec -it <CONTAINER_ID of web container> /bin/bash
+```
+
+To build and run tests inside dev container:
+```make test
+```
+
+To manually run tests on running web container:
+```ssh into container and ./run-tests.sh
+```
+
+
+TODO(hwoo) Migrate deployment to dockerflow and remove ansible/vagrant stuff, update readme
 
 To deploy a new version of the aggregation service to the cloud:
 ```bash

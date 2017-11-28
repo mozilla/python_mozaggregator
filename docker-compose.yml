@@ -1,0 +1,27 @@
+version: '2'
+
+services:
+  db:
+    image: postgres:9.4
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:5000"
+    depends_on:
+      - db
+    links:
+      - db
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8000:5000"
+    depends_on:
+      - db
+    links:
+      - db
