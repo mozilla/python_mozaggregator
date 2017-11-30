@@ -9,17 +9,17 @@
     url: https://d3kbcqa49mib13.cloudfront.net/spark-{{spark_version}}-bin-hadoop2.7.tgz
     dest: "{{ansible_env.HOME}}/spark.tgz"
 
-- name: install spark
+- name: install Spark
   unarchive: src={{ansible_env.HOME}}/spark.tgz dest={{ansible_env.HOME}} copy=no
 
-- name: source spark
-  lineinfile: >
-    dest={{ansible_env.HOME}}/.bashrc
-    regexp="^export SPARK_HOME"
-    line="export SPARK_HOME={{ansible_env.HOME}}/spark-{{spark_version}}-bin-hadoop2.7"
+- name: source Spark
+  lineinfile:
+    dest: "{{ansible_env.HOME}}/.bashrc"
+    regexp: "^export SPARK_HOME"
+    line: "export SPARK_HOME={{ansible_env.HOME}}/spark-{{spark_version}}-bin-hadoop2.7"
 
-- name: source pyspark
-  lineinfile: >
-    dest={{ansible_env.HOME}}/.bashrc
-    regexp="^export PYTHONPATH"
-    line="export PYTHONPATH=$SPARK_HOME/python:$(ls -1 $SPARK_HOME/python/lib/py4j-*-src.zip | head -1)"
+- name: source Pyspark
+  lineinfile:
+    dest: "{{ansible_env.HOME}}/.bashrc"
+    regexp: "^export PYTHONPATH"
+    line: "export PYTHONPATH=$SPARK_HOME/python:$(ls -1 $SPARK_HOME/python/lib/py4j-*-src.zip | head -1)"
