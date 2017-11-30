@@ -1,5 +1,4 @@
 - name: install java
-  sudo: yes
   apt: name=openjdk-7-jdk state=installed update_cache=yes cache_valid_time=3600
 
 # we have to use wget here instead of the built in Ansible get_url module

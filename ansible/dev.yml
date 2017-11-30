@@ -7,7 +7,6 @@
 
   pre_tasks:
     - name: install packages
-      sudo: yes
       apt: name={{item}} state=installed update_cache=yes cache_valid_time=3600
       with_items:
         - libsnappy-dev
@@ -25,15 +24,12 @@
       register: codename
 
     - name: add apt repository for postgresql
-      sudo: yes
       apt_repository: repo="deb http://apt.postgresql.org/pub/repos/apt/ {{ codename.stdout }}-pgdg main" state=present
 
     - name: trust the postgresql apt repository signing key
-      sudo: yes
       apt_key: id=ACCC4CF8 url=https://www.postgresql.org/media/keys/ACCC4CF8.asc state=present
 
     - name: install postgresql packages
-      sudo: yes
       apt: name={{item}} state=installed update_cache=yes
       with_items:
         - libpq-dev
@@ -42,7 +38,6 @@
         - postgresql-server-dev-{{postgresql_version}}
 
     - name: stop postgres service
-      sudo: yes
       service: name=postgresql state=stopped enabled=no
 
     - name: configure postgresql

@@ -26,6 +26,8 @@ Vagrant.configure("2") do |config|
     dev.vm.network :forwarded_port, host: 5000, guest: 5000
     dev.vm.network :forwarded_port, host: 5432, guest: 5432
     dev.vm.provision "ansible_local" do |ansible|
+      ansible.compatibility_mode = "2.0"
+      ansible.become = true
       ansible.playbook = "ansible/dev.yml"
     end
   end
