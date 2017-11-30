@@ -1,26 +1,25 @@
 - name: install java
-  sudo: yes
   apt: name=openjdk-7-jdk state=installed update_cache=yes cache_valid_time=3600
 
 # we have to use wget here instead of the built in Ansible get_url module
 # because Python versions before 2.7.9 don't support SNI, which is needed
 # to verify the download via HTTPS, while wget does
-- name: get spark
-  command: "{{item}} chdir={{ansible_env.HOME}} creates=spark.tgz"
-  with_items:
-    - wget https://d3kbcqa49mib13.cloudfront.net/spark-{{spark_version}}-bin-hadoop2.7.tgz -O spark.tgz
+- name: get Spark
+  get_url:
+    url: https://d3kbcqa49mib13.cloudfront.net/spark-{{spark_version}}-bin-hadoop2.7.tgz
+    dest: "{{ansible_env.HOME}}/spark.tgz"
 
-- name: install spark
+- name: install Spark
   unarchive: src={{ansible_env.HOME}}/spark.tgz dest={{ansible_env.HOME}} copy=no
 
-- name: source spark
-  lineinfile: >
-    dest={{ansible_env.HOME}}/.bashrc
-    regexp="^export SPARK_HOME"
-    line="export SPARK_HOME={{ansible_env.HOME}}/spark-{{spark_version}}-bin-hadoop2.7"
+- name: source Spark
+  lineinfile:
+    dest: "{{ansible_env.HOME}}/.bashrc"
+    regexp: "^export SPARK_HOME"
+    line: "export SPARK_HOME={{ansible_env.HOME}}/spark-{{spark_version}}-bin-hadoop2.7"
 
-- name: source pyspark
-  lineinfile: >
-    dest={{ansible_env.HOME}}/.bashrc
-    regexp="^export PYTHONPATH"
-    line="export PYTHONPATH=$SPARK_HOME/python:$(ls -1 $SPARK_HOME/python/lib/py4j-*-src.zip | head -1)"
+- name: source Pyspark
+  lineinfile:
+    dest: "{{ansible_env.HOME}}/.bashrc"
+    regexp: "^export PYTHONPATH"
+    line: "export PYTHONPATH=$SPARK_HOME/python:$(ls -1 $SPARK_HOME/python/lib/py4j-*-src.zip | head -1)"

@@ -1,12 +1,14 @@
 # we have to use wget here instead of the built in Ansible get_url module
 # because Python versions before 2.7.9 don't support SNI, which is needed
 # to verify the download via HTTPS, while wget does
+- name: download anaconda
+  get_url:
+    url: https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh
+    dest: "{{ansible_env.HOME}}/miniconda.sh"
+    mode: 0755
+
 - name: install anaconda
-  command: "{{item}} chdir={{ansible_env.HOME}} creates=miniconda2"
-  with_items:
-    - wget https://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
-    - chmod +x miniconda.sh
-    - ./miniconda.sh -b -f
+  command: "./miniconda.sh -b -f chdir={{ansible_env.HOME}} creates=miniconda2"
 
 - name: source anaconda
   lineinfile: dest={{ansible_env.HOME}}/.bashrc regexp="^export.*miniconda2/bin" line="export PATH={{ansible_env.HOME}}/miniconda2/bin:$PATH"

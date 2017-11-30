@@ -4,7 +4,6 @@
 
   pre_tasks:
     - name: install packages
-      sudo: yes
       apt: name={{item}} state=installed update_cache=yes cache_valid_time=3600
       with_items:
         - libpq-dev
@@ -17,7 +16,6 @@
         - redis-server
 
     - name: start supervisord service and have it run during system startup
-      sudo: yes
       service: name=supervisor state=started enabled=yes
 
   roles:
@@ -28,13 +26,10 @@
       command: "{{ansible_env.HOME}}/miniconda2/bin/pip install python_mozaggregator --upgrade"
 
     - name: setup service
-      sudo: yes
       template: src=templates/mozaggregator_service.j2 dest=/etc/supervisor/conf.d/mozaggregator.conf
 
     - name: restart supervisor
-      sudo: yes
       command: service supervisor restart
 
     - name: start service
-      sudo: yes
       supervisorctl: name=mozaggregator_service state=started
