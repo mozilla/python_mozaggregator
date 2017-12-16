@@ -240,7 +240,7 @@ def test_new_db_functions_backwards_compatible():
     assert len(cursor.fetchall()) == 1
 
     new_query = 'SELECT * FROM batched_get_metric(%s, %s, %s, %s, %s, %s)'
-    cursor.execute(new_query, ('submission_date', 'nightly', '41', ['20150603'], json.dumps({'metric': 'GC_MAX_PAUSE_MS', 'child': 'true'}), json.dumps({'metric': 'BLOCKED_ON_PLUGIN_INSTANCE_DESTROY_MS'})))
+    cursor.execute(new_query, ('submission_date', 'nightly', '41', ['20150603'], json.dumps({'metric': 'GC_MAX_PAUSE_MS', 'child': 'true'}), json.dumps({'metric': 'DEVTOOLS_PERFTOOLS_RECORDING_FEATURES_USED'})))
 
     # 1 for the non-keyed histogram, 1 for the 1 key of the keyed histogram
     # Note we don't actually use batched_get_metric for multiple metrics,

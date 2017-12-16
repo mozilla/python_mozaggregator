@@ -79,27 +79,21 @@ histograms_template = {u"EVENTLOOP_UI_ACTIVITY_EXP_MS": {u'bucket_count': 20,
                                            'sum':554,
                                            'values':{'0':0,'1':4,'22':2,'43':1,'63':1,'272':1,'292':0}}}
 
-keyed_histograms_template = {u'BLOCKED_ON_PLUGIN_INSTANCE_DESTROY_MS':
-                             {u'Shockwave Flash17.0.0.188': {u'bucket_count': 20,
-                                                             u'histogram_type': 0,
-                                                             u'log_sum': 696.68039953709,
-                                                             u'log_sum_squares': 3202.8813306447,
-                                                             u'range': [1, 10000],
-                                                             u'sum': 19568,
-                                                             u'values': {u'103': 78,
-                                                                         u'13': 4,
-                                                                         u'1306': 0,
-                                                                         u'171': 12,
-                                                                         u'2': 0,
-                                                                         u'22': 2,
-                                                                         u'284': 6,
-                                                                         u'3': 8,
-                                                                         u'37': 4,
-                                                                         u'472': 1,
-                                                                         u'5': 22,
-                                                                         u'62': 21,
-                                                                         u'785': 1,
-                                                                         u'8': 8}}}}
+keyed_histograms_template = {u'DEVTOOLS_PERFTOOLS_RECORDING_FEATURES_USED': {
+        "withMarkers": {
+          "range": [
+            1,
+            2
+          ],
+          "bucket_count": 3,
+          "histogram_type": 2,
+          "values": {
+            "0": 0,
+            "1": 1,
+            "2": 0
+          },
+          "sum": 1
+        }}}
 
 ignored_keyed_histograms_template = {u'MESSAGE_MANAGER_MESSAGE_SIZE':
                                      {u'foo': {u'bucket_count': 20,
