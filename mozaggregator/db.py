@@ -44,7 +44,6 @@ def get_db_connection_string(read_only=False):
     else:
         return "dbname={} user={} password={} host={}".format(config.DBNAME, config.DBUSER, config.DBPASS, config.DBHOST)
 
-
 def _create_connection(autocommit=True, connection_string_override=None):
     if connection_string_override:
         conn = psycopg2.connect(connection_string_override)
