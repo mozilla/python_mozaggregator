@@ -2,7 +2,7 @@ import pyspark
 import logging
 import pandas as pd
 
-from mozaggregator.aggregator import _aggregate_metrics, SIMPLE_MEASURES_PREFIX, NUMERIC_SCALARS_PREFIX, COUNT_HISTOGRAM_PREFIX, PROCESS_TYPES
+from mozaggregator.aggregator import _extract_main_histograms, _aggregate_metrics, SIMPLE_MEASURES_PREFIX, NUMERIC_SCALARS_PREFIX, COUNT_HISTOGRAM_PREFIX, PROCESS_TYPES
 from collections import defaultdict
 from dataset import *
 
@@ -117,7 +117,7 @@ def test_numerical_scalars():
 
 def test_classic_histograms():
     metric_count = defaultdict(lambda: defaultdict(int))
-    histograms = {k: v for k, v in histograms_template.iteritems() if v["histogram_type"] != 4 and not k.startswith("USE_COUNTER2_")}
+    histograms = {k: v for k, v in histograms_template.iteritems() if v is not None and v.get("histogram_type", -1) != 4 and not k.startswith("USE_COUNTER2_")}
 
     for aggregate in build_id_aggregates:
         for key, value in aggregate[1].iteritems():
@@ -141,7 +141,7 @@ def test_classic_histograms():
 
 def test_count_histograms():
     metric_count = defaultdict(lambda: defaultdict(int))
-    histograms = {"{}_{}".format(COUNT_HISTOGRAM_PREFIX, k): v for k, v in histograms_template.iteritems() if v["histogram_type"] == 4 and not k.endswith("CONTENT_DOCUMENTS_DESTROYED")}
+    histograms = {"{}_{}".format(COUNT_HISTOGRAM_PREFIX, k): v for k, v in histograms_template.iteritems() if v is not None and v.get("histogram_type", -1) == 4 and not k.endswith("CONTENT_DOCUMENTS_DESTROYED")}
 
     for aggregate in build_id_aggregates:
         for key, value in aggregate[1].iteritems():
@@ -164,7 +164,7 @@ def test_count_histograms():
 
 def test_use_counter2_histogram():
     metric_count = defaultdict(lambda: defaultdict(int))
-    histograms = {k: v for k, v in histograms_template.iteritems() if k.startswith("USE_COUNTER2_")}
+    histograms = {k: v for k, v in histograms_template.iteritems() if k.startswith("USE_COUNTER2_") and v is not None}
 
     pages_destroyed = histograms_template["TOP_LEVEL_CONTENT_DOCUMENTS_DESTROYED"]["sum"]
     docs_destroyed = histograms_template["CONTENT_DOCUMENTS_DESTROYED"]["sum"]
@@ -220,3 +220,4 @@ def test_keyed_histograms():
         assert(process_counts.viewkeys() == PROCESS_TYPES)
         for v in process_counts.values():
           assert(v == len(build_id_aggregates))
+

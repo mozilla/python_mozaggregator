@@ -6,6 +6,9 @@ if [ -z "$SPARK_HOME" ]; then
     exit 1
 fi
 
+# see https://github.com/travis-ci/travis-ci/issues/7940
+export BOTO_CONFIG=/dev/null
+
 # make sure mozaggregator is properly importable
 # this is mainly needed for TravisCI support
 source ~/.bashrc # run the Bash config, in case we haven't opened a new shell since ansible provisioned our machine
