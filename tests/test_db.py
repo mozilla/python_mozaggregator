@@ -116,6 +116,8 @@ def test_build_id_metrics():
 
             histogram_expected_count = NUM_PINGS_PER_DIMENSIONS * expected_count
             for metric, value in histograms_template.iteritems():
+		if value is None:
+		    continue
                 test_histogram("build_id", channel, version, template_build_id, metric, value, histogram_expected_count)
 
             # Count = product(dimensions) * pings_per_dimensions
@@ -164,6 +166,8 @@ def test_submission_dates_metrics():
 
             histogram_expected_count = NUM_PINGS_PER_DIMENSIONS * expected_count
             for metric, value in histograms_template.iteritems():
+		if value is None:
+		    continue
                 test_histogram("submission_date", channel, version, template_submission_date, metric, value, histogram_expected_count)
 
             # Count = product(dimensions) * pings_per_dimensions
@@ -278,7 +282,7 @@ def test_build_id_cache_control():
     matches = re.match(r'max-age=(\d+)', reply.headers.get('Cache-Control'))
     assert matches is not None, "Cache Control response not set, but should be"
     assert int(matches.group(1)) > 0, "max-age expected greater than 0, was {}".format(matches.group(1))
-    assert int(matches.group(1)) < config.TIMEOUT + CLIENT_CACHE_SLACK_SECONDS, "max-age expected less than TIMEOUT"
+    assert int(matches.group(1)) < config.TIMEOUT + CLIENT_CACHE_SLACK_SECONDS, "max-age expected less than {}, was {}".format(config.TIMEOUT + CLIENT_CACHE_SLACK_SECONDS, matches.group(1))
 
 def test_build_id_dates_no_etag():
     reply = requests.get("{}/aggregates_by/build_id/channels/nightly?version=41&dates=20150601&metric=GC_MAX_PAUSE_MS".format(SERVICE_URI))

@@ -188,6 +188,9 @@ def _extract_main_histograms(state, histograms, process_type):
         docs_destroyed = -1
 
     for histogram_name, histogram in histograms.iteritems():
+        if not isinstance(histogram, dict):
+            continue
+
         if pages_destroyed >= 0 and histogram_name.startswith("USE_COUNTER2_") and histogram_name.endswith("_PAGE"):
             values = histogram.get("values", {})
             if not isinstance(values, dict):
