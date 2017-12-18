@@ -37,7 +37,7 @@ check_for_cmd () {
 
 wait_for_line () {
     echo "Waiting for '$1' to appear in file '$2'..."
-    timeout 20 grep -q "$1" < "$2" || {
+    timeout 30 grep -q "$1" < "$2" || {
         echo "ERROR: waiting for '$1' to appear in file '$2' failed or timed out" >&2
         return 1
     }
