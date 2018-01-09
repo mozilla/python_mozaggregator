@@ -17,10 +17,21 @@ begin
 end
 $$ language plpgsql strict immutable;
 
+create or replace function aggregate_histogram_arrays(acc bigint[], x bigint[]) returns bigint[] as $$
+begin
+    return (select (
+              aggregate_arrays(x[1 : GREATEST(array_length(x, 1) - 2, 1)],
+                               acc[1 : GREATEST(array_length(acc, 1) - 2, 1)])
+                ||
+              aggregate_arrays(x[GREATEST(array_length(x, 1) - 1, 1) : GREATEST(array_length(x, 1), 1)],
+                               acc[GREATEST(array_length(acc, 1) - 1, 1) : GREATEST(array_length(acc, 1), 1)])
+           ));
+end
+$$ language plpgsql strict immutable;
 
 drop aggregate if exists aggregate_histograms(bigint[]);
 create aggregate aggregate_histograms (bigint[]) (
-    sfunc = aggregate_arrays, stype = bigint[], initcond = '{}'
+    sfunc = aggregate_histogram_arrays, stype = bigint[], initcond = '{}'
 );
 
 
