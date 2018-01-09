@@ -296,6 +296,15 @@ def test_build_id_etag_header_ignored():
     assert reply.ok
     assert reply.status_code == 200, "Etag should be ignored for build id"
 
+def test_aggregate_histograms():
+    conn = _create_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT aggregate_histograms(t.histos) AS aggregates
+        FROM (VALUES (ARRAY[1,1,1,1]), (ARRAY[1,1,1,1,1])) AS t(histos)
+    """)
+    res = cursor.fetchall()
+    assert res == [([2, 2, 1, 2, 2],)]
 
 @nottest
 def test_histogram(prefix, channel, version, dates, metric, value, expected_count):
