@@ -151,6 +151,30 @@ def test_build_id_metrics():
                 test_keyed_histogram("build_id", channel, version, template_build_id, metric, histograms, histogram_expected_count)
 
 
+def test_absent_use_counter():
+    # A use counter that isn't in the aggregator should still get a response from the service
+    # This is a side-effect of bug 1412384
+    channel = ping_dimensions["channel"][0]
+    version = ping_dimensions["version"][0].split('.')[0]
+    template_build_id = [ping_dimensions["build_id"][0][:-6]]
+    metric = "USE_COUNTER2_SIR_NOT_APPEARING_IN_THIS_DOCUMENT"
+    value = {u'bucket_count': 3,
+             u'histogram_type': 2,
+             u'range': [1, 2],
+             u'values': {u'0': 640, u'1': 0, u'2': 0},
+             u'count': 0,
+             u'sum': 0,
+    }
+
+    expected_count = 1
+    for dimension, values in ping_dimensions.iteritems():
+        if dimension not in ["channel", "version", "build_id"]:
+            expected_count *= len(values)
+
+    histogram_expected_count = NUM_PINGS_PER_DIMENSIONS * expected_count
+
+    test_histogram("build_id", channel, version, template_build_id, metric, value, histogram_expected_count)
+
 def test_submission_dates_metrics():
     template_channel = ping_dimensions["channel"]
     template_version = [x.split('.')[0] for x in ping_dimensions["version"]]

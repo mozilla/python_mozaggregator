@@ -17,7 +17,7 @@ from psycopg2.pool import SimpleConnectionPool
 from aggregator import SIMPLE_MEASURES_LABELS, COUNT_HISTOGRAM_LABELS, NUMERIC_SCALARS_LABELS, \
                         SIMPLE_MEASURES_PREFIX, COUNT_HISTOGRAM_PREFIX, NUMERIC_SCALARS_PREFIX, \
                         SCALAR_MEASURE_MAP
-from db import get_db_connection_string, histogram_revision_map
+from db import get_db_connection_string, histogram_revision_map, _preparedb
 from moztelemetry.scalar import Scalar
 from logging.handlers import SysLogHandler
 from botocore.exceptions import ClientError
@@ -111,6 +111,7 @@ def cache_request(f):
 def create_pool():
     global pool
     if pool is None:
+        _preparedb();
         pool = SimpleConnectionPool(
             app.config["MINCONN"],
             app.config["MAXCONN"],
@@ -322,7 +323,21 @@ def get_dates_metrics(prefix, channel):
         altered_dimensions['child'] = reverse_map.get(altered_dimensions['child'], altered_dimensions['child'])
 
     # Fetch metrics
-    result = execute_query("select * from batched_get_metric(%s, %s, %s, %s, %s, %s)", (prefix, channel, version, dates, json.dumps(dimensions), json.dumps(altered_dimensions)))
+    if metric.startswith("USE_COUNTER2_"):
+        # Bug 1412382 - Use Counters need to be composed from reported True
+        # values and False values supplied by *CONTENT_DOCUMENTS_DESTROYED.
+        denominator = "TOP_LEVEL_CONTENT_DOCUMENTS_DESTROYED"
+        if metric.endswith("_DOCUMENT"):
+            denominator = "CONTENT_DOCUMENTS_DESTROYED"
+        denominator = "{}_{}".format(COUNT_HISTOGRAM_PREFIX, denominator)
+        denominator_dimensions = deepcopy(dimensions)
+        denominator_dimensions["metric"] = denominator
+        denominator_new_dimensions = deepcopy(altered_dimensions)
+        denominator_new_dimensions["metric"] = denominator
+        result = execute_query("select * from batched_get_use_counter(%s, %s, %s, %s, %s, %s, %s, %s)",
+                               (prefix, channel, version, dates, json.dumps(denominator_dimensions), json.dumps(denominator_new_dimensions), json.dumps(dimensions), json.dumps(altered_dimensions)))
+    else:
+        result = execute_query("select * from batched_get_metric(%s, %s, %s, %s, %s, %s)", (prefix, channel, version, dates, json.dumps(dimensions), json.dumps(altered_dimensions)))
 
     if not result:
         abort(404)

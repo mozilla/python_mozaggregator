@@ -166,6 +166,31 @@ begin
 end
 $$ language plpgsql strict;
 
+create or replace function batched_get_use_counter(prefix text, channel text, version text, dates text[], denominator_dimensions jsonb, denominator_new_dimensions jsonb, dimensions jsonb, new_dimensions jsonb DEFAULT '{"metric":"METRIC???"}') returns table(date text, label text, histogram bigint[]) as $$
+begin
+    return query
+        select t2.date,
+        coalesce(t1.label, ''),
+        case
+            when t1.histogram is null then ARRAY[
+                t2.histogram[array_length(t2.histogram, 1) - 1],
+                0,
+                0,
+                0,
+                t2.histogram[array_length(t2.histogram, 1)]]
+            when t2.histogram is null then t1.histogram
+            else ARRAY[
+                t2.histogram[array_length(t2.histogram, 1) - 1] - t1.histogram[2] - t1.histogram[3],
+                t1.histogram[2],
+                t1.histogram[3],
+                t1.histogram[4],
+                t1.histogram[5]]
+        end
+        from batched_get_metric(prefix, channel, version, dates, dimensions, new_dimensions) t1
+        full outer join batched_get_metric(prefix, channel, version, dates, denominator_dimensions, denominator_new_dimensions) t2
+        on t1.date = t2.date;
+end
+$$ language plpgsql strict;
 
 create or replace function list_buildids(prefix text, channel text) returns table(version text, buildid text) as $$
 begin
