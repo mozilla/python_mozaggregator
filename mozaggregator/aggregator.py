@@ -170,48 +170,7 @@ def _extract_main_histograms(state, histograms, process_type):
     if not isinstance(histograms, dict):
         return
 
-    # Deal with USE_COUNTER2_ histograms, see Bug 1204994
-    pages_destroyed = histograms.get("TOP_LEVEL_CONTENT_DOCUMENTS_DESTROYED", {})
-    if not isinstance(pages_destroyed, dict):
-        pages_destroyed = {}
-
-    pages_destroyed = pages_destroyed.get("sum", -1)
-    if not isinstance(pages_destroyed, (int, long)):
-        pages_destroyed = -1
-
-    docs_destroyed = histograms.get("CONTENT_DOCUMENTS_DESTROYED", {})
-    if not isinstance(docs_destroyed, dict):
-        docs_destroyed = {}
-
-    docs_destroyed = docs_destroyed.get("sum", -1)
-    if not isinstance(docs_destroyed, (int, long)):
-        docs_destroyed = -1
-
     for histogram_name, histogram in histograms.iteritems():
-        if not isinstance(histogram, dict):
-            continue
-
-        if pages_destroyed >= 0 and histogram_name.startswith("USE_COUNTER2_") and histogram_name.endswith("_PAGE"):
-            values = histogram.get("values", {})
-            if not isinstance(values, dict):
-                continue
-
-            used = values.get("1", -1)
-            if not isinstance(used, (int, long)) or used <= 0:
-                continue
-
-            histogram["values"]["0"] = pages_destroyed - used
-        elif docs_destroyed >= 0 and histogram_name.startswith("USE_COUNTER2_") and histogram_name.endswith("_DOCUMENT"):
-            values = histogram.get("values", {})
-            if not isinstance(values, dict):
-                continue
-
-            used = values.get("1", -1)
-            if not isinstance(used, (int, long)) or used <= 0:
-                continue
-
-            histogram["values"]["0"] = docs_destroyed - used
-
         _extract_histogram(state, histogram, histogram_name, u"", process_type)
 
 def _extract_keyed_histograms(state, histogram_name, histograms, process_type):
