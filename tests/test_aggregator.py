@@ -162,37 +162,6 @@ def test_count_histograms():
           assert(v == len(build_id_aggregates))
 
 
-def test_use_counter2_histogram():
-    metric_count = defaultdict(lambda: defaultdict(int))
-    histograms = {k: v for k, v in histograms_template.iteritems() if k.startswith("USE_COUNTER2_") and v is not None}
-
-    pages_destroyed = histograms_template["TOP_LEVEL_CONTENT_DOCUMENTS_DESTROYED"]["sum"]
-    docs_destroyed = histograms_template["CONTENT_DOCUMENTS_DESTROYED"]["sum"]
-
-    for aggregate in build_id_aggregates:
-        for key, value in aggregate[1].iteritems():
-            metric, label, process_type = key
-            histogram = histograms.get(metric, None)
-
-            if histogram:
-                metric_count[metric][process_type] += 1
-                assert(label == "")
-                assert(value["count"] == expected_count(process_type))
-                assert(value["sum"] == value["count"]*histogram["sum"])
-
-                if metric.endswith("_DOCUMENT"):
-                    assert(value["histogram"]["0"] == value["count"]*(docs_destroyed - histogram["values"]["1"]))
-                else:
-                    assert(value["histogram"]["0"] == value["count"]*(pages_destroyed - histogram["values"]["1"]))
-
-
-    assert len(metric_count) == len(histograms)
-    for process_counts in metric_count.values():
-        assert(process_counts.viewkeys() == PROCESS_TYPES)
-        for v in process_counts.values():
-          assert(v == len(build_id_aggregates))
-
-
 def test_keyed_histograms():
     metric_count = defaultdict(lambda: defaultdict(int))
 
