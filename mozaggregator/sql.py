@@ -53,7 +53,7 @@ begin
 
     -- Update existing tuples and delete matching rows from the staging table
     execute 'with merge as (update ' || tablename || ' as dest
-                            set histogram = aggregate_arrays(dest.histogram, src.histogram)
+                            set histogram = aggregate_histogram_arrays(dest.histogram, src.histogram)
                             from ' || stage_table || ' as src
                             where dest.dimensions = src.dimensions
                             returning dest.*)
