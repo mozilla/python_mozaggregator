@@ -18,7 +18,7 @@ from aggregator import SIMPLE_MEASURES_LABELS, COUNT_HISTOGRAM_LABELS, NUMERIC_S
                         SIMPLE_MEASURES_PREFIX, COUNT_HISTOGRAM_PREFIX, NUMERIC_SCALARS_PREFIX, \
                         SCALAR_MEASURE_MAP
 from db import get_db_connection_string, histogram_revision_map, _preparedb
-from moztelemetry.scalar import Scalar
+from moztelemetry.scalar import MissingScalarError, Scalar
 from logging.handlers import SysLogHandler
 from botocore.exceptions import ClientError
 from copy import deepcopy
@@ -295,7 +295,10 @@ def get_dates_metrics(prefix, channel):
         if metric.startswith(_prefix) and _prefix != COUNT_HISTOGRAM_PREFIX:
             labels = _labels
             kind = "exponential"
-            description = _get_description(channel, _prefix, metric)
+            try:
+                description = _get_description(channel, _prefix, metric)
+            except MissingScalarError:
+                abort(404)
             break
     else:
         revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
