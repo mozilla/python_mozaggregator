@@ -330,6 +330,12 @@ def test_aggregate_histograms():
     res = cursor.fetchall()
     assert res == [([2, 2, 1, 2, 2],)]
 
+def test_build_id_etag_header_ignored():
+    url = "{}/aggregates_by/build_id/channels/nightly?version=41&dates=20150601&metric=SCALARS_NONEXISTENT".format(SERVICE_URI)
+    reply = requests.get(url)
+    assert not reply.ok
+    assert reply.status_code == 404, "Non-existent scalars should 404"
+
 @nottest
 def test_histogram(prefix, channel, version, dates, metric, value, expected_count):
     if metric.endswith("CONTENT_DOCUMENTS_DESTROYED"):  # Ignore USE_COUNTER2_ support histograms
