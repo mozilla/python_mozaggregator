@@ -1,29 +1,34 @@
 # python_mozaggregator
 Aggregator job for Telemetry. See this [blog](http://robertovitillo.com/2015/07/02/telemetry-metrics-roll-ups/) post for details. 
 
-[![Build Status](https://travis-ci.org/mozilla/python_mozaggregator.svg?branch=master)](https://travis-ci.org/mozilla/python_mozaggregator)
+[![CircleCI](https://circleci.com/gh/mozilla/python_mozaggregator/tree/master.svg?style=svg)](https://circleci.com/gh/mozilla/python_mozaggregator/tree/master)
 
 ## Development and deployment
 
 To clean, build, and run all containers:
-```make up
+```
+make up
 ```
 
 To build containers and ssh into web container:
-```make shell
+```
+make shell
 ```
 
 To manually ssh into running web container (e.g. after a 'make up'):
-```docker ps
+```
+docker ps
 docker exec -it <CONTAINER_ID of web container> /bin/bash
 ```
 
 To build and run tests inside dev container:
-```make test
+```
+make test
 ```
 
 To manually run tests on running web container:
-```ssh into container and ./run-tests.sh
+```
+ssh into container and ./run-tests.sh
 ```
 
 
