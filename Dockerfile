@@ -1,8 +1,8 @@
 FROM python:2-slim
 
 ENV PYTHONUNBUFFERED=1 \
-    # POSTGRES_HOST= \
-    # POSTGRES_USER= \
+    POSTGRES_USER=root \
+    POSTGRES_DB=telemetry \
     PORT=5000
 
 EXPOSE $PORT
@@ -46,4 +46,6 @@ RUN chown -R 10001:10001 /app
 
 USER 10001
 
-CMD ["/bin/sleep", "3600"]
+ENTRYPOINT ["/usr/local/bin/gunicorn"]
+
+CMD ["mozaggregator.service:app", "-k", "gevent", "--bind", "0.0.0.0:5000"]

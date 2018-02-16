@@ -3,6 +3,7 @@ import config
 import logging
 import boto3
 import time
+import psycopg2
 
 from flask import Flask, Response, request, abort
 from flask.ext.cors import CORS
@@ -22,14 +23,18 @@ from moztelemetry.scalar import MissingScalarError, Scalar
 from logging.handlers import SysLogHandler
 from botocore.exceptions import ClientError
 from copy import deepcopy
+from dockerflow.flask import Dockerflow
 
 pool = None
+db_connection_string = get_db_connection_string(read_only=True)
 app = Flask(__name__)
-app.config.from_object('mozaggregator.config')
+dockerflow = Dockerflow(app, version_path='/app')
+
+app.config.from_pyfile('config.py')
 
 CORS(app, resources=r'/*', allow_headers='Content-Type')
 cache = Cache(app, config={'CACHE_TYPE': app.config["CACHETYPE"]})
-sslify = SSLify(app, skips=['status'])
+sslify = SSLify(app, permanent=True, skips=['__version__', '__heartbeat__', '__lbheartbeat__', 'status'])
 
 patch_all()
 patch_psycopg()
@@ -46,7 +51,6 @@ log_client = boto3.client("logs", region_name='us-west-2')
 ### For caching - change this if after backfilling submission_date data
 SUBMISSION_DATE_ETAG = "submission_date_v1"
 CLIENT_CACHE_SLACK_SECONDS = 3600
-
 
 def get_time_left_in_cache():
     assert app.config["CACHETYPE"] == "simple", "Only simple caches can be used with get_time_left_in_cache"
@@ -115,7 +119,7 @@ def create_pool():
         pool = SimpleConnectionPool(
             app.config["MINCONN"],
             app.config["MAXCONN"],
-            dsn=get_db_connection_string(read_only=True))
+            dsn=db_connection_string)
     return pool
 
 

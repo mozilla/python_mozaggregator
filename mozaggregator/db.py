@@ -17,7 +17,7 @@ import config
 from moztelemetry.spark import Histogram
 from boto.s3.connection import S3Connection
 from cStringIO import StringIO
-from mozaggregator.aggregator import SIMPLE_MEASURES_LABELS, COUNT_HISTOGRAM_LABELS, NUMERIC_SCALARS_LABELS, \
+from aggregator import SIMPLE_MEASURES_LABELS, COUNT_HISTOGRAM_LABELS, NUMERIC_SCALARS_LABELS, \
                                     SIMPLE_MEASURES_PREFIX, COUNT_HISTOGRAM_PREFIX, NUMERIC_SCALARS_PREFIX, \
                                     SCALAR_MEASURE_MAP
 
@@ -30,16 +30,33 @@ histogram_revision_map = {"nightly": "https://hg.mozilla.org/mozilla-central/rev
 
 _metric_printable = set(string.ascii_uppercase + string.ascii_lowercase + string.digits + "_-[].")
 
+db_pass = "POSTGRES_PASS"
+db_user = "POSTGRES_USER"
+db_host = "POSTGRES_HOST"
+db_ro_host = "POSTGRES_RO_HOST"
+db_name = "POSTGRES_DB"
+
 def get_db_connection_string(read_only=False):
     if os.getenv("DB_TEST_URL"):
         return os.getenv("DB_TEST_URL")
     elif config.USE_PRODUCTION_DB:
-        s3 = S3Connection(host="s3-us-west-2.amazonaws.com")
-        secret = json.loads(s3.get_bucket(config.BUCKET).get_key(config.SECRET).get_contents_as_string())["password"]
-        rds = boto.rds2.connect_to_region(config.REGION)
-        rds_name = config.READ_RDS if read_only else config.WRITE_RDS
-        db = rds.describe_db_instances(rds_name)["DescribeDBInstancesResponse"]["DescribeDBInstancesResult"]["DBInstances"][0]
-        return "dbname={} user={} password={} host={}".format(db["DBName"], db["MasterUsername"], secret, db["Endpoint"]["Address"])
+        if (os.getenv(db_pass) and
+            os.getenv(db_host) and
+            os.getenv(db_ro_host) and
+            os.getenv(db_user) and
+            os.getenv(db_name)):
+
+            rds_pass = os.getenv(db_pass)
+            rds_host = os.getenv(db_host)
+            rds_ro_host = os.getenv(db_ro_host)
+            rds_user = os.getenv(db_user)
+            rds_db = os.getenv(db_name)
+        else:
+            print "One or more POSTGRES env vars not set."
+            exit(1)
+
+        rds_endpoint = rds_ro_host if read_only else rds_host
+        return "dbname={} user={} password={} host={}".format(rds_db, rds_user, rds_pass, rds_endpoint)
     else:
         return "dbname={} user={} password={} host={}".format(config.DBNAME, config.DBUSER, config.DBPASS, config.DBHOST)
 

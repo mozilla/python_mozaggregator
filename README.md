@@ -31,15 +31,9 @@ To manually run tests on running web container:
 ssh into container and ./run-tests.sh
 ```
 
-
-TODO(hwoo) Migrate deployment to dockerflow and remove ansible/vagrant stuff, update readme
-
-To deploy a new version of the aggregation service to the cloud:
-```bash
-ansible-playbook ansible/deploy.yml -e '@ansible/envs/dev.yml' -i ansible/inventory
-```
-
-To connect to the database on the host, when running it inside the Vagrant VM, using something like [pgAdmin](http://pgadmin.org/), use `localhost` as the host, `5432` as the port, `vagrant` as the username, and a blank password.
+## Deployment
+The following Env vars need to be set up in hiera-sops POSTGRES_HOST, POSTGRES_RO_HOST, POSTGRES_PASS
+There are jenkins pipeline jobs to deploy this.  See cloudops-deployment/projects/mozaggregator for details
 
 ## API
 Aggregates are made available through a HTTP API. There are two kinds of aggregates: per submission date (date a ping is received by the server) and per build-id (date the submitting product was built).
