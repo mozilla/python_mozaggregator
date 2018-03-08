@@ -28,7 +28,7 @@ SCALAR_MEASURE_MAP = {
 
 PROCESS_TYPES = {"parent", "content", "gpu"}
 
-def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1, fennec_ping_fraction=1):
+def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1, fennec_ping_fraction=1, num_reducers=10000):
     """ Returns the build-id and submission date aggregates for a given submission date.
 
     :param sc: A SparkContext instance
@@ -69,12 +69,9 @@ def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1, fenne
     all_pings = pings.union(fennec_pings)
     return _aggregate_metrics(all_pings)
 
-def _aggregate_metrics(pings):
-    # Use few reducers only when running the test-suite to speed execution up.
-    reducers = 10 if sys.argv[0].endswith('nosetests') else 10000
-
+def _aggregate_metrics(pings, num_reducers=10000):
     trimmed = pings.filter(_sample_clients).map(_map_ping_to_dimensions).filter(lambda x: x)
-    build_id_aggregates = trimmed.aggregateByKey(defaultdict(dict), _aggregate_ping, _aggregate_aggregates, reducers)
+    build_id_aggregates = trimmed.aggregateByKey(defaultdict(dict), _aggregate_ping, _aggregate_aggregates, num_reducers)
     submission_date_aggregates = build_id_aggregates.map(_map_build_id_key_to_submission_date_key).reduceByKey(_aggregate_aggregates)
     return build_id_aggregates, submission_date_aggregates
 

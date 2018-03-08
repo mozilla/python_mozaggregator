@@ -16,7 +16,7 @@ def setup_module():
 
     sc = pyspark.SparkContext(master="local[*]")
     raw_pings = list(generate_pings())
-    build_id_aggregates, submission_date_aggregates = _aggregate_metrics(sc.parallelize(raw_pings))
+    build_id_aggregates, submission_date_aggregates = _aggregate_metrics(sc.parallelize(raw_pings), num_reducers=10)
     build_id_aggregates = build_id_aggregates.collect()
     submission_date_aggregates = submission_date_aggregates.collect()
 
