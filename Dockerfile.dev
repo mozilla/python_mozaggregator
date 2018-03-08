@@ -29,11 +29,12 @@ RUN mkdir /app && \
     useradd --no-create-home --uid 10001 --gid 10001 --home-dir /app app
 
 # Install Python dependencies
-COPY requirements.txt /tmp/
+COPY requirements/*.txt /tmp/requirements/
+
 # Switch to /tmp to install dependencies outside home dir
 WORKDIR /tmp
-RUN pip install --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements/all.txt
 
 # Switch back to home directory
 WORKDIR /app
