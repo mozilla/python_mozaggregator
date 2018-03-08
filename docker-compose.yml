@@ -21,6 +21,8 @@ services:
       dockerfile: Dockerfile.dev
     ports:
       - "8000:5000"
+    volumes:
+      - .:/app
     depends_on:
       - db
     links:
