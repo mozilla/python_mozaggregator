@@ -4,7 +4,11 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     POSTGRES_HOST=db \
     POSTGRES_USER=postgres \
-    PORT=5000
+    PORT=5000 \
+    # No boto. See https://github.com/travis-ci/travis-ci/issues/7940
+    BOTO_CONFIG=/dev/null \
+    DB_TEST_URL="dbname=postgres user=postgres host=db" \
+    PYTHONPATH=$PYTHONPATH:.
 
 EXPOSE $PORT
 
