@@ -1,0 +1,6 @@
+update: all
+search: False
+requirements:
+  - requirements/build.txt
+  - requirements/tests.txt
+schedule: "every week on monday"
