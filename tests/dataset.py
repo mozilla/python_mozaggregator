@@ -14,7 +14,7 @@ COUNT_SCALAR_BUCKET = 40
 NUMERIC_SCALAR_BUCKET = 40
 
 ping_dimensions = {"submission_date": [u"20150601", u"20150603"],
-                   "channel": [u"nightly", u"aurora"],
+                   "channel": [u"nightly", u"beta"],
                    "version": [u"40.0a1", u"41"],
                    "build_id": [u"20150601000000", u"20150602000000"],
                    "application": [u"Firefox", u"Fennec"],
@@ -74,11 +74,11 @@ histograms_template = {u"EVENTLOOP_UI_ACTIVITY_EXP_MS": {u'bucket_count': 20,
                                                        u'range': [1, 2],
                                                        u'sum': 3,
                                                        u'values': {u'0': 1, u'1': 1, u'2':1, u'3':0}},
-                      u'GC_MAX_PAUSE_MS': {'bucket_count':50,
-                                           'histogram_type':1,
-                                           'range':[1,1000],
-                                           'sum':554,
-                                           'values':{'0':0,'1':4,'22':2,'43':1,'63':1,'272':1,'292':0}}}
+                       u'GC_MAX_PAUSE_MS_2': {'bucket_count':50,
+                                              'histogram_type':1,
+                                              'range':[1,1000],
+                                              'sum':554,
+                                              'values':{'0':0,'1':4,'22':2,'43':1,'63':1,'272':1,'292':0}}}
 
 keyed_histograms_template = {u'DEVTOOLS_PERFTOOLS_RECORDING_FEATURES_USED': {
         "withMarkers": {

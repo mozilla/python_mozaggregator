@@ -25,7 +25,6 @@ from mozaggregator.aggregator import SIMPLE_MEASURES_LABELS, COUNT_HISTOGRAM_LAB
 # been removed. This only works though if histogram definitions are
 # immutable, which has been the case so far.
 histogram_revision_map = {"nightly": "https://hg.mozilla.org/mozilla-central/rev/tip",
-                          "aurora": "https://hg.mozilla.org/releases/mozilla-aurora/rev/tip",
                           "beta": "https://hg.mozilla.org/releases/mozilla-beta/rev/tip",
                           "release": "https://hg.mozilla.org/releases/mozilla-release/rev/tip"}
 
