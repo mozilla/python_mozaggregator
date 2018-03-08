@@ -1,0 +1,4 @@
+[flake8]
+# E501: This project is ok with long lines.
+ignore = E501
+exclude = setup.py, ansible/
