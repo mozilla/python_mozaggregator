@@ -1,6 +1,7 @@
 FROM python:2-slim
 
 ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
     POSTGRES_HOST=db \
     POSTGRES_USER=postgres \
     PORT=5000
@@ -40,11 +41,11 @@ WORKDIR /app
 COPY . /app
 
 # Install spark
-RUN wget https://d3kbcqa49mib13.cloudfront.net/spark-2.0.2-bin-hadoop2.7.tgz -O spark.tgz && \
-    tar -xzf spark.tgz
+RUN wget https://d3kbcqa49mib13.cloudfront.net/spark-2.0.2-bin-hadoop2.7.tgz -O /opt/spark.tgz && \
+    tar -xzf /opt/spark.tgz -C /opt
 
-ENV SPARK_HOME=/app/spark-2.0.2-bin-hadoop2.7 \
-    PYTHONPATH=/app/spark-2.0.2-bin-hadoop2.7/python:/app/spark-2.0.2-bin-hadoop2.7/python/lib/py4j-0.10.3-src.zip
+ENV SPARK_HOME=/opt/spark-2.0.2-bin-hadoop2.7 \
+    PYTHONPATH=/opt/spark-2.0.2-bin-hadoop2.7/python:/opt/spark-2.0.2-bin-hadoop2.7/python/lib/py4j-0.10.3-src.zip
 
 RUN chown -R 10001:10001 /app
 

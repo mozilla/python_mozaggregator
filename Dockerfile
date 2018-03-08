@@ -13,7 +13,9 @@ RUN mkdir -p /usr/share/man/man7
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        libsnappy-dev liblzma-dev g++ gcc awscli redis-server curl libpq-dev bzip2 libffi-dev net-tools \
+        # Production only libs on next line.
+        gcc awscli net-tools \
+        libsnappy-dev liblzma-dev g++ redis-server curl libpq-dev bzip2 libffi-dev \
         python-numpy python-pandas python-scipy wget ca-certificates openssl libssl-dev \
         postgresql-9.4 postgresql-contrib-9.4 postgresql-server-dev-9.4 \
         openjdk-7-jdk && \

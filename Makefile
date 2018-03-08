@@ -22,6 +22,9 @@ shell: build
 test:
 	docker-compose up --build --abort-on-container-exit test
 
+runtests:
+	docker-compose up test
+
 stop:
 	docker-compose down
 	docker-compose stop
