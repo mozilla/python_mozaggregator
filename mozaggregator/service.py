@@ -1,3 +1,4 @@
+import os
 import time
 from copy import deepcopy
 from functools import wraps
@@ -149,7 +150,7 @@ def log_request():
     millis = int(round(time.time() * 1000))
     log_line = ','.join([d.replace(',', '\,') for d in data])
 
-    if ip_addr != '127.0.0.1':
+    if not os.getenv('DEVELOPMENT'):
         # See https://github.com/kislyuk/watchtower for inspiration
 
         kwargs = {
