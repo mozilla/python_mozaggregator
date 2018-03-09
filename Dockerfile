@@ -46,6 +46,6 @@ RUN chown -R 10001:10001 /app
 
 USER 10001
 
-ENTRYPOINT ["/usr/local/bin/gunicorn"]
+ENTRYPOINT ["/bin/bash", "/app/bin/run"]
 
-CMD ["mozaggregator.service:app", "-k", "gevent", "--bind", "0.0.0.0:5000"]
+CMD ["web"]

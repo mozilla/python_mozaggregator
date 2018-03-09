@@ -7,23 +7,13 @@ services:
   web:
     build:
       context: .
-      dockerfile: Dockerfile
-    ports:
-      - "8000:5000"
-    depends_on:
-      - db
-    links:
-      - db
-
-  test:
-    build:
-      context: .
       dockerfile: Dockerfile.dev
     ports:
-      - "8000:5000"
+      - "5000:5000"
     volumes:
-      - .:/app
+      - $PWD:/app
     depends_on:
       - db
     links:
       - db
+    command: web-dev
