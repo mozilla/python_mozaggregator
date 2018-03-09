@@ -28,7 +28,8 @@ make test
 
 To manually run tests on running web container:
 ```
-ssh into container and ./run-tests.sh
+make shell
+./bin/run test
 ```
 
 ## Deployment
@@ -40,19 +41,19 @@ Aggregates are made available through a HTTP API. There are two kinds of aggrega
 
 To access the aggregates use the ```aggregates_by/build_id/``` and ```aggregates_by/submission_date/``` prefix respectively.
 
-In the URLs below, replace `SERVICE` with the origin of this service's instance. The official service is `http://aggregates.telemetry.mozilla.org`.
+In the URLs below, replace `SERVICE` with the origin of this service's instance. The official service is `https://aggregates.telemetry.mozilla.org`.
 
 The following examples are based on build-id aggregates. Replace `build_id` with `submission_date` to use aggregates per submission date instead.
 
 ##### Get available channels:
 ```bash
-curl -X GET http://SERVICE/aggregates_by/build_id/channels/
+curl -X GET https://SERVICE/aggregates_by/build_id/channels/
 ["nightly","beta","aurora"]
 ```
 
 ##### Get a list of options for the available dimensions on a given channel and version:
 ```bash
-curl -X GET "http://SERVICE/filters/?channel=nightly&version=42"
+curl -X GET "https://SERVICE/filters/?channel=nightly&version=42"
 {"metric":["A11Y_CONSUMERS","A11Y_IATABLE_USAGE_FLAG",...], 
  "application":["Fennec","Firefox"],
  ...}
@@ -60,13 +61,13 @@ curl -X GET "http://SERVICE/filters/?channel=nightly&version=42"
 
 ##### Get a list of available build-ids for a given channel:
 ```bash
-curl -X GET "http://SERVICE/aggregates_by/build_id/channels/nightly/dates/"
+curl -X GET "https://SERVICE/aggregates_by/build_id/channels/nightly/dates/"
 [{"date":"20150630","version":"42"}, {"date":"20150629","version":"42"}]
 ```
 
 ##### Given a set of build-ids, retrieve for each of build-id the aggregated histogram that complies with the requested filters:
 ```bash
-curl -X GET "http://SERVICE/aggregates_by/build_id/channels/nightly/?version=41&dates=20150615,20150616&metric=GC_MS&os=Windows_NT"
+curl -X GET "https://SERVICE/aggregates_by/build_id/channels/nightly/?version=41&dates=20150615,20150616&metric=GC_MS&os=Windows_NT"
 {"buckets":[0, ..., 10000],
  "data":[{"date":"20150615",
           "count":239459,

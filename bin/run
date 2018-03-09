@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+# default variables
+: "${PORT:=5000}"
+
+usage() {
+  echo "usage: bin/run web|web-dev|test"
+  exit 1
+}
+
+[ $# -lt 1 ] && usage
+
+# Only wait for backend services in development.
+# http://stackoverflow.com/a/13864829
+[ ! -z ${DEVELOPMENT+check} ] && ./bin/wait-for-it.sh db:5432 --timeout=0 --strict
+
+case $1 in
+  web)
+    # TODO: Use newrelic:
+    # exec newrelic-admin run-program gunicorn mozaggregator.service:app -b 0.0.0.0:${PORT} -k gevent --workers 4 --access-logfile -
+    exec gunicorn mozaggregator.service:app -b 0.0.0.0:${PORT} -k gevent --workers 4 --access-logfile -
+    ;;
+  web-dev)
+    exec python mozaggregator/service.py 0.0.0.0:${PORT}
+    ;;
+  test)
+    nosetests --with-coverage --cover-package=mozaggregator ./tests/*.py || exit 1
+
+    if [[ ! -z ${CI+check} ]]; then
+      echo "TODO: Set up codecov."
+      # bash <(curl -s https://codecov.io/bash) -s /tmp
+    else
+      coverage report -m
+    fi
+    ;;
+  *)
+    exec "$@"
+    ;;
+esac
