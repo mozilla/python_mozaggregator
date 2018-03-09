@@ -1,7 +1,8 @@
 import uuid
+from itertools import chain, product, repeat
 
-from itertools import product, repeat, chain
 from mozaggregator.aggregator import PROCESS_TYPES
+
 
 NUM_CHILDREN_PER_PING = 3
 NUM_AGGREGATED_CHILD_PINGS = 2
@@ -13,103 +14,111 @@ SIMPLE_SCALAR_BUCKET = 35
 COUNT_SCALAR_BUCKET = 40
 NUMERIC_SCALAR_BUCKET = 40
 
-ping_dimensions = {"submission_date": [u"20150601", u"20150603"],
-                   "channel": [u"nightly", u"beta"],
-                   "version": [u"40.0a1", u"41"],
-                   "build_id": [u"20150601000000", u"20150602000000"],
-                   "application": [u"Firefox", u"Fennec"],
-                   "arch": [u"x86", u"x86-64"],
-                   "os": [u"Linux", u"Windows_NT"],
-                   "os_version": [u"6.1", u"3.1.12"],
-                   "e10s": [True, False]}
+ping_dimensions = {
+    "submission_date": [u"20150601", u"20150603"],
+    "channel": [u"nightly", u"aurora"],
+    "version": [u"40.0a1", u"41"],
+    "build_id": [u"20150601000000", u"20150602000000"],
+    "application": [u"Firefox", u"Fennec"],
+    "arch": [u"x86", u"x86-64"],
+    "os": [u"Linux", u"Windows_NT"],
+    "os_version": [u"6.1", u"3.1.12"],
+    "e10s": [True, False]
+}
 
-histograms_template = {u"EVENTLOOP_UI_ACTIVITY_EXP_MS": {u'bucket_count': 20,
-                                                         u'histogram_type': 0,
-                                                         u'log_sum': 0,
-                                                         u'log_sum_squares': 0,
-                                                         u'range': [50, 60000],
-                                                         u'sum': 9362,
-                                                         u'values': {u'0': 0,
-                                                                     u'110': 16,
-                                                                     u'1170': 0,
-                                                                     u'163': 8,
-                                                                     u'242': 5,
-                                                                     u'359': 2,
-                                                                     u'50': 18,
-                                                                     u'74': 16,
-                                                                     u'789': 1}},
-                       u"UPDATE_PING_COUNT_EXTERNAL": {u'bucket_count': 3,
-                                                       u'histogram_type': 4,
-                                                       u'range': [1, 2],
-                                                       u'sum': SCALAR_VALUE,
-                                                       u'values': {u'0': SCALAR_VALUE, u'1': 0}},
-                       u"USE_COUNTER2_PROPERTY_FILL_PAGE": {u'bucket_count': 3,
-                                                            u'histogram_type': 2,
-                                                            u'range': [1, 2],
-                                                            u'sum': 2,
-                                                            u'values': {u'0': 0, u'1': 2, u'2': 0}},
-                       u"USE_COUNTER2_ISNULL_PAGE": None,
-                       u"USE_COUNTER2_PROPERTY_FILL_DOCUMENT": {u'bucket_count': 3,
-                                                                u'histogram_type': 2,
-                                                                u'range': [1, 2],
-                                                                u'sum': 1,
-                                                                u'values': {u'0': 0, u'1': 1, u'2': 0}},
-                       u"CONTENT_DOCUMENTS_DESTROYED": {u'bucket_count': 3,
-                                                        u'histogram_type': 4,
-                                                        u'range': [1, 2],
-                                                        u'sum': 17,
-                                                        u'values': {u'0': 17, u'1': 0}},
-                       u"TOP_LEVEL_CONTENT_DOCUMENTS_DESTROYED": {u'bucket_count': 3,
-                                                                  u'histogram_type': 4,
-                                                                  u'range': [1, 2],
-                                                                  u'sum': 19,
-                                                                  u'values': {u'0': 19, u'1': 0}},
-                       u"USE_COUNTER_PROPERTY_FILL_DOCUMENT": {u'bucket_count': 3,
-                                                               u'histogram_type': 2,
-                                                               u'range': [1, 2],
-                                                               u'sum': 1,
-                                                               u'values': {u'0': 0, u'1': 1}},
-                       u"TELEMETRY_TEST_CATEGORICAL": {u'bucket_count': 4,
-                                                       u'histogram_type': 5,
-                                                       u'range': [1, 2],
-                                                       u'sum': 3,
-                                                       u'values': {u'0': 1, u'1': 1, u'2':1, u'3':0}},
-                       u'GC_MAX_PAUSE_MS_2': {'bucket_count':50,
-                                              'histogram_type':1,
-                                              'range':[1,1000],
-                                              'sum':554,
-                                              'values':{'0':0,'1':4,'22':2,'43':1,'63':1,'272':1,'292':0}}}
+histograms_template = {
+    u"EVENTLOOP_UI_ACTIVITY_EXP_MS": {u"bucket_count": 20,
+                                      u"histogram_type": 0,
+                                      u"log_sum": 0,
+                                      u"log_sum_squares": 0,
+                                      u"range": [50, 60000],
+                                      u"sum": 9362,
+                                      u"values": {u"0": 0,
+                                                  u"110": 16,
+                                                  u"1170": 0,
+                                                  u"163": 8,
+                                                  u"242": 5,
+                                                  u"359": 2,
+                                                  u"50": 18,
+                                                  u"74": 16,
+                                                  u"789": 1}},
+    u"UPDATE_PING_COUNT_EXTERNAL": {u"bucket_count": 3,
+                                    u"histogram_type": 4,
+                                    u"range": [1, 2],
+                                    u"sum": SCALAR_VALUE,
+                                    u"values": {u"0": SCALAR_VALUE, u"1": 0}},
+    u"USE_COUNTER2_PROPERTY_FILL_PAGE": {u'bucket_count': 3,
+                                         u'histogram_type': 2,
+                                         u'range': [1, 2],
+                                         u'sum': 2,
+                                         u'values': {u'0': 0, u'1': 2, u'2': 0}},
+    u"USE_COUNTER2_ISNULL_PAGE": None,
+    u"USE_COUNTER2_PROPERTY_FILL_DOCUMENT": {u'bucket_count': 3,
+                                             u'histogram_type': 2,
+                                             u'range': [1, 2],
+                                             u'sum': 1,
+                                             u'values': {u'0': 0, u'1': 1, u'2': 0}},
+    u"CONTENT_DOCUMENTS_DESTROYED": {u"bucket_count": 3,
+                                     u"histogram_type": 4,
+                                     u"range": [1, 2],
+                                     u"sum": 17,
+                                     u"values": {u"0": 17, u"1": 0}},
+    u"TOP_LEVEL_CONTENT_DOCUMENTS_DESTROYED": {u"bucket_count": 3,
+                                               u"histogram_type": 4,
+                                               u"range": [1, 2],
+                                               u"sum": 19,
+                                               u"values": {u"0": 19, u"1": 0}},
+    u"USE_COUNTER_PROPERTY_FILL_DOCUMENT": {u'bucket_count': 3,
+                                            u'histogram_type': 2,
+                                            u'range': [1, 2],
+                                            u'sum': 1,
+                                            u'values': {u'0': 0, u'1': 1}},
+    u"TELEMETRY_TEST_CATEGORICAL": {u"bucket_count": 4,
+                                    u"histogram_type": 5,
+                                    u"range": [1, 2],
+                                    u"sum": 3,
+                                    u"values": {u"0": 1, u"1": 1, u"2": 1, u"3": 0}},
+    u"GC_MAX_PAUSE_MS_2": {"bucket_count": 50,
+                           "histogram_type": 1,
+                           "range": [1, 1000],
+                           "sum": 554,
+                           "values": {"0": 0, "1": 4, "22": 2, "43": 1, "63": 1, "272": 1, "292": 0}}
+}
 
-keyed_histograms_template = {u'DEVTOOLS_PERFTOOLS_RECORDING_FEATURES_USED': {
+keyed_histograms_template = {
+    u"DEVTOOLS_PERFTOOLS_RECORDING_FEATURES_USED": {
         "withMarkers": {
-          "range": [
-            1,
-            2
-          ],
-          "bucket_count": 3,
-          "histogram_type": 2,
-          "values": {
-            "0": 0,
-            "1": 1,
-            "2": 0
-          },
-          "sum": 1
-        }}}
+            "range": [1, 2],
+            "bucket_count": 3,
+            "histogram_type": 2,
+            "values": {
+                "0": 0,
+                "1": 1,
+                "2": 0
+            },
+            "sum": 1
+        }
+    }
+}
 
-ignored_keyed_histograms_template = {u'MESSAGE_MANAGER_MESSAGE_SIZE':
-                                     {u'foo': {u'bucket_count': 20,
-                                               u'histogram_type': 0,
-                                               u'sum': 0,
-                                               u'values': {u'0': 0}
-                                     }},
-                                     "VIDEO_DETAILED_DROPPED_FRAMES_PROPORTION":
-                                     {u'foo': {u'bucket_count': 20,
-                                               u'histogram_type': 0,
-                                               u'sum': 0,
-                                               u'values': {u'0': 0}
-                                     }}}
+ignored_keyed_histograms_template = {
+    u"MESSAGE_MANAGER_MESSAGE_SIZE": {u"foo": {u"bucket_count": 20,
+                                               u"histogram_type": 0,
+                                               u"sum": 0,
+                                               u"values": {u"0": 0}}},
+    "VIDEO_DETAILED_DROPPED_FRAMES_PROPORTION": {u"foo": {u"bucket_count": 20,
+                                                          u"histogram_type": 0,
+                                                          u"sum": 0,
+                                                          u"values": {u"0": 0}}}
+}
 
-simple_measurements_template = {"uptime": SCALAR_VALUE, "addonManager": {u'XPIDB_parseDB_MS': SCALAR_VALUE}}
+
+simple_measurements_template = {
+    "uptime": SCALAR_VALUE,
+    "addonManager": {
+        u"XPIDB_parseDB_MS": SCALAR_VALUE
+    }
+}
 
 scalars_template = {
     "browser.engagement.total_uri_count": SCALAR_VALUE,
@@ -171,7 +180,6 @@ def generate_payload(dimensions, aggregated_child_histograms):
         }
     }
 
-
     if aggregated_child_histograms:
         processes_payload[u"content"] = {
             u"histograms": histograms_template,
@@ -207,6 +215,7 @@ def generate_payload(dimensions, aggregated_child_histograms):
             u"application": application,
             u"payload": payload,
             u"environment": environment}
+
 
 def expected_count(process_type, scalar=False):
     if process_type == "parent":
