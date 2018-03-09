@@ -7,6 +7,7 @@
 
 import os
 import string
+from collections import defaultdict
 from cStringIO import StringIO
 
 import pandas as pd
@@ -21,11 +22,15 @@ from aggregator import SCALAR_MEASURE_MAP
 # Use latest revision, we don't really care about histograms that have
 # been removed. This only works though if histogram definitions are
 # immutable, which has been the case so far.
-histogram_revision_map = {
+_histogram_revision_map = {
     "nightly": "https://hg.mozilla.org/mozilla-central/rev/tip",
     "beta": "https://hg.mozilla.org/releases/mozilla-beta/rev/tip",
     "release": "https://hg.mozilla.org/releases/mozilla-release/rev/tip"
 }
+# NOTE: Using `histogram_revision_map.get(...)` will still return `None`.
+# Use dict subscripts when mapping URLs with this dictionary.
+histogram_revision_map = defaultdict(lambda: _histogram_revision_map['nightly'])
+histogram_revision_map.update(_histogram_revision_map)
 
 _metric_printable = set(string.ascii_uppercase + string.ascii_lowercase + string.digits + "_-[].")
 
@@ -104,7 +109,7 @@ def _preparedb():
 
 
 def _get_complete_histogram(channel, metric, values):
-    revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
+    revision = histogram_revision_map[channel]
 
     for prefix, labels in SCALAR_MEASURE_MAP.iteritems():
         if metric.startswith(prefix):
