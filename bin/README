@@ -1,0 +1,7 @@
+This folder contains script to execute the Docker containers.
+
+The "wait-for-it" shell script comes from https://github.com/vishnubob/wait-for-it
+
+To update this file execute the following command:
+
+    wget https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh -O bin/wait-for-it.sh
