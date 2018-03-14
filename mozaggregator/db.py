@@ -5,28 +5,32 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import psycopg2
-import pandas as pd
-import ujson as json
-import boto.rds2
 import os
 import string
-import sql
-import config
-
-from moztelemetry.spark import Histogram
-from boto.s3.connection import S3Connection
+from collections import defaultdict
 from cStringIO import StringIO
-from aggregator import SIMPLE_MEASURES_LABELS, COUNT_HISTOGRAM_LABELS, NUMERIC_SCALARS_LABELS, \
-                                    SIMPLE_MEASURES_PREFIX, COUNT_HISTOGRAM_PREFIX, NUMERIC_SCALARS_PREFIX, \
-                                    SCALAR_MEASURE_MAP
+
+import pandas as pd
+import psycopg2
+import sql
+import ujson as json
+from moztelemetry.spark import Histogram
+
+import config
+from aggregator import SCALAR_MEASURE_MAP
 
 # Use latest revision, we don't really care about histograms that have
 # been removed. This only works though if histogram definitions are
 # immutable, which has been the case so far.
-histogram_revision_map = {"nightly": "https://hg.mozilla.org/mozilla-central/rev/tip",
-                          "beta": "https://hg.mozilla.org/releases/mozilla-beta/rev/tip",
-                          "release": "https://hg.mozilla.org/releases/mozilla-release/rev/tip"}
+_histogram_revision_map = {
+    "nightly": "https://hg.mozilla.org/mozilla-central/rev/tip",
+    "beta": "https://hg.mozilla.org/releases/mozilla-beta/rev/tip",
+    "release": "https://hg.mozilla.org/releases/mozilla-release/rev/tip"
+}
+# NOTE: Using `histogram_revision_map.get(...)` will still return `None`.
+# Use dict subscripts when mapping URLs with this dictionary.
+histogram_revision_map = defaultdict(lambda: _histogram_revision_map['nightly'])
+histogram_revision_map.update(_histogram_revision_map)
 
 _metric_printable = set(string.ascii_uppercase + string.ascii_lowercase + string.digits + "_-[].")
 
@@ -36,15 +40,16 @@ db_host = "POSTGRES_HOST"
 db_ro_host = "POSTGRES_RO_HOST"
 db_name = "POSTGRES_DB"
 
+
 def get_db_connection_string(read_only=False):
     if os.getenv("DB_TEST_URL"):
         return os.getenv("DB_TEST_URL")
     elif config.USE_PRODUCTION_DB:
         if (os.getenv(db_pass) and
-            os.getenv(db_host) and
-            os.getenv(db_ro_host) and
-            os.getenv(db_user) and
-            os.getenv(db_name)):
+                os.getenv(db_host) and
+                os.getenv(db_ro_host) and
+                os.getenv(db_user) and
+                os.getenv(db_name)):
 
             rds_pass = os.getenv(db_pass)
             rds_host = os.getenv(db_host)
@@ -59,6 +64,7 @@ def get_db_connection_string(read_only=False):
         return "dbname={} user={} password={} host={}".format(rds_db, rds_user, rds_pass, rds_endpoint)
     else:
         return "dbname={} user={} password={} host={}".format(config.DBNAME, config.DBUSER, config.DBPASS, config.DBHOST)
+
 
 def _create_connection(autocommit=True, connection_string_override=None):
     if connection_string_override:
@@ -77,19 +83,19 @@ def submit_aggregates(aggregates, dry_run=False):
 
     connection_string = get_db_connection_string(False)
 
-    build_id_count = aggregates[0].\
-                     map(lambda x: (x[0][:4], _aggregate_to_sql(x))).\
-                     filter(lambda x: x[1]).\
-                     reduceByKey(lambda x, y: x + y).\
-                     map(lambda x: _upsert_build_id_aggregates(x[0], x[1], connection_string, dry_run=dry_run)).\
-                     count()
+    build_id_count = (
+        aggregates[0].map(lambda x: (x[0][:4], _aggregate_to_sql(x)))
+                     .filter(lambda x: x[1])
+                     .reduceByKey(lambda x, y: x + y)
+                     .map(lambda x: _upsert_build_id_aggregates(x[0], x[1], connection_string, dry_run=dry_run))
+                     .count())
 
-    submission_date_count = aggregates[1].\
-                            map(lambda x: (x[0][:3], _aggregate_to_sql(x))).\
-                            filter(lambda x: x[1]).\
-                            reduceByKey(lambda x, y: x + y).\
-                            map(lambda x: _upsert_submission_date_aggregates(x[0], x[1], connection_string, dry_run=dry_run)).\
-                            count()
+    submission_date_count = (
+        aggregates[1].map(lambda x: (x[0][:3], _aggregate_to_sql(x)))
+                     .filter(lambda x: x[1])
+                     .reduceByKey(lambda x, y: x + y)
+                     .map(lambda x: _upsert_submission_date_aggregates(x[0], x[1], connection_string, dry_run=dry_run))
+                     .count())
 
     # TODO: Auto-vacuuming might be sufficient. Re-enable if needed.
     # _vacuumdb()
@@ -103,7 +109,7 @@ def _preparedb():
 
 
 def _get_complete_histogram(channel, metric, values):
-    revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
+    revision = histogram_revision_map[channel]
 
     for prefix, labels in SCALAR_MEASURE_MAP.iteritems():
         if metric.startswith(prefix):
@@ -119,11 +125,13 @@ def _aggregate_to_sql(aggregate):
     result = StringIO()
     key, metrics = aggregate
     submission_date, channel, version, application, architecture, os, os_version, e10s = key[:3] + key[-5:]
-    dimensions = {"application": application,
-                  "architecture": architecture,
-                  "os": os,
-                  "osVersion": os_version,
-                  "e10sEnabled": e10s}
+    dimensions = {
+        "application": application,
+        "architecture": architecture,
+        "os": os,
+        "osVersion": os_version,
+        "e10sEnabled": e10s
+    }
 
     for metric, payload in metrics.iteritems():
         metric, label, process_type = metric
@@ -131,8 +139,8 @@ def _aggregate_to_sql(aggregate):
         if not set(metric).issubset(_metric_printable):
             continue  # Ignore metrics with non printable characters...
 
-        if u'\u0000' in label:
-            continue # Ignore labels with null character
+        if u"\u0000" in label:
+            continue  # Ignore labels with null character
 
         try:
             # Make sure values fit within a pgsql bigint
@@ -142,7 +150,7 @@ def _aggregate_to_sql(aggregate):
 
             histogram = _get_complete_histogram(channel, metric, payload["histogram"]) + [payload["sum"], payload["count"]]
             histogram = [str(long(x)) for x in histogram]
-        except KeyError as e:
+        except KeyError:
             # Should eventually log errors
             continue
 
@@ -182,7 +190,7 @@ def _upsert_build_id_aggregates(key, stage_table, connection_string, dry_run=Fal
     stage_table_name = cursor.fetchone()[0]
 
     cursor.copy_from(StringIO(stage_table), stage_table_name, columns=("dimensions", "histogram"))
-    cursor.execute("select merge_table(%s, %s, %s, %s, %s)", ('build_id', channel, version, build_id, stage_table_name))
+    cursor.execute("select merge_table(%s, %s, %s, %s, %s)", ("build_id", channel, version, build_id, stage_table_name))
 
     if dry_run:
         conn.rollback()

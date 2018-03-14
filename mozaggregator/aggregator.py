@@ -5,15 +5,21 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import sys
-
-from moztelemetry.dataset import Dataset 
-from moztelemetry.histogram import cached_exponential_buckets
 from collections import defaultdict
+
+from moztelemetry.dataset import Dataset
+from moztelemetry.histogram import cached_exponential_buckets
+
 
 # Simple measurement, count histogram, and numeric scalars labels & prefixes
 SIMPLE_MEASURES_LABELS = cached_exponential_buckets(1, 30000, 50)
-COUNT_HISTOGRAM_LABELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 23, 25, 27, 29, 31, 34, 37, 40, 43, 46, 50, 54, 58, 63, 68, 74, 80, 86, 93, 101, 109, 118, 128, 138, 149, 161, 174, 188, 203, 219, 237, 256, 277, 299, 323, 349, 377, 408, 441, 477, 516, 558, 603, 652, 705, 762, 824, 891, 963, 1041, 1125, 1216, 1315, 1422, 1537, 1662, 1797, 1943, 2101, 2271, 2455, 2654, 2869, 3102, 3354, 3626, 3920, 4238, 4582, 4954, 5356, 5791, 6261, 6769, 7318, 7912, 8554, 9249, 10000]
+COUNT_HISTOGRAM_LABELS = [
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 23, 25, 27, 29, 31, 34,
+    37, 40, 43, 46, 50, 54, 58, 63, 68, 74, 80, 86, 93, 101, 109, 118, 128, 138, 149, 161, 174, 188,
+    203, 219, 237, 256, 277, 299, 323, 349, 377, 408, 441, 477, 516, 558, 603, 652, 705, 762, 824,
+    891, 963, 1041, 1125, 1216, 1315, 1422, 1537, 1662, 1797, 1943, 2101, 2271, 2455, 2654, 2869,
+    3102, 3354, 3626, 3920, 4238, 4582, 4954, 5356, 5791, 6261, 6769, 7318, 7912, 8554, 9249, 10000,
+]
 NUMERIC_SCALARS_LABELS = COUNT_HISTOGRAM_LABELS
 
 SIMPLE_MEASURES_PREFIX = 'SIMPLE_MEASURES'
@@ -28,6 +34,7 @@ SCALAR_MEASURE_MAP = {
 
 PROCESS_TYPES = {"parent", "content", "gpu"}
 
+
 def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1, fennec_ping_fraction=1, num_reducers=10000):
     """ Returns the build-id and submission date aggregates for a given submission date.
 
@@ -39,7 +46,6 @@ def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1, fenne
     if not isinstance(channels, (tuple, list)):
         channels = [channels]
 
-
     def telemetry_enabled(ping):
         try:
             return ping.get('environment', {}) \
@@ -50,24 +56,25 @@ def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1, fenne
 
     channels = set(channels)
     pings = Dataset.from_source('telemetry') \
-                  .where(appUpdateChannel=lambda x : x in channels, 
-                         submissionDate=submission_date,
-                         docType='main',
-                         sourceVersion='4',
-                         appName=lambda x: x != 'Fennec') \
-                  .records(sc, sample=main_ping_fraction) \
-                  .filter(telemetry_enabled)
+                   .where(appUpdateChannel=lambda x: x in channels,
+                          submissionDate=submission_date,
+                          docType='main',
+                          sourceVersion='4',
+                          appName=lambda x: x != 'Fennec') \
+                   .records(sc, sample=main_ping_fraction) \
+                   .filter(telemetry_enabled)
 
     fennec_pings = Dataset.from_source('telemetry') \
-                  .where(appUpdateChannel=lambda x : x in channels, 
-                         submissionDate=submission_date,
-                         docType='saved_session',
-                         sourceVersion='4',
-                         appName = 'Fennec') \
-                  .records(sc, sample=fennec_ping_fraction)
+                          .where(appUpdateChannel=lambda x: x in channels,
+                                 submissionDate=submission_date,
+                                 docType='saved_session',
+                                 sourceVersion='4',
+                                 appName='Fennec') \
+                          .records(sc, sample=fennec_ping_fraction)
 
     all_pings = pings.union(fennec_pings)
     return _aggregate_metrics(all_pings)
+
 
 def _aggregate_metrics(pings, num_reducers=10000):
     trimmed = pings.filter(_sample_clients).map(_map_ping_to_dimensions).filter(lambda x: x)
@@ -82,7 +89,7 @@ def _map_build_id_key_to_submission_date_key(aggregate):
 
 def _sample_clients(ping):
     try:
-        sample_id = ping.get("meta", {}).get("sampleId", None)
+        sample_id = ping.get("meta", {}).get("sampleId")
 
         if not isinstance(sample_id, (int, float, long)):
             return False
@@ -91,18 +98,11 @@ def _sample_clients(ping):
         if not ping.get("environment", {}).get("settings", {}).get("telemetryEnabled", False):
             return False
 
-        channel = ping.get("application", {}).get("channel", None)
-        percentage = {"nightly": 100,
-                    "aurora": 100,
-                    "beta": 100,
-                    "release": 100}
-
-        if channel not in percentage:
+        if ping.get("application", {}).get("channel") not in ("nightly", "aurora", "beta", "release"):
             return False
 
-        # Use meta/sampleid once Heka spits it out correctly
-        return sample_id < percentage[channel]
-    except:
+        return sample_id < 100
+    except:  # noqa
         return False
 
 
@@ -129,20 +129,22 @@ def _extract_histogram(state, histogram, histogram_name, label, process_type):
     if not isinstance(histogram, dict):
         return
 
-    values = histogram.get("values", None)
+    values = histogram.get("values")
     if not isinstance(values, dict):
         return
 
-    sum = histogram.get("sum", None)
+    sum = histogram.get("sum")
     if not isinstance(sum, (int, long)) or sum < 0:
         return
 
-    histogram_type = histogram.get("histogram_type", None)
+    histogram_type = histogram.get("histogram_type")
     if not isinstance(histogram_type, int):
         return
 
     if histogram_type == 4:  # Count histogram
-        return _extract_scalar_value(state, u'_'.join((COUNT_HISTOGRAM_PREFIX, histogram_name)), label, sum, COUNT_HISTOGRAM_LABELS, process_type=process_type)
+        return _extract_scalar_value(
+            state, u'_'.join((COUNT_HISTOGRAM_PREFIX, histogram_name)), label,
+            sum, COUNT_HISTOGRAM_LABELS, process_type=process_type)
 
     # Note that some dimensions don't vary within a single submissions
     # (e.g. channel) while some do (e.g. process type).
@@ -155,8 +157,8 @@ def _extract_histogram(state, histogram, histogram_name, label, process_type):
     for k, v in values.iteritems():
         try:
             int(k)
-        except:
-            # We have seen some histograms with non-integer bucket keys...
+        except ValueError:
+            # We have seen some histograms with non-integer bucket keys.
             continue
 
         v = v if isinstance(v, (int, long)) else 0L
@@ -170,12 +172,14 @@ def _extract_main_histograms(state, histograms, process_type):
     for histogram_name, histogram in histograms.iteritems():
         _extract_histogram(state, histogram, histogram_name, u"", process_type)
 
+
 def _extract_keyed_histograms(state, histogram_name, histograms, process_type):
     if not isinstance(histograms, dict):
         return
 
     for key, histogram in histograms.iteritems():
         _extract_histogram(state, histogram, histogram_name, key, process_type)
+
 
 def _extract_simple_measures(state, simple, process_type="parent"):
     if not isinstance(simple, dict):
@@ -185,9 +189,14 @@ def _extract_simple_measures(state, simple, process_type="parent"):
         if isinstance(value, dict):
             for sub_name, sub_value in value.iteritems():
                 if isinstance(sub_value, (int, float, long)):
-                    _extract_scalar_value(state, "_".join((SIMPLE_MEASURES_PREFIX, name.upper(), sub_name.upper())), u"", sub_value, SIMPLE_MEASURES_LABELS, process_type)
+                    _extract_scalar_value(
+                        state,
+                        "_".join((SIMPLE_MEASURES_PREFIX, name.upper(), sub_name.upper())),
+                        u"", sub_value, SIMPLE_MEASURES_LABELS, process_type)
         elif isinstance(value, (int, float, long)):
-            _extract_scalar_value(state, u"_".join((SIMPLE_MEASURES_PREFIX, name.upper())), u"", value, SIMPLE_MEASURES_LABELS, process_type)
+            _extract_scalar_value(
+                state, u"_".join((SIMPLE_MEASURES_PREFIX, name.upper())),
+                u"", value, SIMPLE_MEASURES_LABELS, process_type)
 
 
 def _extract_scalars(state, process_payloads):
@@ -217,7 +226,7 @@ def _extract_keyed_numeric_scalars(state, scalar_dict, process):
 
     for name, value in scalar_dict.iteritems():
         if not isinstance(value, dict):
-           continue
+            continue
 
         if name.startswith("browser.engagement.navigation"):
             continue
@@ -256,6 +265,7 @@ def _extract_child_payloads(state, child_payloads):
         _extract_histograms(state, child, "content")
         _extract_simple_measures(state, child.get("simpleMeasurements", {}), "content")
 
+
 def _aggregate_ping(state, ping):
     if not isinstance(ping, dict):
         return
@@ -285,7 +295,8 @@ def _aggregate_aggregates(agg1, agg2):
 
 
 def _trim_payload(payload):
-    return {k: v for k, v in payload.iteritems() if k in ["histograms", "keyedHistograms", "simpleMeasurements", "processes"]}
+    return {k: v for k, v in payload.iteritems()
+            if k in ["histograms", "keyedHistograms", "simpleMeasurements", "processes"]}
 
 
 def _map_ping_to_dimensions(ping):
@@ -305,7 +316,7 @@ def _map_ping_to_dimensions(ping):
 
         try:
             int(build_id)
-        except:
+        except ValueError:
             return None
 
         subset = {}
@@ -317,5 +328,5 @@ def _map_ping_to_dimensions(ping):
         # Dimensions that don't vary should appear in the submission key, while
         # the ones that do vary should appear within the key of a single metric.
         return ((submission_date, channel, version, build_id, application, architecture, os, os_version, e10s), subset)
-    except:
+    except:  # noqa
         return None

@@ -1,29 +1,26 @@
-import ujson as json
-import config
-import logging
-import boto3
 import time
-import psycopg2
-
-from flask import Flask, Response, request, abort
-from flask.ext.cors import CORS
-from flask.ext.cache import Cache
-from flask_sslify import SSLify
-from moztelemetry.histogram import Histogram
-from joblib import Parallel, delayed
+from copy import deepcopy
 from functools import wraps
+
+import boto3
+import ujson as json
+from botocore.exceptions import ClientError
+from dockerflow.flask import Dockerflow
+from flask import Flask, Response, abort, request
+from flask.ext.cache import Cache
+from flask.ext.cors import CORS
+from flask_sslify import SSLify
 from gevent.monkey import patch_all
+from joblib import Parallel, delayed
+from moztelemetry.histogram import Histogram
+from moztelemetry.scalar import MissingScalarError, Scalar
 from psycogreen.gevent import patch_psycopg
 from psycopg2.pool import SimpleConnectionPool
-from aggregator import SIMPLE_MEASURES_LABELS, COUNT_HISTOGRAM_LABELS, NUMERIC_SCALARS_LABELS, \
-                        SIMPLE_MEASURES_PREFIX, COUNT_HISTOGRAM_PREFIX, NUMERIC_SCALARS_PREFIX, \
-                        SCALAR_MEASURE_MAP
+
+from aggregator import (
+    COUNT_HISTOGRAM_LABELS, COUNT_HISTOGRAM_PREFIX, NUMERIC_SCALARS_PREFIX, SCALAR_MEASURE_MAP)
 from db import get_db_connection_string, histogram_revision_map, _preparedb
-from moztelemetry.scalar import MissingScalarError, Scalar
-from logging.handlers import SysLogHandler
-from botocore.exceptions import ClientError
-from copy import deepcopy
-from dockerflow.flask import Dockerflow
+
 
 pool = None
 db_connection_string = get_db_connection_string(read_only=True)
@@ -40,17 +37,18 @@ patch_all()
 patch_psycopg()
 cache.clear()
 
-### Cloudwatch Logging Config ###
+# Cloudwatch Logging Config
 MAX_RETRIES = 3
 LOG_GROUP_NAME = 'telemetry-aggregation-service'
 LOG_STREAM_NAME = 'requests'
 
 sequence_token = None
-log_client = boto3.client("logs", region_name='us-west-2')
+log_client = boto3.client('logs', region_name='us-west-2')
 
-### For caching - change this if after backfilling submission_date data
-SUBMISSION_DATE_ETAG = "submission_date_v1"
+# For caching - change this if after backfilling submission_date data
+SUBMISSION_DATE_ETAG = 'submission_date_v1'
 CLIENT_CACHE_SLACK_SECONDS = 3600
+
 
 def get_time_left_in_cache():
     assert app.config["CACHETYPE"] == "simple", "Only simple caches can be used with get_time_left_in_cache"
@@ -115,7 +113,7 @@ def cache_request(f):
 def create_pool():
     global pool
     if pool is None:
-        _preparedb();
+        _preparedb()
         pool = SimpleConnectionPool(
             app.config["MINCONN"],
             app.config["MAXCONN"],
@@ -131,7 +129,7 @@ def execute_query(query, params=tuple()):
         cursor = db.cursor()
         cursor.execute(query, params)
         return cursor.fetchall()
-    except:
+    except:  # noqa
         abort(404)
     finally:
         pool.putconn(db)
@@ -143,13 +141,10 @@ def log_request():
     """
     global sequence_token, LOG_GROUP_NAME, LOG_STREAM_NAME
 
-    origin  = request.headers.get('Origin') or ''
+    origin = request.headers.get('Origin') or ''
     referrer = request.headers.get('Referer') or request.referrer or ''
     ip_addr = request.access_route[0] or request.remote_addr or ''
-    data  = (origin,
-            referrer,
-            ip_addr,
-            request.url)
+    data = (origin, referrer, ip_addr, request.url)
 
     millis = int(round(time.time() * 1000))
     log_line = ','.join([d.replace(',', '\,') for d in data])
@@ -181,8 +176,8 @@ def log_request():
                    ("DataAlreadyAcceptedException", "InvalidSequenceTokenException"):
                     try:
                         stream_describe = log_client.describe_log_streams(
-                            logGroupName = LOG_GROUP_NAME,
-                            logStreamNamePrefix = LOG_STREAM_NAME)
+                            logGroupName=LOG_GROUP_NAME,
+                            logStreamNamePrefix=LOG_STREAM_NAME)
                         sequence_token = stream_describe['logStreams'][0]['uploadSequenceToken']
                     except ClientError:
                         pass
@@ -191,6 +186,7 @@ def log_request():
 
         if response and response.get('nextSequenceToken'):
             sequence_token = response['nextSequenceToken']
+
 
 @app.route('/status')
 def status():
@@ -236,16 +232,16 @@ def get_filter_options(channel, version, filters, filter):
                            else x for x in pretty_opts]
 
         filters[filter] = pretty_opts
-    except:
+    except:  # noqa
         pass
 
 
-@app.route('/filters/', methods=["GET"])
+@app.route('/filters/', methods=['GET'])
 @add_cache_header()
 @cache_request
 def get_filters_options():
-    channel = request.args.get("channel", None)
-    version = request.args.get("version", None)
+    channel = request.args.get("channel")
+    version = request.args.get("version")
 
     if not channel or not version:
         abort(404)
@@ -253,8 +249,7 @@ def get_filters_options():
     filters = {}
     dimensions = ["metric", "application", "architecture", "os", "e10sEnabled", "child"]
 
-    Parallel(n_jobs=len(dimensions), backend="threading")(delayed(get_filter_options)(channel, version, filters, f)
-                                                            for f in dimensions)
+    Parallel(n_jobs=len(dimensions), backend="threading")(delayed(get_filter_options)(channel, version, filters, f) for f in dimensions)
 
     if not filters:
         abort(404)
@@ -270,7 +265,7 @@ def _get_description(channel, prefix, metric):
     return Scalar(metric, 0, channel=channel).get_definition().get('description', '')
 
 
-@app.route('/aggregates_by/<prefix>/channels/<channel>/', methods=["GET"])
+@app.route('/aggregates_by/<prefix>/channels/<channel>/', methods=['GET'])
 @add_cache_header(True)
 @check_etag
 @cache_request
@@ -284,7 +279,7 @@ def get_dates_metrics(prefix, channel):
         dimensions['child'] = new_process_map.get(dimensions['child'], dimensions['child'])
 
     # Get dates
-    dates = dimensions.pop('dates', "").split(',')
+    dates = dimensions.pop('dates', '').split(',')
     version = dimensions.pop('version', None)
     metric = dimensions.get('metric', None)
 
@@ -305,7 +300,7 @@ def get_dates_metrics(prefix, channel):
                 abort(404)
             break
     else:
-        revision = histogram_revision_map.get(channel, "nightly")  # Use nightly revision if the channel is unknown
+        revision = histogram_revision_map[channel]
         try:
             definition = Histogram(metric, {"values": {}}, revision=revision)
         except KeyError:
@@ -359,6 +354,7 @@ def get_dates_metrics(prefix, channel):
         pretty_result["data"].append({"date": date, "label": label, "histogram": histogram, "count": count, "sum": sum})
 
     return Response(json.dumps(pretty_result), mimetype="application/json")
+
 
 if __name__ == "__main__":
     app.run("0.0.0.0", debug=True, threaded=True)

@@ -5,4 +5,3 @@ MINCONN = 4
 MAXCONN = 64
 CACHETYPE = "simple"
 USE_PRODUCTION_DB = True
-
