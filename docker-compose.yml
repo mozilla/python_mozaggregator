@@ -16,4 +16,4 @@ services:
       - db
     links:
       - db
-    command: web-dev
+    command: serve

@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-# default variables
-: "${PORT:=5000}"
-
 usage() {
-  echo "usage: bin/run web|web-dev|test"
+  echo "usage: bin/run serve|test|<other-command-in-container>"
   exit 1
 }
 
@@ -13,15 +10,10 @@ usage() {
 
 # Only wait for backend services in development.
 # http://stackoverflow.com/a/13864829
-[ ! -z ${DEVELOPMENT+check} ] && ./bin/wait-for-it.sh db:5432 --timeout=0 --strict
+[ ! -z ${DEVELOPMENT+check} ] && ./bin/wait-for-it.sh db:${DB_PORT:-5432} --timeout=0 --strict
 
 case $1 in
-  web)
-    # TODO: Use newrelic:
-    # exec newrelic-admin run-program gunicorn mozaggregator.service:app -b 0.0.0.0:${PORT} -k gevent --workers 4 --access-logfile -
-    exec gunicorn mozaggregator.service:app -b 0.0.0.0:${PORT} -k gevent --workers 4 --access-logfile -
-    ;;
-  web-dev)
+  serve)
     exec python mozaggregator/service.py 0.0.0.0:${PORT}
     ;;
   test)
