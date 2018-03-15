@@ -48,7 +48,7 @@ The following examples are based on build-id aggregates. Replace `build_id` with
 ##### Get available channels:
 ```bash
 curl -X GET https://SERVICE/aggregates_by/build_id/channels/
-["nightly","beta","aurora"]
+["nightly","beta","release"]
 ```
 
 ##### Get a list of options for the available dimensions on a given channel and version:

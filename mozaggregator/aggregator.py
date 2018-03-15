@@ -98,7 +98,7 @@ def _sample_clients(ping):
         if not ping.get("environment", {}).get("settings", {}).get("telemetryEnabled", False):
             return False
 
-        if ping.get("application", {}).get("channel") not in ("nightly", "aurora", "beta", "release"):
+        if ping.get("application", {}).get("channel") not in ("nightly", "beta", "release"):
             return False
 
         return sample_id < 100
