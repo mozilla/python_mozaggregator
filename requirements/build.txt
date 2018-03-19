@@ -1,4 +1,4 @@
-awscli==1.14.53
+awscli==1.14.58
 blinker==1.4
 boto3==1.6.6
 botocore==1.9.6
