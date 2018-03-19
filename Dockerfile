@@ -15,7 +15,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         # Production only libs on next line.
         gcc awscli net-tools \
-        libsnappy-dev liblzma-dev g++ redis-server curl libpq-dev bzip2 libffi-dev \
+        libsnappy-dev liblzma-dev g++ curl libpq-dev bzip2 libffi-dev \
         python-numpy python-pandas python-scipy wget ca-certificates openssl libssl-dev \
         postgresql-9.4 postgresql-contrib-9.4 postgresql-server-dev-9.4 \
         openjdk-7-jdk && \
