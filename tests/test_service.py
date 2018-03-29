@@ -1,6 +1,8 @@
 import json
 import re
 import unittest
+import urlparse
+from urllib import urlencode
 
 import pandas as pd
 import pyspark
@@ -106,6 +108,27 @@ class ServiceTestCase(unittest.TestCase):
             '/aggregates_by/build_id/channels/nightly/?version=41&dates=20150601&metric=SCALARS_NONEXISTENT')
         self.assertEqual(resp.status_code, 404)
 
+    def test_invalid_filter(self):
+        qs = {
+            'application': 'Firefox',
+            'architecture': 'x86',
+            'child': 'content',
+            'dates': '20150601',
+            'label': 'LABEL',
+            'metric': 'GC_MS',
+            'os': 'Windows_NT',
+            'version': '41',
+        }
+        url = '/aggregates_by/build_id/channels/nightly/?%s' % (urlencode(qs))
+        for test in ('e10sEnabled=true', 'foo=bar'):
+            resp = self.app.get('%s&%s' % (url, test))
+            self.assertEqual(resp.status_code, 405)
+            # Check that the 'Allow' URL query params match our base URL.
+            self.assertEqual(
+                set(urlparse.parse_qs(urlparse.urlparse(resp.headers.get('Allow')).query).keys()),
+                set(qs.keys())
+            )
+
     # Test response content.
 
     def test_channels(self):
@@ -146,11 +169,11 @@ class ServiceTestCase(unittest.TestCase):
             for version in [v.split('.')[0] for v in ping_dimensions['version']]:
                 resp = self.as_json(self.app.get('/filters/?channel=%s&version=%s' % (channel, version)))
 
-                # TODO: Test all filters.
+                # TODO: Test metric filters.
                 self.assertEqual(set(resp['application']), set(ping_dimensions['application']))
                 self.assertEqual(set(resp['architecture']), set(ping_dimensions['arch']))
-                self.assertEqual(set(resp['e10sEnabled']), set(['true', 'false']))
                 self.assertEqual(set(resp['child']), set(['gpu', 'content', 'parent']))
+                self.assertEqual(set(resp['os']), set(['Windows_NT,6.1', 'Windows_NT,3.1.12', 'Linux,3.1', 'Linux,6.1']))
 
     def test_changed_child_value(self):
         # See bug 1339139

@@ -89,7 +89,6 @@ The available filters are:
 - `architecture`, e.g. x86
 - `os`, e.g. Windows_NT
 - `osVersion`, e.g. 6.1
-- `e10sEnabled`, e.g. true
 - `label`, e.g Adblock-Plus
 - `child`, e.g. true, meaningful only if e10s is enabled
 
