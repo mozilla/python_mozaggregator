@@ -153,19 +153,27 @@ ignored_keyed_scalars_template = {
 
 
 def generate_pings():
-    for dimensions in [dict(x) for x in product(*[zip(repeat(k), v) for k, v in ping_dimensions.iteritems()])]:
+    for dimensions in [
+        dict(x) for x in product(
+            *[zip(repeat(k), v) for k, v in ping_dimensions.iteritems()]
+        )
+    ]:
         for i in range(NUM_PINGS_PER_DIMENSIONS):
             yield generate_payload(dimensions, i < NUM_AGGREGATED_CHILD_PINGS)
 
 
 def generate_payload(dimensions, aggregated_child_histograms):
-    meta = {u"submissionDate": dimensions["submission_date"],
-            u"sampleId": 42}
-    application = {u"channel": dimensions["channel"],
-                   u"version": dimensions["version"],
-                   u"buildId": dimensions["build_id"],
-                   u"name": dimensions["application"],
-                   u"architecture": dimensions["arch"]}
+    meta = {
+        u"submissionDate": dimensions["submission_date"],
+        u"sampleId": 42,
+    }
+    application = {
+        u"channel": dimensions["channel"],
+        u"version": dimensions["version"],
+        u"buildId": dimensions["build_id"],
+        u"name": dimensions["application"],
+        u"architecture": dimensions["arch"],
+    }
 
     child_payloads = [{"simpleMeasurements": simple_measurements_template}
                       for i in range(NUM_CHILDREN_PER_PING)]
@@ -198,23 +206,29 @@ def generate_payload(dimensions, aggregated_child_histograms):
             child_payloads[i][u"histograms"] = histograms_template
             child_payloads[i][u"keyedHistograms"] = keyed_histograms_template
 
-    payload = {u"simpleMeasurements": simple_measurements_template,
-               u"histograms": histograms_template,
-               u"keyedHistograms": dict(keyed_histograms_template.items() +
-                                        ignored_keyed_histograms_template.items()),
-               u"childPayloads": child_payloads,
-               u"processes": processes_payload}
+    payload = {
+        u"simpleMeasurements": simple_measurements_template,
+        u"histograms": histograms_template,
+        u"keyedHistograms": dict(keyed_histograms_template.items() +
+                                 ignored_keyed_histograms_template.items()),
+        u"childPayloads": child_payloads,
+        u"processes": processes_payload,
+    }
 
-    environment = {u"system": {u"os": {u"name": dimensions["os"],
-                                       u"version": dimensions["os_version"]}},
-                   u"settings": {u"telemetryEnabled": True,
-                                 u"e10sEnabled": dimensions["e10s"]}}
+    environment = {
+        u"system": {u"os": {u"name": dimensions["os"],
+                            u"version": dimensions["os_version"]}},
+        u"settings": {u"telemetryEnabled": True,
+                      u"e10sEnabled": dimensions.get("e10s", True)}
+    }
 
-    return {u"clientId": str(uuid.uuid4()),
-            u"meta": meta,
-            u"application": application,
-            u"payload": payload,
-            u"environment": environment}
+    return {
+        u"clientId": str(uuid.uuid4()),
+        u"meta": meta,
+        u"application": application,
+        u"payload": payload,
+        u"environment": environment,
+    }
 
 
 def expected_count(process_type, scalar=False):
