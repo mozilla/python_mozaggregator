@@ -2,6 +2,7 @@ import os
 import time
 from copy import deepcopy
 from functools import wraps
+from urllib import urlencode
 
 import boto3
 import ujson as json
@@ -17,6 +18,7 @@ from moztelemetry.histogram import Histogram
 from moztelemetry.scalar import MissingScalarError, Scalar
 from psycogreen.gevent import patch_psycopg
 from psycopg2.pool import SimpleConnectionPool
+from werkzeug.exceptions import MethodNotAllowed
 
 from aggregator import (
     COUNT_HISTOGRAM_LABELS, COUNT_HISTOGRAM_PREFIX, NUMERIC_SCALARS_PREFIX, SCALAR_MEASURE_MAP)
@@ -49,6 +51,9 @@ log_client = boto3.client('logs', region_name='us-west-2')
 # For caching - change this if after backfilling submission_date data
 SUBMISSION_DATE_ETAG = 'submission_date_v1'
 CLIENT_CACHE_SLACK_SECONDS = 3600
+
+# If we get a query string not in this set we throw a 405.
+ALLOWED_DIMENSIONS = ('application', 'architecture', 'child', 'dates', 'label', 'metric', 'os', 'version')
 
 
 def get_time_left_in_cache():
@@ -248,7 +253,7 @@ def get_filters_options():
         abort(404)
 
     filters = {}
-    dimensions = ["metric", "application", "architecture", "os", "e10sEnabled", "child"]
+    dimensions = ["metric", "application", "architecture", "os", "child"]
 
     Parallel(n_jobs=len(dimensions), backend="threading")(
         delayed(get_filter_options)(channel, version, filters, f)
@@ -276,6 +281,14 @@ def _get_description(channel, prefix, metric):
 def get_dates_metrics(prefix, channel):
     mapping = {"true": True, "false": False}
     dimensions = {k: mapping.get(v, v) for k, v in request.args.iteritems()}
+
+    extra_dimensions = dimensions.viewkeys() - ALLOWED_DIMENSIONS
+    if extra_dimensions:
+        # We received an unsupported query string to filter by, return 405.
+        valid_url = '{}?{}'.format(
+            request.path,
+            urlencode({k: v for k, v in dimensions.items() if k in ALLOWED_DIMENSIONS}))
+        raise MethodNotAllowed(valid_methods=[valid_url])
 
     if 'child' in dimensions:
         # Process types in the db are true/false, not content/process

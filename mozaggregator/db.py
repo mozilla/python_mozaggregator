@@ -124,13 +124,12 @@ def _get_complete_histogram(channel, metric, values):
 def _aggregate_to_sql(aggregate):
     result = StringIO()
     key, metrics = aggregate
-    submission_date, channel, version, application, architecture, os, os_version, e10s = key[:3] + key[-5:]
+    submission_date, channel, version, application, architecture, os, os_version = key[:3] + key[-4:]
     dimensions = {
         "application": application,
         "architecture": architecture,
         "os": os,
         "osVersion": os_version,
-        "e10sEnabled": e10s
     }
 
     for metric, payload in metrics.iteritems():

@@ -36,7 +36,7 @@ def test_count():
 
 def test_keys():
     for aggregate in build_id_aggregates:
-        submission_date, channel, version, build_id, app, arch, os, os_version, e10s = aggregate[0]
+        submission_date, channel, version, build_id, app, arch, os, os_version = aggregate[0]
 
         assert(submission_date in d.ping_dimensions["submission_date"])
         assert(channel in d.ping_dimensions["channel"])
@@ -51,7 +51,7 @@ def test_keys():
             assert(os_version in d.ping_dimensions["os_version"])
 
     for aggregate in submission_date_aggregates:
-        submission_date, channel, version, app, arch, os, os_version, e10s = aggregate[0]
+        submission_date, channel, version, app, arch, os, os_version = aggregate[0]
 
         assert(submission_date in d.ping_dimensions["submission_date"])
         assert(channel in d.ping_dimensions["channel"])

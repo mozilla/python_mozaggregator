@@ -23,7 +23,6 @@ ping_dimensions = {
     "arch": [u"x86", u"x86-64"],
     "os": [u"Linux", u"Windows_NT"],
     "os_version": [u"6.1", u"3.1.12"],
-    "e10s": [True, False]
 }
 
 histograms_template = {
