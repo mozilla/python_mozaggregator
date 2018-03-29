@@ -28,9 +28,10 @@ def setup_module():
 
 
 def test_count():
+    pings = list(d.generate_pings())
     num_build_ids = len(d.ping_dimensions["build_id"])
-    assert(len(list(d.generate_pings())) / d.NUM_PINGS_PER_DIMENSIONS == len(build_id_aggregates))
-    assert(len(list(d.generate_pings())) / d.NUM_PINGS_PER_DIMENSIONS / num_build_ids == len(submission_date_aggregates))
+    assert(len(pings) / d.NUM_PINGS_PER_DIMENSIONS == len(build_id_aggregates))
+    assert(len(pings) / d.NUM_PINGS_PER_DIMENSIONS / num_build_ids == len(submission_date_aggregates))
 
 
 def test_keys():

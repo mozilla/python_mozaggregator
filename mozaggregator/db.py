@@ -156,11 +156,9 @@ def _aggregate_to_sql(aggregate):
 
         dimensions["metric"] = metric
         dimensions["label"] = label
-        # Have to special-case content and parent here to maintain
-        # backwards compatibility.
-        dimensions["child"] = "true" if process_type == "content" \
-                              else "false" if process_type == "parent" \
-                              else process_type
+        # Have to special-case content and parent here to maintain backwards compatibility.
+        dimensions["child"] = {"content": "true",
+                               "parent": "false"}.get(process_type, process_type)
 
         json_dimensions = json.dumps(dimensions)
         # json.dumps takes care of properly escaping the text but a SQL command

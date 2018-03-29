@@ -250,7 +250,10 @@ def get_filters_options():
     filters = {}
     dimensions = ["metric", "application", "architecture", "os", "e10sEnabled", "child"]
 
-    Parallel(n_jobs=len(dimensions), backend="threading")(delayed(get_filter_options)(channel, version, filters, f) for f in dimensions)
+    Parallel(n_jobs=len(dimensions), backend="threading")(
+        delayed(get_filter_options)(channel, version, filters, f)
+        for f in dimensions
+    )
 
     if not filters:
         abort(404)
@@ -282,7 +285,7 @@ def get_dates_metrics(prefix, channel):
     # Get dates
     dates = dimensions.pop('dates', '').split(',')
     version = dimensions.pop('version', None)
-    metric = dimensions.get('metric', None)
+    metric = dimensions.get('metric')
 
     if not dates or not version or not metric:
         abort(404)
@@ -337,10 +340,14 @@ def get_dates_metrics(prefix, channel):
         denominator_dimensions["metric"] = denominator
         denominator_new_dimensions = deepcopy(altered_dimensions)
         denominator_new_dimensions["metric"] = denominator
-        result = execute_query("select * from batched_get_use_counter(%s, %s, %s, %s, %s, %s, %s, %s)",
-                               (prefix, channel, version, dates, json.dumps(denominator_dimensions), json.dumps(denominator_new_dimensions), json.dumps(dimensions), json.dumps(altered_dimensions)))
+        result = execute_query(
+            "select * from batched_get_use_counter(%s, %s, %s, %s, %s, %s, %s, %s)", (
+                prefix, channel, version, dates, json.dumps(denominator_dimensions),
+                json.dumps(denominator_new_dimensions), json.dumps(dimensions), json.dumps(altered_dimensions)))
     else:
-        result = execute_query("select * from batched_get_metric(%s, %s, %s, %s, %s, %s)", (prefix, channel, version, dates, json.dumps(dimensions), json.dumps(altered_dimensions)))
+        result = execute_query(
+            "select * from batched_get_metric(%s, %s, %s, %s, %s, %s)", (
+                prefix, channel, version, dates, json.dumps(dimensions), json.dumps(altered_dimensions)))
 
     if not result:
         abort(404)
