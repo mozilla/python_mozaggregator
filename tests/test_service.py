@@ -42,7 +42,7 @@ class ServiceTestCase(unittest.TestCase):
 
     def as_json(self, resp):
         self.assertEqual(resp.status_code, 200, (
-            'Response status code != 200, got %s. Cannot get JSON response.' % resp.status_code
+            'Response status code != 200, got {}. Cannot get JSON response.'.format(resp.status_code)
         ))
         return json.loads(resp.data)
 
@@ -57,7 +57,7 @@ class ServiceTestCase(unittest.TestCase):
         resp = self.app.get(
             '/aggregates_by/submission_date/channels/nightly/?version=41&dates=20150603&metric=GC_MAX_PAUSE_MS_2')
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.headers.get('Cache-Control'), 'max-age=%s' % config.TIMEOUT)
+        self.assertEqual(resp.headers.get('Cache-Control'), 'max-age={}'.format(config.TIMEOUT))
 
     def test_submission_dates_etag(self):
         resp = self.app.get(
@@ -69,13 +69,13 @@ class ServiceTestCase(unittest.TestCase):
         resp = self.app.get(
             '/aggregates_by/submission_date/channels/nightly/?version=41&dates=20150603&metric=GC_MAX_PAUSE_MS_2',
             headers={'If-None-Match': SUBMISSION_DATE_ETAG})
-        self.assertEqual(resp.status_code, 304, ('Expected, 304. Got %s' % resp.status_code))
+        self.assertEqual(resp.status_code, 304, ('Expected, 304. Got {}'.format(resp.status_code)))
 
     def test_submission_dates_etag_header_wrong(self):
         resp = self.app.get(
             '/aggregates_by/submission_date/channels/nightly/?version=41&dates=20150603&metric=GC_MAX_PAUSE_MS_2',
             headers={'If-None-Match': SUBMISSION_DATE_ETAG + '_'})
-        self.assertEqual(resp.status_code, 200, ('Expected, 200. Got %s' % resp.status_code))
+        self.assertEqual(resp.status_code, 200, ('Expected, 200. Got {}'.format(resp.status_code)))
 
     def test_build_id_cache_control(self):
         resp = self.app.get(
@@ -85,9 +85,9 @@ class ServiceTestCase(unittest.TestCase):
         matches = re.match(r'max-age=(\d+)', resp.headers.get('Cache-Control'))
         self.assertTrue(matches is not None, 'Cache Control response not set, but should be')
         self.assertTrue(int(matches.group(1)) > 0,
-                        'max-age expected greater than 0, was %s' % matches.group(1))
+                        'max-age expected greater than 0, was {}'.format(matches.group(1)))
         self.assertTrue(int(matches.group(1)) < config.TIMEOUT + CLIENT_CACHE_SLACK_SECONDS,
-                        'max-age expected less than %s, was %s' % (
+                        'max-age expected less than {}, was {}'.format(
                             config.TIMEOUT + CLIENT_CACHE_SLACK_SECONDS, matches.group(1)))
 
     def test_build_id_dates_no_etag(self):
@@ -100,7 +100,7 @@ class ServiceTestCase(unittest.TestCase):
         resp = self.app.get(
             '/aggregates_by/build_id/channels/nightly/?version=41&dates=20150601&metric=GC_MAX_PAUSE_MS_2',
             headers={'If-None-Match': SUBMISSION_DATE_ETAG})
-        self.assertEqual(resp.status_code, 200, ('Expected, 200. Got %s' % resp.status_code))
+        self.assertEqual(resp.status_code, 200, ('Expected, 200. Got {}'.format(resp.status_code)))
 
     def test_non_existent_scalars(self):
         # Non-existent scalars should 404.
@@ -119,9 +119,9 @@ class ServiceTestCase(unittest.TestCase):
             'os': 'Windows_NT',
             'version': '41',
         }
-        url = '/aggregates_by/build_id/channels/nightly/?%s' % (urlencode(qs))
+        url = '/aggregates_by/build_id/channels/nightly/?{}'.format(urlencode(qs))
         for test in ('e10sEnabled=true', 'foo=bar'):
-            resp = self.app.get('%s&%s' % (url, test))
+            resp = self.app.get('{}&{}'.format(url, test))
             self.assertEqual(resp.status_code, 405)
             # Check that the 'Allow' URL query params match our base URL.
             self.assertEqual(
@@ -143,7 +143,7 @@ class ServiceTestCase(unittest.TestCase):
         _build_ids = ping_dimensions['build_id']
 
         for channel in ping_dimensions["channel"]:
-            resp = self.as_json(self.app.get('/aggregates_by/build_id/channels/%s/dates/' % channel))
+            resp = self.as_json(self.app.get('/aggregates_by/build_id/channels/{}/dates/'.format(channel)))
             self.assertEqual(len(resp), len(_versions * len(_build_ids)))
 
             for build_id in resp:
@@ -156,7 +156,7 @@ class ServiceTestCase(unittest.TestCase):
         _submission_dates = ping_dimensions["submission_date"]
 
         for channel in ping_dimensions["channel"]:
-            resp = self.as_json(self.app.get('/aggregates_by/submission_date/channels/%s/dates/' % channel))
+            resp = self.as_json(self.app.get('/aggregates_by/submission_date/channels/{}/dates/'.format(channel)))
             self.assertEqual(len(resp), len(_versions) * len(_submission_dates))
 
             for submission_date in resp:
@@ -167,7 +167,7 @@ class ServiceTestCase(unittest.TestCase):
     def test_filters(self):
         for channel in ping_dimensions['channel']:
             for version in [v.split('.')[0] for v in ping_dimensions['version']]:
-                resp = self.as_json(self.app.get('/filters/?channel=%s&version=%s' % (channel, version)))
+                resp = self.as_json(self.app.get('/filters/?channel={}&version={}'.format(channel, version)))
 
                 # TODO: Test metric filters.
                 self.assertEqual(set(resp['application']), set(ping_dimensions['application']))
@@ -336,8 +336,8 @@ class ServiceTestCase(unittest.TestCase):
             return
 
         resp = self.as_json(self.app.get(
-            '/aggregates_by/%s/channels/%s/?version=%s&dates=%s&metric=%s'
-            % (prefix, channel, version, ','.join(dates), metric)))
+            '/aggregates_by/{}/channels/{}/?version={}&dates={}&metric={}'.format(
+                prefix, channel, version, ','.join(dates), metric)))
         self.assertEqual(len(resp['data']), len(dates))
 
         bucket_index = COUNT_HISTOGRAM_LABELS.index(COUNT_SCALAR_BUCKET)
@@ -388,8 +388,8 @@ class ServiceTestCase(unittest.TestCase):
     def _numeric_scalar(self, prefix, channel, version, dates, metric, value, expected_count,
                         bucket, labels, has_def):
         resp = self.as_json(self.app.get(
-            '/aggregates_by/%s/channels/%s/?version=%s&dates=%s&metric=%s'
-            % (prefix, channel, version, ','.join(dates), metric)
+            '/aggregates_by/{}/channels/{}/?version={}&dates={}&metric={}'.format(
+                prefix, channel, version, ','.join(dates), metric)
         ))
         self.assertEqual(len(resp['data']), len(dates))
         self.assertTrue(not has_def or resp['description'] != '')
@@ -409,14 +409,14 @@ class ServiceTestCase(unittest.TestCase):
 
     def _keyed_numeric_scalar(self, prefix, channel, version, dates, metric, histograms, expected_count):
         resp = self.as_json(self.app.get(
-            '/aggregates_by/%s/channels/%s/?version=%s&dates=%s&metric=%s'
-            % (prefix, channel, version, ','.join(dates), metric)))
+            '/aggregates_by/{}/channels/{}/?version={}&dates={}&metric={}'.format(
+                prefix, channel, version, ','.join(dates), metric)))
         self.assertEqual(len(resp['data']), len(histograms) * len(dates))
 
         for label, value in histograms.iteritems():
             resp = self.as_json(self.app.get(
-                '/aggregates_by/%s/channels/%s/?version=%s&dates=%s&metric=%s&label=%s'
-                % (prefix, channel, version, ','.join(dates), metric, label.upper())))
+                '/aggregates_by/{}/channels/{}/?version={}&dates={}&metric={}&label={}'.format(
+                    prefix, channel, version, ','.join(dates), metric, label.upper())))
 
             self.assertNotEqual(resp['description'], '')
             self.assertEqual(len(resp['data']), len(dates))
@@ -432,14 +432,14 @@ class ServiceTestCase(unittest.TestCase):
 
     def _keyed_histogram(self, prefix, channel, version, dates, metric, histograms, expected_count):
         resp = self.as_json(self.app.get(
-            '/aggregates_by/%s/channels/%s/?version=%s&dates=%s&metric=%s'
-            % (prefix, channel, version, ','.join(dates), metric)))
+            '/aggregates_by/{}/channels/{}/?version={}&dates={}&metric={}'.format(
+                prefix, channel, version, ','.join(dates), metric)))
         self.assertEqual(len(resp['data']), len(histograms) * len(dates))
 
         for label, value in histograms.iteritems():
             resp = self.as_json(self.app.get(
-                '/aggregates_by/%s/channels/%s/?version=%s&dates=%s&metric=%s&label=%s'
-                % (prefix, channel, version, ','.join(dates), metric, label)))
+                '/aggregates_by/{}/channels/{}/?version={}&dates={}&metric={}&label={}'.format(
+                    prefix, channel, version, ','.join(dates), metric, label)))
             self.assertEqual(len(resp['data']), len(dates))
 
             for res in resp['data']:
