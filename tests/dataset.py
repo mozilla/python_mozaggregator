@@ -147,6 +147,12 @@ ignored_keyed_scalars_template = {
     },
     "fake.keyed.string": {
         "first": "IGNORE_ME"
+    },
+    "telemetry.event_counts": {
+        "some#event#happened": SCALAR_VALUE
+    },
+    "telemetry.dynamic_event_counts": {
+        "some#dynamic#event": SCALAR_VALUE
     }
 }
 
