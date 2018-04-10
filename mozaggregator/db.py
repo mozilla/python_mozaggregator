@@ -14,7 +14,7 @@ import pandas as pd
 import psycopg2
 import sql
 import ujson as json
-from moztelemetry.spark import Histogram
+from moztelemetry.histogram import Histogram
 
 import config
 from aggregator import SCALAR_MEASURE_MAP
