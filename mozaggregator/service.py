@@ -271,7 +271,7 @@ def _get_description(channel, prefix, metric):
         return ''
 
     metric = metric.replace(prefix + '_', '').lower()
-    return Scalar(metric, 0, channel=channel).get_definition().get('description', '')
+    return Scalar(metric, 0, channel=channel).definition.description
 
 
 @app.route('/aggregates_by/<prefix>/channels/<channel>/', methods=['GET'])
