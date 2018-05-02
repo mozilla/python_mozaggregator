@@ -55,6 +55,9 @@ CLIENT_CACHE_SLACK_SECONDS = 3600
 # If we get a query string not in this set we throw a 405.
 ALLOWED_DIMENSIONS = ('application', 'architecture', 'child', 'dates', 'label', 'metric', 'os', 'version')
 
+# Disallowed metrics for serving
+METRICS_BLACKLIST = ["SEARCH_COUNTS", "SCALARS_TELEMETRY.EVENT_COUNTS"]
+
 
 def get_time_left_in_cache():
     assert app.config["CACHETYPE"] == "simple", "Only simple caches can be used with get_time_left_in_cache"
@@ -303,7 +306,7 @@ def get_dates_metrics(prefix, channel):
     if not dates or not version or not metric:
         abort(404)
 
-    if metric == "SEARCH_COUNTS":
+    if metric in METRICS_BLACKLIST:
         abort(404)
 
     # Get bucket labels

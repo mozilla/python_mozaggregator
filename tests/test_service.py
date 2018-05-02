@@ -17,7 +17,7 @@ from mozaggregator.aggregator import (
     SIMPLE_MEASURES_PREFIX, _aggregate_metrics)
 from mozaggregator.db import submit_aggregates
 from mozaggregator.service import (
-    CLIENT_CACHE_SLACK_SECONDS, SUBMISSION_DATE_ETAG, app)
+    CLIENT_CACHE_SLACK_SECONDS, SUBMISSION_DATE_ETAG, app, METRICS_BLACKLIST)
 from moztelemetry.histogram import Histogram
 
 
@@ -130,6 +130,13 @@ class ServiceTestCase(unittest.TestCase):
             )
 
     # Test response content.
+
+    def test_blacklist(self):
+        for metric in METRICS_BLACKLIST:
+            resp = self.app.get(
+                '/aggregates_by/build_id/channels/nightly/?version=41&dates=20150601&metric={}'.format(metric),
+                headers={'If-None-Match': SUBMISSION_DATE_ETAG})
+            self.assertEqual(resp.status_code, 404, ('Expected, 404. Got {}'.format(resp.status_code)))
 
     def test_channels(self):
         resp = self.as_json(self.app.get('/aggregates_by/build_id/channels/'))
