@@ -16,7 +16,7 @@ dependencies:
     - sudo apt-get update
     - sudo apt-get install python-dev
     - sudo pip install --upgrade pip
-    - sudo pip install docker-compose
+    - pip install docker-compose
 
   override:
     - docker info
