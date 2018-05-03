@@ -29,21 +29,17 @@ RUN mkdir /app && \
     groupadd --gid 10001 app && \
     useradd --no-create-home --uid 10001 --gid 10001 --home-dir /app app
 
-# Install Python dependencies
-COPY requirements/*.txt /tmp/requirements/
+# Switch to home directory
+WORKDIR /app
+COPY . /app
+RUN chown -R 10001:10001 /app
 
 # Switch to /tmp to install dependencies outside home dir
 WORKDIR /tmp
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements/build.txt
+    pip install --no-cache-dir -e /app/.
 
-# Switch back to home directory
 WORKDIR /app
-
-COPY . /app
-
-RUN chown -R 10001:10001 /app
-
 USER 10001
 
 ENTRYPOINT ["/usr/local/bin/gunicorn"]
