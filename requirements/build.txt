@@ -23,7 +23,7 @@ protobuf==3.5.2.post1
 psycogreen==1.0
 psycopg2-binary==2.7.4
 pyspark==2.3.0
-python-dateutil==2.7.2
+python-dateutil==2.7.3
 python-moztelemetry==0.8.14
 python-snappy==0.5.2
 scipy==1.0.1
