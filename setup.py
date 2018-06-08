@@ -5,10 +5,11 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+
 from setuptools import setup
 
 setup(name='python_mozaggregator',
-    version='0.3.0.3',
+    version='0.3.0.4',
     author='Roberto Agostino Vitillo',
     author_email='rvitillo@mozilla.com',
     description='Telemetry aggregation job',
