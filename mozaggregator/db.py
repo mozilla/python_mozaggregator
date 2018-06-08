@@ -138,7 +138,7 @@ def _aggregate_to_sql(aggregate):
         if not set(metric).issubset(_metric_printable):
             continue  # Ignore metrics with non printable characters...
 
-        if u"\u0000" in label:
+        if any((u"\u0000" in x for x in [metric, label, application, architecture, os, os_version])):
             continue  # Ignore labels with null character
 
         try:
