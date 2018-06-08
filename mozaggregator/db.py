@@ -139,7 +139,7 @@ def _aggregate_to_sql(aggregate):
             continue  # Ignore metrics with non printable characters...
 
         if any((u"\u0000" in x for x in [metric, label, application, architecture, os, os_version])):
-            continue  # Ignore labels with null character
+            continue  # Ignore dimensions with null character
 
         try:
             # Make sure values fit within a pgsql bigint
