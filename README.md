@@ -1,4 +1,5 @@
 # python_mozaggregator
+
 Aggregator job for Telemetry. See this [blog](http://robertovitillo.com/2015/07/02/telemetry-metrics-roll-ups/) post for details. 
 
 [![CircleCI](https://circleci.com/gh/mozilla/python_mozaggregator/tree/master.svg?style=svg)](https://circleci.com/gh/mozilla/python_mozaggregator/tree/master)

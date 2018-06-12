@@ -1,4 +1,4 @@
-FROM python:2-slim
+FROM python:2-jessie
 
 ENV PYTHONUNBUFFERED=1 \
     POSTGRES_USER=root \
@@ -11,14 +11,18 @@ EXPOSE $PORT
 RUN mkdir -p /usr/share/man/man1
 RUN mkdir -p /usr/share/man/man7
 
-RUN apt-get update && \
+# Install Java
+RUN echo "deb http://http.debian.net/debian jessie-backports main" >> /etc/apt/sources.list && \
+    apt-get update -y && \
+    apt-get install -y --no-install-recommends -t jessie-backports openjdk-7-jdk
+
+RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
-        # Production only libs on next line.
+        # production only libs on next line.
         gcc awscli net-tools \
         libsnappy-dev liblzma-dev g++ curl libpq-dev bzip2 libffi-dev \
         python-numpy python-pandas python-scipy wget ca-certificates openssl libssl-dev \
-        postgresql-9.4 postgresql-contrib-9.4 postgresql-server-dev-9.4 \
-        openjdk-7-jdk && \
+        postgresql && \
     apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
