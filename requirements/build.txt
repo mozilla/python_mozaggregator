@@ -18,7 +18,7 @@ Jinja2==2.10
 joblib==0.12.0
 matplotlib==2.2.2
 numpy==1.14.5
-pandas==0.22.0
+pandas==0.23.1
 protobuf==3.5.2.post1
 psycogreen==1.0
 psycopg2-binary==2.7.4
