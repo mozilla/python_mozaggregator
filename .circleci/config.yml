@@ -1,0 +1,111 @@
+# These environment variables must be set in CircleCI UI
+#
+# DOCKERHUB_REPO - docker hub repo, format: <username>/<repo>
+# DOCKER_EMAIL   - login info for docker hub
+# DOCKER_USER
+# DOCKER_PASS
+#
+
+version: 2
+jobs:
+  build:
+    docker:
+      - image: docker:18.02.0-ce
+    working_directory: ~/mozilla/python_mozaggregator
+    environment:
+      CIRCLE_ARTIFACTS: /tmp/circleci-artifacts
+      CIRCLE_TEST_REPORTS: /tmp/circleci-test-results
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run: mkdir -p $CIRCLE_ARTIFACTS $CIRCLE_TEST_REPORTS
+      #  Restore the dependency cache
+      - restore_cache:
+          keys:
+            # This branch if available
+            - v1-dep-{{ .Branch }}-
+            # Default branch if not
+            - v1-dep-master-
+            # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
+            - v1-dep-
+      - run: |
+          printf '{"commit":"%s","version":"%s","source":"https://github.com/%s/%s","build":"%s"}\n' "$CIRCLE_SHA1" "$CIRCLE_TAG" "$CIRCLE_PROJECT_USERNAME" "$CIRCLE_PROJECT_REPONAME" "$CIRCLE_BUILD_URL" > version.json
+      - run: cp version.json $CIRCLE_ARTIFACTS
+      - run: docker build -t app:build .
+      #  save the built docker container into CircleCI's cache. This is
+      #  required since Workflows do not have the same remote docker instance.
+      - run:
+          name: docker save app:build
+          command: mkdir -p /cache; docker save -o /cache/docker.tar "app:build"
+      #  Save dependency cache
+      - save_cache:
+          key: v1-dep-{{ .Branch }}-{{ epoch }}
+          paths:
+            - /cache/docker.tar
+
+  test:
+    machine:
+      enable: true
+    working_directory: ~/mozilla/python_mozaggregator
+    steps:
+      - checkout
+      - run: sudo apt-get update
+      - run: sudo apt-get install python-dev
+      - run: sudo pip install --upgrade pip
+      - run: pip install docker-compose
+      - run: docker info
+      - run: docker --version
+      - run: make test
+
+  deploy:
+    docker:
+      - image: docker:18.02.0-ce
+    working_directory: ~/mozilla/python_mozaggregator
+    steps:
+      - setup_remote_docker
+      - restore_cache:
+          key: v1-{{.Branch}}
+      - run:
+          name: Restore Docker image cache
+          command: docker load -i /cache/docker.tar
+      - run:
+          name: Deploy to Dockerhub
+          command: |
+            # Deploy master
+            if [ "${CIRCLE_BRANCH}" == "master" ]; then
+              docker login -u $DOCKER_USER -p $DOCKER_PASS
+              docker tag app:build ${DOCKERHUB_REPO}:latest
+              docker push ${DOCKERHUB_REPO}:latest
+            elif  [ ! -z "${CIRCLE_TAG}" ]; then
+            # Deploy a release tag...
+              docker login -u $DOCKER_USER -p $DOCKER_PASS
+              echo "${DOCKERHUB_REPO}:${CIRCLE_TAG}"
+              docker tag app:build "${DOCKERHUB_REPO}:${CIRCLE_TAG}"
+              docker images
+              docker push "${DOCKERHUB_REPO}:${CIRCLE_TAG}"
+            fi
+
+
+workflows:
+  version: 2
+  build-test-deploy:
+    jobs:
+      - build:
+          filters:
+            tags:
+              only: /.*/
+
+      - test:
+          filters:
+            tags:
+              only: /.*/
+
+      - deploy:
+          requires:
+            - build
+            - test
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              only: master
