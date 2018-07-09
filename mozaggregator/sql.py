@@ -5,15 +5,32 @@ begin
 end
 $$ language plpgsql strict immutable;
 
+create or replace function cast_array_to_bigint_safe(input numeric[]) returns bigint[] as $$
+declare
+    output numeric[];
+begin
+    output := input;
+    if (select min(x) from unnest(output) as x) < -9223372036854775808 then
+        RAISE WARNING 'Truncating negative value(s) too large for bigint in array: %', output;
+        output := (select ARRAY(select GREATEST(x, -9223372036854775808) from unnest(output) as x));
+    end if;
+    if (select max(x) from unnest(output) as x) >  9223372036854775807 then
+        RAISE WARNING 'Truncating positive value(s) too large for bigint in array: %', output;
+        output := (select ARRAY(select    LEAST(x,  9223372036854775807) from unnest(output) as x));
+    end if;
+    return output;
+end
+$$ language plpgsql strict immutable;
 
 create or replace function aggregate_arrays(acc bigint[], x bigint[]) returns bigint[] as $$
 begin
-    return (select array(
+    return cast_array_to_bigint_safe(
+             (select array(
                 select sum(elem)
                 from (values (1, acc), (2, x)) as t(idx, arr)
                      , unnest(t.arr) with ordinality x(elem, rn)
                 group by rn
-                order by rn));
+                order by rn)));
 end
 $$ language plpgsql strict immutable;
 
