@@ -99,3 +99,11 @@ def test_aggregate_histograms():
     """)
     res = cursor.fetchall()
     assert res == [([2, 2, 1, 2, 2],)]
+
+
+def test_cast_array_to_bigint():
+    conn = _create_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT cast_array_to_bigint_safe(ARRAY[-9223372036854775809, 9223372036854775808, 12]);")
+    res = cursor.fetchall()
+    assert res == [([-9223372036854775808L,9223372036854775807L,12L],)]
