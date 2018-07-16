@@ -21,7 +21,7 @@ numpy==1.14.5
 pandas==0.23.3
 protobuf==3.6.0
 psycogreen==1.0
-psycopg2-binary==2.7.4
+psycopg2-binary==2.7.5
 pyspark==2.3.0
 python-dateutil==2.7.2
 python-moztelemetry==0.8.14
