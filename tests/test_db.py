@@ -2,15 +2,17 @@ import json
 import logging
 
 import pyspark
+from testfixtures import LogCapture
+
 from dataset import generate_pings, ping_dimensions
 from mozaggregator.aggregator import _aggregate_metrics
-from mozaggregator.db import _create_connection, submit_aggregates
+from mozaggregator.db import _create_connection, submit_aggregates, NoticeLoggingCursor
 
 SERVICE_URI = "http://localhost:5000"
 
 
 logger = logging.getLogger("py4j")
-logger.setLevel(logging.ERROR)
+logger.setLevel(logging.INFO)
 
 
 def setup_module():
@@ -107,3 +109,14 @@ def test_cast_array_to_bigint():
     cursor.execute("SELECT cast_array_to_bigint_safe(ARRAY[-9223372036854775809, 9223372036854775808, 12]);")
     res = cursor.fetchall()
     assert res == [([-9223372036854775808L,9223372036854775807L,12L],)]
+
+
+def test_notice_logging_cursor():
+    conn = _create_connection()
+    cursor = conn.cursor(cursor_factory=NoticeLoggingCursor)
+    expected = ('py4j',
+                'WARNING',
+                'WARNING:  Truncating positive value(s) too large for bigint in array: {9223372036854775808}')
+    with LogCapture("py4j") as lc:
+        cursor.execute("SELECT cast_array_to_bigint_safe(ARRAY[9223372036854775808]);")
+    lc.check(expected)

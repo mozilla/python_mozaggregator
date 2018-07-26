@@ -5,6 +5,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+import logging
 import os
 import string
 from collections import defaultdict
@@ -39,6 +40,50 @@ db_user = "POSTGRES_USER"
 db_host = "POSTGRES_HOST"
 db_ro_host = "POSTGRES_RO_HOST"
 db_name = "POSTGRES_DB"
+
+# Configure logging via py4j; see https://www.py4j.org/faq.html
+logger = logging.getLogger("py4j")
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.StreamHandler())
+
+
+class NoticeLoggingCursor(psycopg2.extensions.cursor):
+    """
+    Cursor subclass that emits Postgres NOTICE messages (db-level logs) to application logs.
+
+    Introduced for bug 1474590.
+
+    See:
+    http://initd.org/psycopg/docs/advanced.html#subclassing-cursor
+    https://github.com/zzzeek/sqlalchemy/blob/2f03ec08b5a1c633133c0a38d82b05eb83708f69/lib/sqlalchemy/dialects/postgresql/psycopg2.py#L482-L488
+    """
+
+    def execute(self, sql, args=None):
+        psycopg2.extensions.cursor.execute(self, sql, args)
+        for notice in self.connection.notices:
+            level = self.parse_level(notice)
+            # NOTICE messages have a newline character at the end
+            logger.log(level, notice.rstrip())
+        self.connection.notices[:] = []
+
+    @staticmethod
+    def parse_level(notice):
+        """
+        Return a python log level based on the PostgreSQL log level in notice.
+
+        https://www.postgresql.org/docs/9.4/static/runtime-config-logging.html#RUNTIME-CONFIG-SEVERITY-LEVELS
+        https://docs.python.org/2/library/logging.html#logging-levels
+        """
+        prefix, _, _ = notice.partition(':')
+        if prefix in ['PANIC', 'FATAL']:
+            return logging.CRITICAL
+        if prefix in ['ERROR']:
+            return logging.ERROR
+        if prefix in ['WARNING']:
+            return logging.WARNING
+        if prefix in ['INFO', 'NOTICE']:
+            return logging.INFO
+        return logging.DEBUG
 
 
 def get_db_connection_string(read_only=False):
@@ -104,7 +149,7 @@ def submit_aggregates(aggregates, dry_run=False):
 
 def _preparedb():
     conn = _create_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=NoticeLoggingCursor)
     cursor.execute(sql.query)
 
 
@@ -171,7 +216,7 @@ def _aggregate_to_sql(aggregate):
 
 def _upsert_build_id_aggregates(key, stage_table, connection_string, dry_run=False):
     conn = _create_connection(autocommit=False, connection_string_override=connection_string)
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=NoticeLoggingCursor)
     submission_date, channel, version, build_id = key
 
     # Aggregates with different submisssion_dates write to the same tables, we need a lock
@@ -200,7 +245,7 @@ def _upsert_build_id_aggregates(key, stage_table, connection_string, dry_run=Fal
 
 def _upsert_submission_date_aggregates(key, stage_table, connection_string, dry_run=False):
     conn = _create_connection(autocommit=False, connection_string_override=connection_string)
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=NoticeLoggingCursor)
     submission_date, channel, version = key
 
     cursor.execute("select was_processed(%s, %s, %s, %s, %s)", ("submission_date", channel, version, submission_date, submission_date))
@@ -227,7 +272,7 @@ def _upsert_submission_date_aggregates(key, stage_table, connection_string, dry_
 def _vacuumdb():
     conn = _create_connection()
     conn.set_isolation_level(0)
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=NoticeLoggingCursor)
     cursor.execute("vacuum")
     cursor.close()
     conn.close()
