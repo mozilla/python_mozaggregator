@@ -25,7 +25,7 @@ psycopg2-binary==2.7.5
 pyspark==2.3.1
 python-dateutil==2.7.3
 python-moztelemetry==0.10.0
-python-snappy==0.5.2
+python-snappy==0.5.3
 scipy==1.0.1
 ujson==1.35
 urllib3==1.22
