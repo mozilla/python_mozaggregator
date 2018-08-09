@@ -25,6 +25,8 @@ from aggregator import SCALAR_MEASURE_MAP
 # immutable, which has been the case so far.
 _histogram_revision_map = {
     "nightly": "https://hg.mozilla.org/mozilla-central/rev/tip",
+    # Aurora channel (aka Dev Edition) is a repacked beta.
+    "aurora": "https://hg.mozilla.org/releases/mozilla-beta/rev/tip",
     "beta": "https://hg.mozilla.org/releases/mozilla-beta/rev/tip",
     "release": "https://hg.mozilla.org/releases/mozilla-release/rev/tip"
 }
