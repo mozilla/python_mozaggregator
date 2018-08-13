@@ -137,6 +137,20 @@ class ServiceTestCase(unittest.TestCase):
 
     # Test response content.
 
+    def test_release_nonwhitelist(self):
+        for metric in histograms_template.keys():
+            resp = self.app.get(
+                '/aggregates_by/build_id/channels/release/?version=41&dates=20150601&metric={}'.format(metric),
+                headers={'If-None-Match': SUBMISSION_DATE_ETAG})
+            self.assertEqual(resp.status_code, 404, ('Expected, 404. Got {}'.format(resp.status_code)))
+
+    def test_whitelist(self):
+        metric = "SCALARS_TELEMETRY.TEST.KEYED_UNSIGNED_INT"
+        resp = self.app.get(
+            '/aggregates_by/build_id/channels/release/?version=41&dates=20150601&metric={}'.format(metric),
+            headers={'If-None-Match': SUBMISSION_DATE_ETAG})
+        self.assertEqual(resp.status_code, 200, ('Expected, 200. Got {}'.format(resp.status_code)))
+
     def test_blacklist(self):
         for metric in METRICS_BLACKLIST:
             resp = self.app.get(
@@ -236,7 +250,7 @@ class ServiceTestCase(unittest.TestCase):
                         metric, value, histogram_expected_count)
 
     def test_submission_dates_metrics(self):
-        template_channel = ping_dimensions['channel']
+        template_channel = set(ping_dimensions['channel']) - {"release"}
         template_version = [x.split('.')[0] for x in ping_dimensions['version']]
         template_submission_date = ping_dimensions['submission_date']
 
@@ -290,7 +304,7 @@ class ServiceTestCase(unittest.TestCase):
                                           metric, histograms, histogram_expected_count)
 
     def test_build_id_metrics(self):
-        template_channel = ping_dimensions['channel']
+        template_channel = set(ping_dimensions['channel']) - {"release"}
         template_version = [x.split('.')[0] for x in ping_dimensions['version']]
         template_build_id = [x[:-6] for x in ping_dimensions['build_id']]
 

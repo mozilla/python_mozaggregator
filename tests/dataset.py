@@ -16,7 +16,7 @@ NUMERIC_SCALAR_BUCKET = 40
 
 ping_dimensions = {
     "submission_date": [u"20150601", u"20150603"],
-    "channel": [u"nightly", u"beta"],
+    "channel": [u"nightly", u"beta", u"release"],
     "version": [u"40.0b1", u"41"],
     "build_id": [u"20150601000000", u"20150602000000"],
     "application": [u"Firefox", u"Fennec"],
