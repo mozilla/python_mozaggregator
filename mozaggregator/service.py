@@ -309,10 +309,10 @@ def get_dates_metrics(prefix, channel):
     metric = dimensions.get('metric')
 
     if not dates or not version or not metric:
-        abort(404)
+        abort(404, description="Missing date or version or metric. All three are required.")
 
     if metric in METRICS_BLACKLIST:
-        abort(404)
+        abort(404, description="This metric is not allowed.")
 
     # Get bucket labels
     for _prefix, _labels in SCALAR_MEASURE_MAP.iteritems():
@@ -322,7 +322,7 @@ def get_dates_metrics(prefix, channel):
             try:
                 description = _get_description(channel, _prefix, metric)
             except MissingScalarError:
-                abort(404)
+                abort(404, description="Cannot find this scalar definition.")
             break
     else:
         revision = histogram_revision_map[channel]
@@ -330,7 +330,7 @@ def get_dates_metrics(prefix, channel):
             definition = Histogram(metric, {"values": {}}, revision=revision)
         except KeyError:
             # Couldn't find the histogram definition
-            abort(404)
+            abort(404, description="Cannot find this histogram definition.")
 
         kind = definition.kind
         description = definition.definition.description()
@@ -371,7 +371,7 @@ def get_dates_metrics(prefix, channel):
                 prefix, channel, version, dates, json.dumps(dimensions), json.dumps(altered_dimensions)))
 
     if not result:
-        abort(404)
+        abort(404, description="No data found for this metric.")
 
     pretty_result = {"data": [], "buckets": labels, "kind": kind, "description": description}
     for row in result:
