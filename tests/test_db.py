@@ -108,7 +108,7 @@ def test_cast_array_to_bigint():
     cursor = conn.cursor()
     cursor.execute("SELECT cast_array_to_bigint_safe(ARRAY[-9223372036854775809, 9223372036854775808, 12]);")
     res = cursor.fetchall()
-    assert res == [([-9223372036854775808L,9223372036854775807L,12L],)]
+    assert res == [([-9223372036854775808L, 9223372036854775807L, 12L],)]
 
 
 def test_notice_logging_cursor():
