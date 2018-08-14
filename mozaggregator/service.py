@@ -53,10 +53,15 @@ SUBMISSION_DATE_ETAG = 'submission_date_v1'
 CLIENT_CACHE_SLACK_SECONDS = 3600
 
 # If we get a query string not in this set we throw a 405.
-ALLOWED_DIMENSIONS = ('application', 'architecture', 'child', 'dates', 'label', 'metric', 'os', 'version')
+ALLOWED_DIMENSIONS = ('application', 'architecture', 'child', 'dates', 'label',
+                      'metric', 'os', 'osVersion', 'version')
 
 # Disallowed metrics for serving
-METRICS_BLACKLIST = ["SEARCH_COUNTS", "SCALARS_TELEMETRY.EVENT_COUNTS", "SCALARS_TELEMETRY.DYNAMIC_EVENT_COUNTS"]
+METRICS_BLACKLIST = [
+    "SEARCH_COUNTS",
+    "SCALARS_TELEMETRY.EVENT_COUNTS",
+    "SCALARS_TELEMETRY.DYNAMIC_EVENT_COUNTS",
+]
 
 
 def get_time_left_in_cache():

@@ -114,12 +114,18 @@ class ServiceTestCase(unittest.TestCase):
             'architecture': 'x86',
             'child': 'content',
             'dates': '20150601',
-            'label': 'LABEL',
-            'metric': 'GC_MS',
+            'metric': 'GC_MAX_PAUSE_MS_2',
             'os': 'Windows_NT',
+            'osVersion': '6.1',
             'version': '41',
         }
         url = '/aggregates_by/build_id/channels/nightly/?{}'.format(urlencode(qs))
+
+        # First show the URL with `qs` alone returns 200.
+        resp = self.app.get(url)
+        self.assertEqual(resp.status_code, 200)
+
+        # Now show that query string parameters not in the list return 405.
         for test in ('e10sEnabled=true', 'foo=bar'):
             resp = self.app.get('{}&{}'.format(url, test))
             self.assertEqual(resp.status_code, 405)
