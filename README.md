@@ -47,9 +47,6 @@ It will then be viewable publically.
 
 To enable all release metrics (except those in `METRICS_BLACKLIST`), set the envvar `ALLOW_ALL_RELEASE_METRICS` to "True".
 
-### Pre-Release Metrics
-To disable a metric for prerelease only (in effect, allowing it for viewing internally only), add it to `PRERELEASE_METRICS_BLACKLIST`.
-
 ## API
 Aggregates are made available through a HTTP API. There are two kinds of aggregates: per submission date (date a ping is received by the server) and per build-id (date the submitting product was built).
 
