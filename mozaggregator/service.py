@@ -57,8 +57,8 @@ ALLOWED_DIMENSIONS = ('application', 'architecture', 'child', 'dates', 'label',
                       'metric', 'os', 'osVersion', 'version')
 
 # Disallowed metrics for serving
-METRICS_BLACKLIST = ["SEARCH_COUNTS"]
-PRERELEASE_METRICS_BLACKLIST = [
+METRICS_BLACKLIST = [
+    "SEARCH_COUNTS",
     "SCALARS_TELEMETRY.EVENT_COUNTS",
     "SCALARS_TELEMETRY.DYNAMIC_EVENT_COUNTS"
 ]
@@ -298,10 +298,7 @@ def _allow_metric(channel, metric):
         else:
             return False
     elif channel != RELEASE_CHANNEL:
-        if metric in PRERELEASE_METRICS_BLACKLIST:
-            return False
-        else:
-            return True
+        return True
 
 
 @app.route('/aggregates_by/<prefix>/channels/<channel>/', methods=['GET'])
@@ -334,7 +331,7 @@ def get_dates_metrics(prefix, channel):
         abort(404, description="Missing date or version or metric. All three are required.")
 
     if not _allow_metric(channel, metric):
-        abort(404, description="This metric is not allowed.")
+        abort(404, description="This metric is not allowed to be served.")
 
     # Get bucket labels
     for _prefix, _labels in SCALAR_MEASURE_MAP.iteritems():
