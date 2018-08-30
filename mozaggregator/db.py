@@ -278,3 +278,17 @@ def _vacuumdb():
     cursor.execute("vacuum")
     cursor.close()
     conn.close()
+
+
+def clear_db():
+    # For tests to clear the database between runs.
+    conn = _create_connection()
+    cursor = conn.cursor(cursor_factory=NoticeLoggingCursor)
+    cursor.execute("select tablename from pg_tables where schemaname='public'")
+    tables = [r[0] for r in cursor.fetchall()]
+    for table in tables:
+        # Note: Intentionally not using parameters here so the table name isn't quoted.
+        cursor.execute("DROP TABLE IF EXISTS %s CASCADE" % table)
+        conn.commit()
+    cursor.close()
+    conn.close()

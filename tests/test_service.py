@@ -7,17 +7,19 @@ from urllib import urlencode
 import pandas as pd
 import pyspark
 from dataset import (
-    COUNT_SCALAR_BUCKET, NUM_AGGREGATED_CHILD_PINGS, NUM_CHILDREN_PER_PING, NUM_PINGS_PER_DIMENSIONS,
-    NUM_PROCESS_TYPES, NUMERIC_SCALAR_BUCKET, SCALAR_VALUE, SIMPLE_SCALAR_BUCKET, generate_pings,
-    histograms_template, keyed_histograms_template, keyed_scalars_template, ping_dimensions,
-    scalars_template, simple_measurements_template)
+    BUILD_ID_1, COUNT_SCALAR_BUCKET, NUM_AGGREGATED_CHILD_PINGS,
+    NUM_CHILDREN_PER_PING, NUM_PINGS_PER_DIMENSIONS, NUM_PROCESS_TYPES,
+    NUMERIC_SCALAR_BUCKET, SCALAR_VALUE, SIMPLE_SCALAR_BUCKET, TODAY,
+    generate_pings, histograms_template, keyed_histograms_template,
+    keyed_scalars_template, ping_dimensions, scalars_template,
+    simple_measurements_template)
 from mozaggregator import config
 from mozaggregator.aggregator import (
-    COUNT_HISTOGRAM_LABELS, NUMERIC_SCALARS_LABELS, NUMERIC_SCALARS_PREFIX, SIMPLE_MEASURES_LABELS,
-    SIMPLE_MEASURES_PREFIX, _aggregate_metrics)
-from mozaggregator.db import submit_aggregates
+    COUNT_HISTOGRAM_LABELS, NUMERIC_SCALARS_LABELS, NUMERIC_SCALARS_PREFIX,
+    SIMPLE_MEASURES_LABELS, SIMPLE_MEASURES_PREFIX, _aggregate_metrics)
+from mozaggregator.db import clear_db, submit_aggregates
 from mozaggregator.service import (
-    CLIENT_CACHE_SLACK_SECONDS, SUBMISSION_DATE_ETAG, app, METRICS_BLACKLIST)
+    CLIENT_CACHE_SLACK_SECONDS, METRICS_BLACKLIST, SUBMISSION_DATE_ETAG, app)
 from moztelemetry.histogram import Histogram
 
 
@@ -26,6 +28,8 @@ class ServiceTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Set up the database once for the test run."""
+        clear_db()
+
         cls.sc = pyspark.SparkContext(master="local[*]")
         raw_pings = list(generate_pings())
         aggregates = _aggregate_metrics(cls.sc.parallelize(raw_pings), num_reducers=10)
@@ -40,9 +44,12 @@ class ServiceTestCase(unittest.TestCase):
         self.app.application.config['TESTING'] = True
         self.app.application.config['DEBUG'] = True
 
+        self.today = TODAY.strftime('%Y%m%d')
+        self.build_id_1 = BUILD_ID_1.strftime('%Y%m%d')
+
     def as_json(self, resp):
         self.assertEqual(resp.status_code, 200, (
-            'Response status code != 200, got {}. Cannot get JSON response.'.format(resp.status_code)
+            'Response status code != 200, got {} {}. Cannot get JSON response.'.format(resp.status_code, resp)
         ))
         return json.loads(resp.data)
 
@@ -55,31 +62,36 @@ class ServiceTestCase(unittest.TestCase):
 
     def test_submission_dates_cache_control(self):
         resp = self.app.get(
-            '/aggregates_by/submission_date/channels/nightly/?version=41&dates=20150603&metric=GC_MAX_PAUSE_MS_2')
+            '/aggregates_by/submission_date/channels/nightly/?version=41&dates={}&metric=GC_MAX_PAUSE_MS_2'
+            .format(self.today))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.headers.get('Cache-Control'), 'max-age={}'.format(config.TIMEOUT))
 
     def test_submission_dates_etag(self):
         resp = self.app.get(
-            '/aggregates_by/submission_date/channels/nightly/?version=41&dates=20150603&metric=GC_MAX_PAUSE_MS_2')
+            '/aggregates_by/submission_date/channels/nightly/?version=41&dates={}&metric=GC_MAX_PAUSE_MS_2'
+            .format(self.today))
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.headers.get('etag').strip('"'), SUBMISSION_DATE_ETAG)
 
     def test_submission_dates_etag_header(self):
         resp = self.app.get(
-            '/aggregates_by/submission_date/channels/nightly/?version=41&dates=20150603&metric=GC_MAX_PAUSE_MS_2',
+            '/aggregates_by/submission_date/channels/nightly/?version=41&dates={}&metric=GC_MAX_PAUSE_MS_2'
+            .format(self.today),
             headers={'If-None-Match': SUBMISSION_DATE_ETAG})
         self.assertEqual(resp.status_code, 304, ('Expected, 304. Got {}'.format(resp.status_code)))
 
     def test_submission_dates_etag_header_wrong(self):
         resp = self.app.get(
-            '/aggregates_by/submission_date/channels/nightly/?version=41&dates=20150603&metric=GC_MAX_PAUSE_MS_2',
+            '/aggregates_by/submission_date/channels/nightly/?version=41&dates={}&metric=GC_MAX_PAUSE_MS_2'
+            .format(self.today),
             headers={'If-None-Match': SUBMISSION_DATE_ETAG + '_'})
         self.assertEqual(resp.status_code, 200, ('Expected, 200. Got {}'.format(resp.status_code)))
 
     def test_build_id_cache_control(self):
         resp = self.app.get(
-            '/aggregates_by/build_id/channels/nightly/?version=41&dates=20150601&metric=GC_MAX_PAUSE_MS_2')
+            '/aggregates_by/build_id/channels/nightly/?version=41&dates={}&metric=GC_MAX_PAUSE_MS_2'
+            .format(self.build_id_1))
         self.assertEqual(resp.status_code, 200)
 
         matches = re.match(r'max-age=(\d+)', resp.headers.get('Cache-Control'))
@@ -92,20 +104,23 @@ class ServiceTestCase(unittest.TestCase):
 
     def test_build_id_dates_no_etag(self):
         resp = self.app.get(
-            '/aggregates_by/build_id/channels/nightly/?version=41&dates=20150601&metric=GC_MAX_PAUSE_MS_2')
+            '/aggregates_by/build_id/channels/nightly/?version=41&dates={}&metric=GC_MAX_PAUSE_MS_2'
+            .format(self.build_id_1))
         self.assertTrue(resp.headers.get('etag') is None)
 
     def test_build_id_etag_header_ignored(self):
         # Etag should be ignored for build_id.
         resp = self.app.get(
-            '/aggregates_by/build_id/channels/nightly/?version=41&dates=20150601&metric=GC_MAX_PAUSE_MS_2',
+            '/aggregates_by/build_id/channels/nightly/?version=41&dates={}&metric=GC_MAX_PAUSE_MS_2'
+            .format(self.build_id_1),
             headers={'If-None-Match': SUBMISSION_DATE_ETAG})
         self.assertEqual(resp.status_code, 200, ('Expected, 200. Got {}'.format(resp.status_code)))
 
     def test_non_existent_scalars(self):
         # Non-existent scalars should 404.
         resp = self.app.get(
-            '/aggregates_by/build_id/channels/nightly/?version=41&dates=20150601&metric=SCALARS_NONEXISTENT')
+            '/aggregates_by/build_id/channels/nightly/?version=41&dates={}&metric=SCALARS_NONEXISTENT'
+            .format(self.build_id_1))
         self.assertEqual(resp.status_code, 404)
 
     def test_invalid_filter(self):
@@ -113,7 +128,7 @@ class ServiceTestCase(unittest.TestCase):
             'application': 'Firefox',
             'architecture': 'x86',
             'child': 'content',
-            'dates': '20150601',
+            'dates': self.build_id_1,
             'metric': 'GC_MAX_PAUSE_MS_2',
             'os': 'Windows_NT',
             'osVersion': '6.1',
@@ -140,21 +155,24 @@ class ServiceTestCase(unittest.TestCase):
     def test_release_nonwhitelist(self):
         for metric in histograms_template.keys():
             resp = self.app.get(
-                '/aggregates_by/build_id/channels/release/?version=41&dates=20150601&metric={}'.format(metric),
+                '/aggregates_by/build_id/channels/release/?version=41&dates={}&metric={}'
+                .format(self.build_id_1, metric),
                 headers={'If-None-Match': SUBMISSION_DATE_ETAG})
             self.assertEqual(resp.status_code, 404, ('Expected, 404. Got {}'.format(resp.status_code)))
 
     def test_whitelist(self):
         metric = "SCALARS_TELEMETRY.TEST.KEYED_UNSIGNED_INT"
         resp = self.app.get(
-            '/aggregates_by/build_id/channels/release/?version=41&dates=20150601&metric={}'.format(metric),
+            '/aggregates_by/build_id/channels/release/?version=41&dates={}&metric={}'
+            .format(self.build_id_1, metric),
             headers={'If-None-Match': SUBMISSION_DATE_ETAG})
         self.assertEqual(resp.status_code, 200, ('Expected, 200. Got {}'.format(resp.status_code)))
 
     def test_blacklist(self):
         for metric in METRICS_BLACKLIST:
             resp = self.app.get(
-                '/aggregates_by/build_id/channels/nightly/?version=41&dates=20150601&metric={}'.format(metric),
+                '/aggregates_by/build_id/channels/nightly/?version=41&dates={}&metric={}'
+                .format(self.build_id_1, metric),
                 headers={'If-None-Match': SUBMISSION_DATE_ETAG})
             self.assertEqual(resp.status_code, 404, ('Expected, 404. Got {}'.format(resp.status_code)))
 
@@ -205,22 +223,26 @@ class ServiceTestCase(unittest.TestCase):
     def test_changed_child_value(self):
         # See bug 1339139
         resp = self.as_json(self.app.get(
-            '/aggregates_by/submission_date/channels/nightly/?version=41&dates=20150603&metric=GC_MAX_PAUSE_MS_2&child=true'))
+            '/aggregates_by/submission_date/channels/nightly/?version=41&dates={}&metric=GC_MAX_PAUSE_MS_2&child=true'
+            .format(self.today)))
         self.assertTrue(resp is not None)
 
     def test_using_content_types(self):
         resp = self.as_json(self.app.get(
-            '/aggregates_by/submission_date/channels/nightly/?version=41&dates=20150603&metric=GC_MAX_PAUSE_MS_2&child=content'))
+            '/aggregates_by/submission_date/channels/nightly/?version=41&dates={}&metric=GC_MAX_PAUSE_MS_2&child=content'
+            .format(self.today)))
         self.assertTrue(resp is not None)
 
     def test_using_parent_types(self):
         resp = self.as_json(self.app.get(
-            '/aggregates_by/submission_date/channels/nightly/?version=41&dates=20150603&metric=GC_MAX_PAUSE_MS_2&child=parent'))
+            '/aggregates_by/submission_date/channels/nightly/?version=41&dates={}&metric=GC_MAX_PAUSE_MS_2&child=parent'
+            .format(self.today)))
         self.assertTrue(resp is not None)
 
     def test_using_gpu_types(self):
         resp = self.as_json(self.app.get(
-            '/aggregates_by/submission_date/channels/nightly/?version=41&dates=20150603&metric=GC_MAX_PAUSE_MS_2&child=gpu'))
+            '/aggregates_by/submission_date/channels/nightly/?version=41&dates={}&metric=GC_MAX_PAUSE_MS_2&child=gpu'
+            .format(self.today)))
         self.assertTrue(resp is not None)
 
     def test_absent_use_counter(self):

@@ -1,3 +1,4 @@
+import datetime
 import uuid
 from itertools import chain, product, repeat
 
@@ -14,11 +15,22 @@ SIMPLE_SCALAR_BUCKET = 35
 COUNT_SCALAR_BUCKET = 40
 NUMERIC_SCALAR_BUCKET = 40
 
+DATE_FMT = '%Y%m%d'
+DATETIME_FMT = '%Y%m%d%H%M%S'
+
+TODAY = datetime.date.today()
+BUILD_ID_1 = TODAY - datetime.timedelta(days=1)
+BUILD_ID_2 = TODAY - datetime.timedelta(days=2)
+SUBMISSION_DATE_1 = TODAY
+SUBMISSION_DATE_2 = TODAY - datetime.timedelta(days=2)
+
 ping_dimensions = {
-    "submission_date": [u"20150601", u"20150603"],
+    "submission_date": [SUBMISSION_DATE_2.strftime(DATE_FMT),
+                        SUBMISSION_DATE_1.strftime(DATE_FMT)],
     "channel": [u"nightly", u"beta", u"release"],
     "version": [u"40.0b1", u"41"],
-    "build_id": [u"20150601000000", u"20150602000000"],
+    "build_id": [BUILD_ID_2.strftime(DATETIME_FMT),
+                 BUILD_ID_1.strftime(DATETIME_FMT)],
     "application": [u"Firefox", u"Fennec"],
     "arch": [u"x86", u"x86-64"],
     "os": [u"Linux", u"Windows_NT"],
