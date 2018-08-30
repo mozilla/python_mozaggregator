@@ -4,9 +4,10 @@ import logging
 import pyspark
 from testfixtures import LogCapture
 
-from dataset import generate_pings, ping_dimensions
+from dataset import DATE_FMT, SUBMISSION_DATE_1, generate_pings, ping_dimensions
 from mozaggregator.aggregator import _aggregate_metrics
-from mozaggregator.db import _create_connection, submit_aggregates, NoticeLoggingCursor
+from mozaggregator.db import (
+    NoticeLoggingCursor, _create_connection, submit_aggregates)
 
 SERVICE_URI = "http://localhost:5000"
 
@@ -77,14 +78,19 @@ def test_new_db_functions_backwards_compatible():
     cursor = conn.cursor()
 
     old_query = 'SELECT * FROM batched_get_metric(%s, %s, %s, %s, %s)'
-    cursor.execute(old_query, ('submission_date', 'nightly', '41', ['20150603'], json.dumps({'metric': 'GC_MAX_PAUSE_MS_2', 'child': 'true'})))
+    cursor.execute(old_query, (
+        'submission_date', 'nightly', '41', [SUBMISSION_DATE_1.strftime(DATE_FMT)],
+        json.dumps({'metric': 'GC_MAX_PAUSE_MS_2', 'child': 'true'})))
 
     # Just 1 result since this is 1 date and not a keyed histogram
     result = cursor.fetchall()
     assert len(result) == 1, result
 
     new_query = 'SELECT * FROM batched_get_metric(%s, %s, %s, %s, %s, %s)'
-    cursor.execute(new_query, ('submission_date', 'nightly', '41', ['20150603'], json.dumps({'metric': 'GC_MAX_PAUSE_MS_2', 'child': 'true'}), json.dumps({'metric': 'DEVTOOLS_PERFTOOLS_RECORDING_FEATURES_USED'})))
+    cursor.execute(new_query, (
+        'submission_date', 'nightly', '41', [SUBMISSION_DATE_1.strftime(DATE_FMT)],
+        json.dumps({'metric': 'GC_MAX_PAUSE_MS_2', 'child': 'true'}),
+        json.dumps({'metric': 'DEVTOOLS_PERFTOOLS_RECORDING_FEATURES_USED'})))
 
     # 1 for the non-keyed histogram, 1 for the 1 key of the keyed histogram
     # Note we don't actually use batched_get_metric for multiple metrics,
