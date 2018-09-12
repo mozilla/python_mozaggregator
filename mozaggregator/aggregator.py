@@ -53,7 +53,7 @@ def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1, fenne
                           docType='main',
                           sourceVersion='4',
                           appName=lambda x: x != 'Fennec') \
-                   .records(sc, sample=main_ping_fraction) \
+                   .records(sc, sample=main_ping_fraction)
 
     fennec_pings = Dataset.from_source('telemetry') \
                           .where(appUpdateChannel=lambda x: x in channels,
