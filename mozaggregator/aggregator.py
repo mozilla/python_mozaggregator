@@ -46,14 +46,6 @@ def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1, fenne
     if not isinstance(channels, (tuple, list)):
         channels = [channels]
 
-    def telemetry_enabled(ping):
-        try:
-            return ping.get('environment', {}) \
-                       .get('settings', {}) \
-                       .get('telemetryEnabled', False)
-        except Exception:
-            return False
-
     channels = set(channels)
     pings = Dataset.from_source('telemetry') \
                    .where(appUpdateChannel=lambda x: x in channels,
@@ -62,7 +54,6 @@ def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1, fenne
                           sourceVersion='4',
                           appName=lambda x: x != 'Fennec') \
                    .records(sc, sample=main_ping_fraction) \
-                   .filter(telemetry_enabled)
 
     fennec_pings = Dataset.from_source('telemetry') \
                           .where(appUpdateChannel=lambda x: x in channels,
@@ -92,10 +83,6 @@ def _sample_clients(ping):
         sample_id = ping.get("meta", {}).get("sampleId")
 
         if not isinstance(sample_id, (int, float, long)):
-            return False
-
-        # Check if telemetry is enabled
-        if not ping.get("environment", {}).get("settings", {}).get("telemetryEnabled", False):
             return False
 
         # Here "aurora" is actually the dev edition.

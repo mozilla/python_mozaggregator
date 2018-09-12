@@ -223,7 +223,7 @@ def generate_payload(dimensions, aggregated_child_histograms):
     environment = {
         u"system": {u"os": {u"name": dimensions["os"],
                             u"version": dimensions["os_version"]}},
-        u"settings": {u"telemetryEnabled": True,
+        u"settings": {u"telemetryEnabled": False,
                       u"e10sEnabled": dimensions.get("e10s", True)}
     }
 
