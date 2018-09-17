@@ -17,7 +17,7 @@ itsdangerous==0.24
 Jinja2==2.10
 joblib==0.12.5
 matplotlib==2.2.3
-numpy==1.14.2
+numpy==1.15.1
 pandas==0.22.0
 protobuf==3.5.2.post1
 psycogreen==1.0
