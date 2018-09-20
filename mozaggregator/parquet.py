@@ -104,15 +104,6 @@ def _get_complete_histogram(channel, metric, values):
     return {str(k): long(v) for k, v in histogram.to_dict().iteritems()}
 
 
-def _telemetry_enabled(ping):
-    try:
-        return ping.get('environment', {}) \
-                   .get('settings', {}) \
-                   .get('telemetryEnabled', False)
-    except Exception:
-        return False
-
-
 def _aggregate_metrics(pings, num_reducers=10000):
     trimmed = (
         pings.filter(_sample_clients)
@@ -202,8 +193,7 @@ def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1,
                     .where(docType='main',
                            appName=lambda x: x != 'Fennec',
                            **where)
-                    .records(sc, sample=main_ping_fraction)
-                    .filter(_telemetry_enabled))
+                    .records(sc, sample=main_ping_fraction))
 
     fennec_pings = (Dataset.from_source(source)
                            .where(docType='saved_session',
