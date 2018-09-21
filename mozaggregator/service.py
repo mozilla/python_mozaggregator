@@ -2,15 +2,15 @@ import os
 import time
 from copy import deepcopy
 from functools import wraps
-from urllib import urlencode
+from urllib import urlencode, urlopen
 
 import boto3
 import ujson as json
 from botocore.exceptions import ClientError
 from dockerflow.flask import Dockerflow
-from flask import Flask, Response, abort, request
-from flask.ext.cache import Cache
-from flask.ext.cors import CORS
+from flask import Flask, Response, abort, jsonify, request, _request_ctx_stack
+from flask_cache import Cache
+from flask_cors import CORS
 from flask_sslify import SSLify
 from gevent.monkey import patch_all
 from joblib import Parallel, delayed
@@ -19,6 +19,8 @@ from moztelemetry.scalar import MissingScalarError, Scalar
 from psycogreen.gevent import patch_psycopg
 from psycopg2.pool import SimpleConnectionPool
 from werkzeug.exceptions import MethodNotAllowed
+from jose import jwt
+from jose.jwt import JWTError
 
 from aggregator import (
     COUNT_HISTOGRAM_LABELS, COUNT_HISTOGRAM_PREFIX, NUMERIC_SCALARS_PREFIX, SCALAR_MEASURE_MAP)
@@ -67,6 +69,119 @@ METRICS_BLACKLIST = [
 RELEASE_CHANNEL = "release"
 ALLOW_ALL_RELEASE_METRICS = os.environ.get("ALLOW_ALL_RELEASE_METRICS", "False") == "True"
 PUBLIC_RELEASE_METRICS = {"SCALARS_TELEMETRY.TEST.KEYED_UNSIGNED_INT"}
+
+# Auth0 Integration
+AUTH0_DOMAIN = "chutten.auth0.com"
+API_AUDIENCE = "aggregates.telemetry.mozilla.org"
+ALGORITHMS = ["RS256"]
+REQUIRED_SCOPE = "read:aggregates"
+
+
+# Error handler
+class AuthError(Exception):
+    def __init__(self, error, status_code):
+        self.error = error
+        self.status_code = status_code
+
+
+@app.errorhandler(AuthError)
+def handle_auth_error(ex):
+    response = jsonify(ex.error)
+    response.status_code = ex.status_code
+    return response
+
+
+def get_token_auth_header():
+    """Obtains the Access Token from the Authorization Header
+    """
+    auth = request.headers.get("Authorization", None)
+    if not auth:
+        raise AuthError({"code": "authorization_header_missing",
+                        "description":
+                            "Authorization header is expected"}, 401)
+
+    parts = auth.split()
+
+    if parts[0].lower() != "bearer":
+        raise AuthError({"code": "invalid_header",
+                        "description":
+                            "Authorization header must start with"
+                            " Bearer"}, 401)
+    elif len(parts) == 1:
+        raise AuthError({"code": "invalid_header",
+                        "description": "Token not found"}, 401)
+    elif len(parts) > 2:
+        raise AuthError({"code": "invalid_header",
+                        "description":
+                            "Authorization header must be"
+                            " Bearer token"}, 401)
+
+    token = parts[1]
+    return token
+
+
+def check_auth():
+    """Determines if the Access Token is valid
+    """
+    domain_base = "https://" + AUTH0_DOMAIN + "/"
+    token = get_token_auth_header()
+
+    # check token validity
+    jsonurl = urlopen(domain_base + ".well-known/jwks.json")
+    jwks = json.loads(jsonurl.read())
+
+    try:
+        unverified_header = jwt.get_unverified_header(token)
+    except JWTError:
+        raise AuthError({"code": "improper_token",
+                        "description": "Token cannot be validated"}, 401)
+
+    rsa_key = {}
+    for key in jwks["keys"]:
+        if key["kid"] == unverified_header["kid"]:
+            rsa_key = {
+                "kty": key["kty"],
+                "kid": key["kid"],
+                "use": key["use"],
+                "n": key["n"],
+                "e": key["e"]
+            }
+    if rsa_key:
+        try:
+            payload = jwt.decode(
+                token,
+                rsa_key,
+                algorithms=ALGORITHMS,
+                audience=API_AUDIENCE,
+                issuer=domain_base
+            )
+        except jwt.ExpiredSignatureError:
+            raise AuthError({"code": "token_expired",
+                            "description": "token is expired"}, 401)
+        except jwt.JWTClaimsError:
+            raise AuthError({"code": "invalid_claims",
+                            "description":
+                                "incorrect claims,"
+                                "please check the audience and issuer"}, 401)
+        except Exception:
+            raise AuthError({"code": "invalid_header",
+                            "description":
+                                "Unable to parse authentication"
+                                " token."}, 401)
+
+        # check scope
+        unverified_claims = jwt.get_unverified_claims(token)
+        if unverified_claims.get("scope"):
+            token_scopes = unverified_claims["scope"].split()
+            for token_scope in token_scopes:
+                if token_scope == REQUIRED_SCOPE:
+                    _request_ctx_stack.top.current_user = payload
+                    return True
+            raise AuthError({"code": "access_denied",
+                            "description": "Access not allowed"}, 403)
+
+    raise AuthError({"code": "invalid_header",
+                    "description": "Unable to find appropriate key"}, 401)
 
 
 def get_time_left_in_cache():
@@ -212,18 +327,33 @@ def status():
     return "OK"
 
 
+@app.route('/authed')
+def authed():
+    check_auth()
+    return "Authenticated"
+
+
 @app.route('/aggregates_by/<prefix>/channels/')
 @add_cache_header()
 @cache_request
 def get_channels(prefix):
     channels = execute_query("select * from list_channels(%s)", (prefix, ))
-    return Response(json.dumps([channel[0] for channel in channels]), mimetype="application/json")
+    channels = [channel[0] for channel in channels]
+
+    try:
+        check_auth()
+    except AuthError:
+        channels = [c for c in channels if c != RELEASE_CHANNEL]
+
+    return Response(json.dumps(channels), mimetype="application/json")
 
 
 @app.route('/aggregates_by/<prefix>/channels/<channel>/dates/')
 @add_cache_header()
 @cache_request
 def get_dates(prefix, channel):
+    if channel == RELEASE_CHANNEL:
+        check_auth()
     result = execute_query("select * from list_buildids(%s, %s)", (prefix, channel))
     pretty_result = map(lambda r: {"version": r[0], "date": r[1]}, result)
     return Response(json.dumps(pretty_result), mimetype="application/json")
@@ -265,6 +395,9 @@ def get_filters_options():
     if not channel or not version:
         abort(404)
 
+    if channel == RELEASE_CHANNEL:
+        check_auth()
+
     filters = {}
     dimensions = ["metric", "application", "architecture", "os", "child"]
 
@@ -296,7 +429,7 @@ def _allow_metric(channel, metric):
         elif metric in PUBLIC_RELEASE_METRICS:
             return True
         else:
-            return False
+            return check_auth()
     elif channel != RELEASE_CHANNEL:
         return True
 
