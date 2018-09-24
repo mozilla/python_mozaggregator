@@ -31,14 +31,14 @@ from db import get_db_connection_string, histogram_revision_map, _preparedb
 pool = None
 db_connection_string = get_db_connection_string(read_only=True)
 app = Flask(__name__)
-Talisman(app)
 dockerflow = Dockerflow(app, version_path='/app')
 
 app.config.from_pyfile('config.py')
 
-CORS(app, resources=r'/*', allow_headers='Content-Type')
+CORS(app, resources=r'/*', allow_headers=['Authorization', 'Content-Type'])
 cache = Cache(app, config={'CACHE_TYPE': app.config["CACHETYPE"]})
 sslify = SSLify(app, permanent=True, skips=['__version__', '__heartbeat__', '__lbheartbeat__', 'status'])
+Talisman(app)
 
 patch_all()
 patch_psycopg()
