@@ -16,7 +16,7 @@ idna==2.7
 itsdangerous==0.24
 Jinja2==2.10
 joblib==0.12.5
-matplotlib==2.2.2
+matplotlib==3.0.0
 numpy==1.14.2
 pandas==0.22.0
 protobuf==3.5.2.post1
