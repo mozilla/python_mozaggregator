@@ -12,6 +12,7 @@ from flask import Flask, Response, abort, jsonify, request, _request_ctx_stack
 from flask_cache import Cache
 from flask_cors import CORS
 from flask_sslify import SSLify
+from flask_talisman import Talisman
 from gevent.monkey import patch_all
 from joblib import Parallel, delayed
 from moztelemetry.histogram import Histogram
@@ -30,6 +31,7 @@ from db import get_db_connection_string, histogram_revision_map, _preparedb
 pool = None
 db_connection_string = get_db_connection_string(read_only=True)
 app = Flask(__name__)
+Talisman(app)
 dockerflow = Dockerflow(app, version_path='/app')
 
 app.config.from_pyfile('config.py')
