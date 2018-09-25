@@ -72,9 +72,9 @@ PUBLIC_RELEASE_METRICS = {"SCALARS_TELEMETRY.TEST.KEYED_UNSIGNED_INT"}
 
 # Auth0 Integration
 AUTH0_DOMAIN = "chutten.auth0.com"
-API_AUDIENCE = "aggregates.telemetry.mozilla.org"
-ALGORITHMS = ["RS256"]
-REQUIRED_SCOPE = "read:aggregates"
+AUTH0_API_AUDIENCE = "aggregates.telemetry.mozilla.org"
+AUTH0_ALGORITHMS = ["RS256"]
+AUTH0_REQUIRED_SCOPE = "read:aggregates"
 
 # CSP Headers
 DEFAULT_CSP_POLICY = "frame-ancestors 'none'; default-src 'self'"
@@ -155,8 +155,8 @@ def check_auth():
             payload = jwt.decode(
                 token,
                 rsa_key,
-                algorithms=ALGORITHMS,
-                audience=API_AUDIENCE,
+                algorithms=AUTH0_ALGORITHMS,
+                audience=AUTH0_API_AUDIENCE,
                 issuer=domain_base
             )
         except jwt.ExpiredSignatureError:
@@ -178,7 +178,7 @@ def check_auth():
         if unverified_claims.get("scope"):
             token_scopes = unverified_claims["scope"].split()
             for token_scope in token_scopes:
-                if token_scope == REQUIRED_SCOPE:
+                if token_scope == AUTH0_REQUIRED_SCOPE:
                     _request_ctx_stack.top.current_user = payload
                     return True
             raise AuthError({"code": "access_denied",
