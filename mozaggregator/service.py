@@ -12,7 +12,6 @@ from flask import Flask, Response, abort, jsonify, request, _request_ctx_stack
 from flask_cache import Cache
 from flask_cors import CORS
 from flask_sslify import SSLify
-from flask_talisman import Talisman
 from gevent.monkey import patch_all
 from joblib import Parallel, delayed
 from moztelemetry.histogram import Histogram
@@ -38,7 +37,6 @@ app.config.from_pyfile('config.py')
 CORS(app, resources=r'/*', allow_headers=['Authorization', 'Content-Type'])
 cache = Cache(app, config={'CACHE_TYPE': app.config["CACHETYPE"]})
 sslify = SSLify(app, permanent=True, skips=['__version__', '__heartbeat__', '__lbheartbeat__', 'status'])
-Talisman(app)
 
 patch_all()
 patch_psycopg()
@@ -77,6 +75,10 @@ AUTH0_DOMAIN = "chutten.auth0.com"
 API_AUDIENCE = "aggregates.telemetry.mozilla.org"
 ALGORITHMS = ["RS256"]
 REQUIRED_SCOPE = "read:aggregates"
+
+# CSP Headers
+DEFAULT_CSP_POLICY = "frame-ancestors 'none'; default-src 'self'"
+DEFAULT_X_FRAME_POLICY = "DENY"
 
 
 # Error handler
@@ -269,6 +271,14 @@ def execute_query(query, params=tuple()):
         abort(404)
     finally:
         pool.putconn(db)
+
+
+@app.after_request
+def apply_headers(response):
+    response.headers["X-Frame-Options"] = DEFAULT_X_FRAME_POLICY
+    response.headers["Content-Security-Policy"] = DEFAULT_CSP_POLICY
+    response.headers["X-Content-Security-Policy"] = DEFAULT_CSP_POLICY
+    return response
 
 
 @app.before_request
