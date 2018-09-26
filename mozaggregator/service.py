@@ -61,8 +61,11 @@ ALLOWED_DIMENSIONS = ('application', 'architecture', 'child', 'dates', 'label',
 # Disallowed metrics for serving
 METRICS_BLACKLIST = [
     "SEARCH_COUNTS",
+]
+
+NON_AUTH_METRICS_BLACKLIST = [
     "SCALARS_TELEMETRY.EVENT_COUNTS",
-    "SCALARS_TELEMETRY.DYNAMIC_EVENT_COUNTS"
+    "SCALARS_TELEMETRY.DYNAMIC_EVENT_COUNTS",
 ]
 
 # Allowed public release metrics
@@ -443,7 +446,10 @@ def _allow_metric(channel, metric):
         else:
             return check_auth()
     elif channel != RELEASE_CHANNEL:
-        return True
+        if metric in NON_AUTH_METRICS_BLACKLIST:
+            return False
+        else:
+            return True
 
 
 @app.route('/aggregates_by/<prefix>/channels/<channel>/', methods=['GET'])
