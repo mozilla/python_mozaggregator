@@ -447,7 +447,7 @@ def _allow_metric(channel, metric):
             return check_auth()
     elif channel != RELEASE_CHANNEL:
         if metric in NON_AUTH_METRICS_BLACKLIST:
-            return False
+            return check_auth()
         else:
             return True
 
