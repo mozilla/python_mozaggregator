@@ -219,9 +219,6 @@ def _extract_keyed_numeric_scalars(state, scalar_dict, process):
         if name.startswith("browser.engagement.navigation"):
             continue
 
-        if name == "telemetry.event_counts" or name == "telemetry.dynamic_event_counts":
-            continue
-
         scalar_name = u"_".join((NUMERIC_SCALARS_PREFIX, name.upper()))
         for sub_name, sub_value in value.iteritems():
             if not isinstance(sub_value, (int, float, long)):
