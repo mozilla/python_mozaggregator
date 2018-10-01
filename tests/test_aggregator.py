@@ -92,6 +92,7 @@ def test_numerical_scalars():
     metric_count = defaultdict(lambda: defaultdict(int))
     scalar_metrics = set([k.upper() for k in d.scalars_template.keys()])
     keyed_scalar_metrics = set([k.upper() for k in d.keyed_scalars_template.keys()])
+    keyed_scalar_metrics |= set([k.upper() for k in d.private_keyed_scalars_template.keys()])
 
     for aggregate in build_id_aggregates:
         for key, value in aggregate[1].iteritems():
@@ -114,6 +115,7 @@ def test_numerical_scalars():
                 assert(value["histogram"][str(d.NUMERIC_SCALAR_BUCKET)] == value["count"])
 
     keyed_scalars_template_len = len([key for m, dic in d.keyed_scalars_template.iteritems() for key in dic])
+    keyed_scalars_template_len += len([key for m, dic in d.private_keyed_scalars_template.iteritems() for key in dic])
     assert len(metric_count) == len(d.scalars_template) + keyed_scalars_template_len
     for metric, process_counts in metric_count.iteritems():
         assert(process_counts.viewkeys() == PROCESS_TYPES)
