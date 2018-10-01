@@ -159,13 +159,17 @@ ignored_keyed_scalars_template = {
     },
     "fake.keyed.string": {
         "first": "IGNORE_ME"
-    },
+    }
+}
+
+private_keyed_scalars_template = {
     "telemetry.event_counts": {
         "some#event#happened": SCALAR_VALUE
     },
     "telemetry.dynamic_event_counts": {
         "some#dynamic#event": SCALAR_VALUE
     }
+
 }
 
 
@@ -196,7 +200,9 @@ def generate_payload(dimensions, aggregated_child_histograms):
                       for i in range(NUM_CHILDREN_PER_PING)]
 
     scalars = dict(chain(scalars_template.iteritems(), ignored_scalars_template.iteritems()))
-    keyed_scalars = dict(chain(keyed_scalars_template.iteritems(), ignored_keyed_scalars_template.iteritems()))
+    keyed_scalars = dict(chain(keyed_scalars_template.iteritems(),
+                               ignored_keyed_scalars_template.iteritems(),
+                               private_keyed_scalars_template.iteritems()))
 
     processes_payload = {
         u"parent": {
