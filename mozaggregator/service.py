@@ -241,10 +241,15 @@ def check_etag(f):
 def cache_request(f):
     @wraps(f)
     def decorated_request(*args, **kwargs):
-        rv = cache.get(request.url)
+        try:
+             authed = check_auth()
+        except AuthError:
+             authed = False
+
+        rv = cache.get((request.url, authed))
         if rv is None:
             rv = f(*args, **kwargs)
-            cache.set(request.url, rv, timeout=app.config["TIMEOUT"])
+            cache.set((request.url, authed), rv, timeout=app.config["TIMEOUT"])
             return rv
         else:
             return rv
