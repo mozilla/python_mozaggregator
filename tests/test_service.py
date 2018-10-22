@@ -19,7 +19,7 @@ from mozaggregator.aggregator import (
     SIMPLE_MEASURES_LABELS, SIMPLE_MEASURES_PREFIX, _aggregate_metrics)
 from mozaggregator.db import clear_db, submit_aggregates
 from mozaggregator.service import (
-    CLIENT_CACHE_SLACK_SECONDS, METRICS_BLACKLIST, SUBMISSION_DATE_ETAG, app)
+    CLIENT_CACHE_SLACK_SECONDS, METRICS_BLACKLIST, SUBMISSION_DATE_ETAG, app, auth0_cache)
 from moztelemetry.histogram import Histogram
 
 
@@ -152,12 +152,21 @@ class ServiceTestCase(unittest.TestCase):
 
 
     # Test response content.
-    def test_auth_header(self):
+    def test_cached_auth(self):
+        token = "cached-token"
+        auth0_cache[token] = True
         for metric in histograms_template.keys():
             resp = self.app.get(
-                '/aggregates_by/build_id/channels/release/?version=41&dates=20150601&metric={}'.format(metric),
-                headers={'If-None-Match': SUBMISSION_DATE_ETAG, 'Authorization': ' Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6IlJqUkZSREpFT0RnMk16UTNSRE0zT0VSRFFrWkZOalJETmpGQ05qZzBOVVEzTW9.eyJpc3MiOiJodHRwczovL2NodXR0ZW4uYXV0aDAuY29tLyIsInN1YiI6ImF1dGgwfDViYTNiOTVkYmExM2UyMzMxYzVmYzMzOCIsImF1ZCI6ImFnZ3JlZ2F0ZXMudGVsZW1ldHJ5Lm1vemlsbGEub3JnIiwiaWF0IjoxNTM3NTQ4Nzc2LCJleHAiOjE1Mzc1NTU5NzYsImF6cCI6InY0MjdDQmlwNjZoUzRxMm10SmVaSldpWUsxYUV2UVRLIiwic2NvcGUiOiJyZWFkOmFnZ3JlZ2F0ZXMifQ.ETE6m-fevEYxAoeg1lrER0Jm0nAMc-G_EgXsSF4t5at4RX6oYidcCT3dkbhWm3MYZrG3KHBYcGh8FRsdw2oxgJYsEFCKGxlA2lCta-3yrebIy_SmLGNjrXEWYpwXQ_yeCaOMz3aQ5hSvoIbUYDdaqEWqibfFvwD2Gu2cjsoXmoHKPVpBiwERUDIjfAfuW3-NP0qirpCR3LyuY2Iw7oOZB-uqdd_zeoD1IosliT7JhkRjzrQnYJN93Zx392KI3H_E08Assv_d9gUqFEiKvDQ7b10iB5A4fWnVYjtYqugvOmkDlQHTUY5Y7zbT8DJ4SYarXiJBxijwPeGpo4cslJVe5c'})
-            self.assertEqual(resp.status_code, 401)
+                '/aggregates_by/build_id/channels/release/?version=41&dates={}&metric={}'.format(self.build_id_1, metric),
+                headers={'If-None-Match': SUBMISSION_DATE_ETAG, 'Authorization': ' Bearer ' + token})
+            self.assertEqual(resp.status_code, 200)
+
+#    def test_auth_header(self):
+#        for metric in histograms_template.keys():
+#            resp = self.app.get(
+#                '/aggregates_by/build_id/channels/release/?version=41&dates={}&metric={}'.format(self.build_id_1, metric),
+#                headers={'If-None-Match': SUBMISSION_DATE_ETAG, 'Authorization': ' Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6IlJqUkZSREpFT0RnMk16UTNSRE0zT0VSRFFrWkZOalJETmpGQ05qZzBOVVEzTW9.eyJpc3MiOiJodHRwczovL2NodXR0ZW4uYXV0aDAuY29tLyIsInN1YiI6ImF1dGgwfDViYTNiOTVkYmExM2UyMzMxYzVmYzMzOCIsImF1ZCI6ImFnZ3JlZ2F0ZXMudGVsZW1ldHJ5Lm1vemlsbGEub3JnIiwiaWF0IjoxNTM3NTQ4Nzc2LCJleHAiOjE1Mzc1NTU5NzYsImF6cCI6InY0MjdDQmlwNjZoUzRxMm10SmVaSldpWUsxYUV2UVRLIiwic2NvcGUiOiJyZWFkOmFnZ3JlZ2F0ZXMifQ.ETE6m-fevEYxAoeg1lrER0Jm0nAMc-G_EgXsSF4t5at4RX6oYidcCT3dkbhWm3MYZrG3KHBYcGh8FRsdw2oxgJYsEFCKGxlA2lCta-3yrebIy_SmLGNjrXEWYpwXQ_yeCaOMz3aQ5hSvoIbUYDdaqEWqibfFvwD2Gu2cjsoXmoHKPVpBiwERUDIjfAfuW3-NP0qirpCR3LyuY2Iw7oOZB-uqdd_zeoD1IosliT7JhkRjzrQnYJN93Zx392KI3H_E08Assv_d9gUqFEiKvDQ7b10iB5A4fWnVYjtYqugvOmkDlQHTUY5Y7zbT8DJ4SYarXiJBxijwPeGpo4cslJVe5c'})
+#            self.assertEqual(resp.status_code, 403)
 
     def test_release_nonwhitelist(self):
         for metric in histograms_template.keys():
@@ -165,7 +174,7 @@ class ServiceTestCase(unittest.TestCase):
                 '/aggregates_by/build_id/channels/release/?version=41&dates={}&metric={}'
                 .format(self.build_id_1, metric),
                 headers={'If-None-Match': SUBMISSION_DATE_ETAG})
-            self.assertEqual(resp.status_code, 401, ('Expected, 401. Got {}'.format(resp.status_code)))
+            self.assertEqual(resp.status_code, 403, ('Expected, 403. Got {}'.format(resp.status_code)))
 
     def test_whitelist(self):
         metric = "SCALARS_TELEMETRY.TEST.KEYED_UNSIGNED_INT"
@@ -452,7 +461,6 @@ class ServiceTestCase(unittest.TestCase):
         self.assertTrue(not has_def or resp['description'] != '')
 
         bucket_index = labels.index(bucket)
-
         for res in resp['data']:
             self.assertEqual(res['count'], expected_count)
 

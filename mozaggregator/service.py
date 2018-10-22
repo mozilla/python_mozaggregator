@@ -3,6 +3,7 @@ import time
 from copy import deepcopy
 from functools import wraps
 from urllib import urlencode, urlopen
+from expiringdict import ExpiringDict
 
 import boto3
 import ujson as json
@@ -74,10 +75,11 @@ ALLOW_ALL_RELEASE_METRICS = os.environ.get("ALLOW_ALL_RELEASE_METRICS", "False")
 PUBLIC_RELEASE_METRICS = {"SCALARS_TELEMETRY.TEST.KEYED_UNSIGNED_INT"}
 
 # Auth0 Integration
-AUTH0_DOMAIN = "chutten.auth0.com"
-AUTH0_API_AUDIENCE = "aggregates.telemetry.mozilla.org"
+AUTH0_DOMAIN = "https://auth.mozilla.auth0.com"
+AUTH0_API_AUDIENCE = "https://aggregates.telemetry.mozilla.org"
 AUTH0_ALGORITHMS = ["RS256"]
 AUTH0_REQUIRED_SCOPE = "read:aggregates"
+auth0_cache = ExpiringDict(max_len=1000, max_age_seconds=15*60)
 
 # CSP Headers
 DEFAULT_CSP_POLICY = "frame-ancestors 'none'; default-src 'self'"
@@ -105,7 +107,7 @@ def get_token_auth_header():
     if not auth:
         raise AuthError({"code": "authorization_header_missing",
                         "description":
-                            "Authorization header is expected"}, 401)
+                            "Authorization header is expected"}, 403)
 
     parts = auth.split()
 
@@ -113,15 +115,15 @@ def get_token_auth_header():
         raise AuthError({"code": "invalid_header",
                         "description":
                             "Authorization header must start with"
-                            " Bearer"}, 401)
+                            " Bearer"}, 403)
     elif len(parts) == 1:
         raise AuthError({"code": "invalid_header",
-                        "description": "Token not found"}, 401)
+                        "description": "Token not found"}, 403)
     elif len(parts) > 2:
         raise AuthError({"code": "invalid_header",
                         "description":
                             "Authorization header must be"
-                            " Bearer token"}, 401)
+                            " Bearer token"}, 403)
 
     token = parts[1]
     return token
@@ -133,6 +135,9 @@ def check_auth():
     domain_base = "https://" + AUTH0_DOMAIN + "/"
     token = get_token_auth_header()
 
+    if token in auth0_cache:
+        return auth0_cache[token]
+
     # check token validity
     jsonurl = urlopen(domain_base + ".well-known/jwks.json")
     jwks = json.loads(jsonurl.read())
@@ -141,7 +146,7 @@ def check_auth():
         unverified_header = jwt.get_unverified_header(token)
     except JWTError:
         raise AuthError({"code": "improper_token",
-                        "description": "Token cannot be validated"}, 401)
+                        "description": "Token cannot be validated"}, 403)
 
     rsa_key = {}
     for key in jwks["keys"]:
@@ -164,17 +169,17 @@ def check_auth():
             )
         except jwt.ExpiredSignatureError:
             raise AuthError({"code": "token_expired",
-                            "description": "token is expired"}, 401)
+                            "description": "token is expired"}, 403)
         except jwt.JWTClaimsError:
             raise AuthError({"code": "invalid_claims",
                             "description":
                                 "incorrect claims,"
-                                "please check the audience and issuer"}, 401)
+                                "please check the audience and issuer"}, 403)
         except Exception:
             raise AuthError({"code": "invalid_header",
                             "description":
                                 "Unable to parse authentication"
-                                " token."}, 401)
+                                " token."}, 403)
 
         # check scope
         unverified_claims = jwt.get_unverified_claims(token)
@@ -183,12 +188,13 @@ def check_auth():
             for token_scope in token_scopes:
                 if token_scope == AUTH0_REQUIRED_SCOPE:
                     _request_ctx_stack.top.current_user = payload
+                    auth0_cache[token] = True
                     return True
             raise AuthError({"code": "access_denied",
                             "description": "Access not allowed"}, 403)
 
     raise AuthError({"code": "invalid_header",
-                    "description": "Unable to find appropriate key"}, 401)
+                    "description": "Unable to find appropriate key"}, 403)
 
 
 def get_time_left_in_cache():
@@ -196,7 +202,7 @@ def get_time_left_in_cache():
 
     # our cache (a flask cache), contains a cache (werkzeug SimpleCache), which contains a _cache (dict)
     # see https://github.com/pallets/werkzeug/blob/master/werkzeug/contrib/cache.py#L307
-    expires_ts, _ = cache.cache._cache.get(request.url, (0, ""))
+    expires_ts, _ = cache.cache._cache.get((request.url, False), (0, ""))
 
     # get seconds until expiry
     expires = int(expires_ts - time.time())
@@ -464,6 +470,7 @@ def _allow_metric(channel, metric):
 def get_dates_metrics(prefix, channel):
     mapping = {"true": True, "false": False}
     dimensions = {k: mapping.get(v, v) for k, v in request.args.iteritems()}
+
 
     extra_dimensions = dimensions.viewkeys() - ALLOWED_DIMENSIONS
     if extra_dimensions:
