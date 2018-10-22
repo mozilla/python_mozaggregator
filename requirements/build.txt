@@ -2,7 +2,7 @@ awscli==1.16.38
 blinker==1.4
 boto3==1.9.28
 botocore==1.12.28
-certifi==2018.1.18
+certifi==2018.10.15
 click==6.7
 dockerflow==2018.2.1
 Flask==0.12.2
