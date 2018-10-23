@@ -76,7 +76,7 @@ PUBLIC_RELEASE_METRICS = {"SCALARS_TELEMETRY.TEST.KEYED_UNSIGNED_INT"}
 
 # Auth0 Integration
 AUTH0_DOMAIN = "auth.mozilla.auth0.com"
-AUTH0_API_AUDIENCE = "https://aggregates.telemetry.mozilla.org"
+AUTH0_API_AUDIENCE = "https://aggregates.telemetry.mozilla.org/"
 AUTH0_ALGORITHMS = ["RS256"]
 AUTH0_REQUIRED_SCOPE = "read:aggregates"
 auth0_cache = ExpiringDict(max_len=1000, max_age_seconds=15*60)
