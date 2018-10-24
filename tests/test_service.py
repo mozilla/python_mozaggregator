@@ -19,7 +19,7 @@ from mozaggregator.aggregator import (
     SIMPLE_MEASURES_LABELS, SIMPLE_MEASURES_PREFIX, _aggregate_metrics)
 from mozaggregator.db import clear_db, submit_aggregates
 from mozaggregator.service import (
-    CLIENT_CACHE_SLACK_SECONDS, METRICS_BLACKLIST, SUBMISSION_DATE_ETAG, app, auth0_cache)
+    CLIENT_CACHE_SLACK_SECONDS, METRICS_BLACKLIST, SUBMISSION_DATE_ETAG, app, auth0_cache, cache)
 from moztelemetry.histogram import Histogram
 
 
@@ -160,6 +160,35 @@ class ServiceTestCase(unittest.TestCase):
                 '/aggregates_by/build_id/channels/release/?version=41&dates={}&metric={}'.format(self.build_id_1, metric),
                 headers={'If-None-Match': SUBMISSION_DATE_ETAG, 'Authorization': ' Bearer ' + token})
             self.assertEqual(resp.status_code, 200)
+
+    def test_response_cache(self):
+        token = 'cached-token'
+        route = '/aggregates_by/build_id/channels/'
+        url = 'http://localhost' + route
+        auth0_cache[token] = True
+
+        cache.clear()
+
+        # Route is not in the cache
+        assert cache.get((url, False)) is None
+
+        # Test route without auth
+        resp = self.app.get(route)
+        self.assertEqual(resp.status_code, 200)
+
+        # Test that this is now in cache
+        assert cache.get((url, False)) is not None
+
+        # Test that the authed endpoint is not in the cache
+        assert cache.get((url, True)) is None
+
+        # Test route with auth
+        resp = self.app.get(route, headers={'Authorization': ' Bearer ' + token})
+        self.assertEqual(resp.status_code, 200)
+
+        # Test that this is now in cache
+        assert cache.get((url, True)) is not None
+
 
     def test_auth_header(self):
         for metric in histograms_template.keys():
