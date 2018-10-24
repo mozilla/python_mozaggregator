@@ -197,6 +197,13 @@ def check_auth():
                     "description": "Unable to find appropriate key"}, 403)
 
 
+def is_authed():
+    try:
+        return check_auth()
+    except AuthError:
+        return False
+
+
 def get_time_left_in_cache():
     assert app.config["CACHETYPE"] == "simple", "Only simple caches can be used with get_time_left_in_cache"
 
@@ -247,10 +254,7 @@ def check_etag(f):
 def cache_request(f):
     @wraps(f)
     def decorated_request(*args, **kwargs):
-        try:
-             authed = check_auth()
-        except AuthError:
-             authed = False
+        authed = is_authed()
 
         rv = cache.get((request.url, authed))
         if rv is None:
@@ -372,9 +376,7 @@ def get_channels(prefix):
     channels = execute_query("select * from list_channels(%s)", (prefix, ))
     channels = [channel[0] for channel in channels]
 
-    try:
-        check_auth()
-    except AuthError:
+    if not is_authed():
         channels = [c for c in channels if c != RELEASE_CHANNEL]
 
     return Response(json.dumps(channels), mimetype="application/json")
