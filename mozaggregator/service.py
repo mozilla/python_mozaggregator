@@ -359,6 +359,12 @@ def authed():
     return "Authenticated"
 
 
+@app.route('/clear-cache')
+def clear_cache():
+    check_auth()
+    cache.clear()
+
+
 @app.route('/aggregates_by/<prefix>/channels/')
 @add_cache_header()
 @cache_request
