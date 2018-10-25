@@ -189,6 +189,40 @@ class ServiceTestCase(unittest.TestCase):
         # Test that this is now in cache
         assert cache.get((url, True)) is not None
 
+        assert cache.get((url, False)).data != cache.get((url, True)).data
+
+
+    def test_response_cache_auth_first(self):
+        token = 'cached-token'
+        route = '/aggregates_by/build_id/channels/'
+        url = 'http://localhost' + route
+        auth0_cache[token] = True
+
+        cache.clear()
+
+        # Route is not in the cache
+        assert cache.get((url, True)) is None
+
+        # Test route with auth
+        resp = self.app.get(route, headers={'Authorization': ' Bearer ' + token})
+        self.assertEqual(resp.status_code, 200)
+
+        # Test that this is now in cache
+        assert cache.get((url, True)) is not None
+
+        # Test that the unauthed endpoint is not in the cache
+        assert cache.get((url, False)) is None
+
+        # Test route without auth
+        resp = self.app.get(route)
+        self.assertEqual(resp.status_code, 200)
+
+        # Test that this is now in cache
+        assert cache.get((url, False)) is not None
+
+        assert cache.get((url, False)).data != cache.get((url, True)).data
+
+
 
     def test_auth_header(self):
         for metric in histograms_template.keys():
