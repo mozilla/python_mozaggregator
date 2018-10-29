@@ -367,6 +367,7 @@ def authed():
 def clear_cache():
     check_auth()
     cache.clear()
+    return "Cache Cleared"
 
 
 @app.route('/aggregates_by/<prefix>/channels/')

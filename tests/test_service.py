@@ -223,6 +223,21 @@ class ServiceTestCase(unittest.TestCase):
         assert cache.get((url, False)).data != cache.get((url, True)).data
 
 
+    def test_clear_cache(self):
+        route = '/aggregates_by/build_id/channels/'
+        url = 'http://localhost' + route
+        token = "cached-token"
+        auth0_cache[token] = True
+
+        self.app.get(route)
+
+        assert cache.get((url, False)) is not None
+
+        resp = self.app.get('/clear-cache', headers={'Authorization': ' Bearer ' + token})
+        self.assertEqual(resp.status_code, 200)
+
+        assert cache.get((url, False)) is None
+
 
     def test_auth_header(self):
         for metric in histograms_template.keys():
