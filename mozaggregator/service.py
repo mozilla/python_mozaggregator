@@ -27,6 +27,15 @@ from aggregator import (
     COUNT_HISTOGRAM_LABELS, COUNT_HISTOGRAM_PREFIX, NUMERIC_SCALARS_PREFIX, SCALAR_MEASURE_MAP)
 from db import get_db_connection_string, histogram_revision_map, _preparedb
 
+import logging
+
+logger = logging.getLogger('werkzeug')
+handler = logging.FileHandler('mozaggregator.log')
+logger.setLevel(logging.WARNING)
+logger.addHandler(handler)
+
+# Also add the handler to Flask's logger for cases
+#  where Werkzeug isn't used as the underlying WSGI server.
 
 pool = None
 db_connection_string = get_db_connection_string(read_only=True)
@@ -34,6 +43,7 @@ app = Flask(__name__)
 dockerflow = Dockerflow(app, version_path='/app')
 
 app.config.from_pyfile('config.py')
+app.logger.addHandler(handler)
 
 CORS(app, resources=r'/*', allow_headers=['Authorization', 'Content-Type'])
 cache = Cache(app, config={'CACHE_TYPE': app.config["CACHETYPE"]})
@@ -84,6 +94,8 @@ auth0_cache = ExpiringDict(max_len=1000, max_age_seconds=15*60)
 # CSP Headers
 DEFAULT_CSP_POLICY = "frame-ancestors 'none'; default-src 'self'"
 DEFAULT_X_FRAME_POLICY = "DENY"
+
+
 
 
 # Error handler
@@ -256,10 +268,21 @@ def cache_request(f):
     def decorated_request(*args, **kwargs):
         authed = is_authed()
 
-        rv = cache.get((request.url, authed))
+        cache_key = (request.url, authed)
+        str_key = '(' + cache_key[0] + ', ' + str(cache_key[1]) + ')'
+        rv = cache.get(cache_key)
+
+        if request.url.endswith('channels/'):
+            cache_value = 'None' if rv is None else str(rv) + ' - '  + str(rv.data)
+            app.logger.warning('Hit channels, cache key: {}, cache value: {}'.format(str_key, cache_value))
+
+
         if rv is None:
             rv = f(*args, **kwargs)
-            cache.set((request.url, authed), rv, timeout=app.config["TIMEOUT"])
+            if request.url.endswith('channels/'):
+                cache_value = 'None' if rv is None else str(rv) + ' - '  + str(rv.data)
+                app.logger.warning('Set channels, cache key: {}, cache value: {}'.format(str_key, cache_value))
+            cache.set(cache_key, rv, timeout=app.config["TIMEOUT"])
             return rv
         else:
             return rv
