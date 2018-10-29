@@ -27,15 +27,6 @@ from aggregator import (
     COUNT_HISTOGRAM_LABELS, COUNT_HISTOGRAM_PREFIX, NUMERIC_SCALARS_PREFIX, SCALAR_MEASURE_MAP)
 from db import get_db_connection_string, histogram_revision_map, _preparedb
 
-import logging
-
-logger = logging.getLogger('werkzeug')
-handler = logging.FileHandler('mozaggregator.log')
-logger.setLevel(logging.WARNING)
-logger.addHandler(handler)
-
-# Also add the handler to Flask's logger for cases
-#  where Werkzeug isn't used as the underlying WSGI server.
 
 pool = None
 db_connection_string = get_db_connection_string(read_only=True)
@@ -43,7 +34,6 @@ app = Flask(__name__)
 dockerflow = Dockerflow(app, version_path='/app')
 
 app.config.from_pyfile('config.py')
-app.logger.addHandler(handler)
 
 CORS(app, resources=r'/*', allow_headers=['Authorization', 'Content-Type'])
 cache = Cache(app, config={'CACHE_TYPE': app.config["CACHETYPE"]})
