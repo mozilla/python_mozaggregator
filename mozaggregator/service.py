@@ -27,11 +27,6 @@ from aggregator import (
     COUNT_HISTOGRAM_LABELS, COUNT_HISTOGRAM_PREFIX, NUMERIC_SCALARS_PREFIX, SCALAR_MEASURE_MAP)
 from db import get_db_connection_string, histogram_revision_map, _preparedb
 
-import logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger('cachelogger')
-
-
 pool = None
 db_connection_string = get_db_connection_string(read_only=True)
 app = Flask(__name__)
@@ -261,21 +256,11 @@ def cache_request(f):
     @wraps(f)
     def decorated_request(*args, **kwargs):
         authed = is_authed()
-
         cache_key = (request.url, authed)
-        str_key = '(' + cache_key[0] + ', ' + str(cache_key[1]) + ')'
         rv = cache.get(cache_key)
-
-        if request.url.endswith('channels/'):
-            cache_value = 'None' if rv is None else str(rv) + ' - '  + str(rv.data)
-            logger.info('Hit channels, cache key: {}, cache value: {}'.format(str_key, cache_value))
-
 
         if rv is None:
             rv = f(*args, **kwargs)
-            if request.url.endswith('channels/'):
-                cache_value = 'None' if rv is None else str(rv) + ' - '  + str(rv.data)
-                logger.info('Set channels, cache key: {}, cache value: {}'.format(str_key, cache_value))
             cache.set(cache_key, rv, timeout=app.config["TIMEOUT"])
             return rv
         else:
