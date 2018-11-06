@@ -112,7 +112,7 @@ def get_token_auth_header():
 
     parts = auth.split()
 
-    if parts[0].lower() != "bearer":
+    if parts[0] != "Bearer":
         raise AuthError({"code": "invalid_header",
                         "description":
                             "Authorization header must start with"
@@ -159,44 +159,47 @@ def check_auth():
                 "n": key["n"],
                 "e": key["e"]
             }
-    if rsa_key:
-        try:
-            payload = jwt.decode(
-                token,
-                rsa_key,
-                algorithms=AUTH0_ALGORITHMS,
-                audience=AUTH0_API_AUDIENCE,
-                issuer=domain_base
-            )
-        except jwt.ExpiredSignatureError:
-            raise AuthError({"code": "token_expired",
-                            "description": "token is expired"}, 403)
-        except jwt.JWTClaimsError:
-            raise AuthError({"code": "invalid_claims",
-                            "description":
-                                "incorrect claims,"
-                                "please check the audience and issuer"}, 403)
-        except Exception:
-            raise AuthError({"code": "invalid_header",
-                            "description":
-                                "Unable to parse authentication"
-                                " token."}, 403)
+            break
+    else:
+        raise AuthError({"code": "invalid_header",
+                         "description": "Unable to find appropriate key"}, 403)
 
-        # check scope
-        unverified_claims = jwt.get_unverified_claims(token)
-        if unverified_claims.get("scope"):
-            token_scopes = unverified_claims["scope"].split()
-            for token_scope in token_scopes:
-                if token_scope == AUTH0_REQUIRED_SCOPE:
-                    _request_ctx_stack.top.current_user = payload
-                    auth0_cache[token] = True
-                    return True
-            raise AuthError({"code": "access_denied",
-                            "description": "Access not allowed"}, 403)
+    try:
+        payload = jwt.decode(
+            token,
+            rsa_key,
+            algorithms=AUTH0_ALGORITHMS,
+            audience=AUTH0_API_AUDIENCE,
+            issuer=domain_base
+        )
+    except jwt.ExpiredSignatureError:
+        raise AuthError({"code": "token_expired",
+                        "description": "Token is expired"}, 403)
+    except jwt.JWTClaimsError:
+        raise AuthError({"code": "invalid_claims",
+                        "description":
+                            "Incorrect claims,"
+                            "please check the audience and issuer"}, 403)
+    except Exception:
+        raise AuthError({"code": "invalid_header",
+                        "description":
+                            "Unable to parse authentication"
+                            " token."}, 403)
 
-    raise AuthError({"code": "invalid_header",
-                    "description": "Unable to find appropriate key"}, 403)
+    # check scope
+    unverified_claims = jwt.get_unverified_claims(token)
+    if unverified_claims.get("scope"):
+        token_scopes = unverified_claims["scope"].split()
+        for token_scope in token_scopes:
+            if token_scope == AUTH0_REQUIRED_SCOPE:
+                _request_ctx_stack.top.current_user = payload
+                auth0_cache[token] = True
+                return True
 
+    raise AuthError({"code": "access_denied",
+                     "description": "Access not allowed"}, 403)
+
+    
 
 def is_authed():
     try:
