@@ -19,7 +19,7 @@ from mozaggregator.aggregator import (
     SIMPLE_MEASURES_LABELS, SIMPLE_MEASURES_PREFIX, _aggregate_metrics)
 from mozaggregator.db import clear_db, submit_aggregates
 from mozaggregator.service import (
-    CLIENT_CACHE_SLACK_SECONDS, METRICS_BLACKLIST, SUBMISSION_DATE_ETAG, app, auth0_cache, cache)
+    CLIENT_CACHE_SLACK_SECONDS, METRICS_BLACKLIST, NON_AUTH_METRICS_BLACKLIST, SUBMISSION_DATE_ETAG, app, auth0_cache, cache)
 from moztelemetry.histogram import Histogram
 
 
@@ -300,12 +300,30 @@ class ServiceTestCase(unittest.TestCase):
                 self.assertTrue(submission_date['date'] in _submission_dates)
                 self.assertTrue(submission_date['version'] in [x.split('.')[0] for x in _versions])
 
-    def test_filters(self):
+    def test_unauthed_filters(self):
         for channel in set(ping_dimensions['channel']) - {'release'}:
             for version in [v.split('.')[0] for v in ping_dimensions['version']]:
                 resp = self.as_json(self.app.get('/filters/?channel={}&version={}'.format(channel, version)))
 
-                # TODO: Test metric filters.
+                self.assertEqual(set(resp['metric']) & set(METRICS_BLACKLIST), set())
+                self.assertEqual(set(resp['metric']) & set(NON_AUTH_METRICS_BLACKLIST), set())
+                self.assertEqual(set(resp['application']), set(ping_dimensions['application']))
+                self.assertEqual(set(resp['architecture']), set(ping_dimensions['arch']))
+                self.assertEqual(set(resp['child']), set(['gpu', 'content', 'parent']))
+                self.assertEqual(set(resp['os']), set(['Windows_NT,6.1', 'Windows_NT,3.1.12', 'Linux,3.1', 'Linux,6.1']))
+
+    def test_authed_filters(self):
+        token = "cached-token"
+        auth0_cache[token] = True
+
+        for channel in set(ping_dimensions['channel']) - {'release'}:
+            for version in [v.split('.')[0] for v in ping_dimensions['version']]:
+                resp = self.as_json(self.app.get('/filters/?channel={}&version={}'.format(channel, version),
+                                                 headers={'If-None-Match': SUBMISSION_DATE_ETAG, 'Authorization': ' Bearer ' + token}))
+
+                self.assertEqual(set(resp['metric']) & set(METRICS_BLACKLIST), set())
+                self.assertEqual(set(resp['metric']) & set(NON_AUTH_METRICS_BLACKLIST), set(NON_AUTH_METRICS_BLACKLIST))
+                self.assertEqual(set(resp['metric']) - set(METRICS_BLACKLIST), set(resp['metric']))
                 self.assertEqual(set(resp['application']), set(ping_dimensions['application']))
                 self.assertEqual(set(resp['architecture']), set(ping_dimensions['arch']))
                 self.assertEqual(set(resp['child']), set(['gpu', 'content', 'parent']))

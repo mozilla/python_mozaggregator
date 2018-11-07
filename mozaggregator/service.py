@@ -396,7 +396,7 @@ def get_dates(prefix, channel):
     return Response(json.dumps(pretty_result), mimetype="application/json")
 
 
-def get_filter_options(channel, version, filters, filter):
+def get_filter_options(authed, channel, version, filters, filter):
     try:
         options = execute_query("select * from get_filter_options(%s, %s, %s)", (channel, version, filter))
         if not options or (len(options) == 1 and options[0][0] is None):
@@ -405,8 +405,13 @@ def get_filter_options(channel, version, filters, filter):
         pretty_opts = []
         for option in options:
             option = option[0]
-            if filter == "metric" and option.startswith(COUNT_HISTOGRAM_PREFIX):
-                pretty_opts.append(option[len(COUNT_HISTOGRAM_PREFIX) + 1:])
+            if filter == "metric":
+                if option.startswith(COUNT_HISTOGRAM_PREFIX):
+                    option = option[len(COUNT_HISTOGRAM_PREFIX) + 1:]
+                if option in NON_AUTH_METRICS_BLACKLIST and authed:
+                    pretty_opts.append(option)
+                elif option not in METRICS_BLACKLIST and option not in NON_AUTH_METRICS_BLACKLIST:
+                    pretty_opts.append(option)
             else:
                 pretty_opts.append(option)
 
@@ -433,13 +438,15 @@ def get_filters_options():
         abort(404)
 
     if channel == RELEASE_CHANNEL:
-        check_auth()
+        authed = check_auth()
+    else:
+        authed = is_authed()
 
     filters = {}
     dimensions = ["metric", "application", "architecture", "os", "child"]
 
     Parallel(n_jobs=len(dimensions), backend="threading")(
-        delayed(get_filter_options)(channel, version, filters, f)
+        delayed(get_filter_options)(authed, channel, version, filters, f)
         for f in dimensions
     )
 
