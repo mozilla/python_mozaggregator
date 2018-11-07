@@ -109,7 +109,7 @@ keyed_histograms_template = {
             },
             "sum": 1
         }
-    }
+    },
 }
 
 ignored_keyed_histograms_template = {
@@ -120,7 +120,12 @@ ignored_keyed_histograms_template = {
     "VIDEO_DETAILED_DROPPED_FRAMES_PROPORTION": {u"foo": {u"bucket_count": 20,
                                                           u"histogram_type": 0,
                                                           u"sum": 0,
-                                                          u"values": {u"0": 0}}}
+                                                          u"values": {u"0": 0}}},
+    u"SEARCH_COUNTS": {"ddg.urlbar": {"range": [1, 2],
+                                      "bucket_count": 3,
+                                      "histogram_type": 4,
+                                      "values": {"0": 1, "1": 0},
+                                      "sum": 1}},
 }
 
 
