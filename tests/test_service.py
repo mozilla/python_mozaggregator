@@ -150,7 +150,6 @@ class ServiceTestCase(unittest.TestCase):
                 set(qs.keys())
             )
 
-
     # Test response content.
     def test_cached_auth(self):
         token = "cached-token"
@@ -191,7 +190,6 @@ class ServiceTestCase(unittest.TestCase):
 
         assert cache.get((url, False)).data != cache.get((url, True)).data
 
-
     def test_response_cache_auth_first(self):
         token = 'cached-token'
         route = '/aggregates_by/build_id/channels/'
@@ -222,7 +220,6 @@ class ServiceTestCase(unittest.TestCase):
 
         assert cache.get((url, False)).data != cache.get((url, True)).data
 
-
     def test_clear_cache(self):
         route = '/aggregates_by/build_id/channels/'
         url = 'http://localhost' + route
@@ -237,7 +234,6 @@ class ServiceTestCase(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
 
         assert cache.get((url, False)) is None
-
 
     def test_auth_header(self):
         for metric in histograms_template.keys():

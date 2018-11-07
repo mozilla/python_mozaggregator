@@ -169,7 +169,6 @@ private_keyed_scalars_template = {
     "telemetry.dynamic_event_counts": {
         "some#dynamic#event": SCALAR_VALUE
     }
-
 }
 
 
