@@ -78,13 +78,11 @@ AUTH0_DOMAIN = "auth.mozilla.auth0.com"
 AUTH0_API_AUDIENCE = "https://aggregates.telemetry.mozilla.org/"
 AUTH0_ALGORITHMS = ["RS256"]
 AUTH0_REQUIRED_SCOPE = "read:aggregates"
-auth0_cache = ExpiringDict(max_len=1000, max_age_seconds=15*60)
+auth0_cache = ExpiringDict(max_len=1000, max_age_seconds=15 * 60)
 
 # CSP Headers
 DEFAULT_CSP_POLICY = "frame-ancestors 'none'; default-src 'self'"
 DEFAULT_X_FRAME_POLICY = "DENY"
-
-
 
 
 # Error handler
@@ -199,7 +197,6 @@ def check_auth():
     raise AuthError({"code": "access_denied",
                      "description": "Access not allowed"}, 403)
 
-    
 
 def is_authed():
     try:
@@ -484,7 +481,6 @@ def _allow_metric(channel, metric):
 def get_dates_metrics(prefix, channel):
     mapping = {"true": True, "false": False}
     dimensions = {k: mapping.get(v, v) for k, v in request.args.iteritems()}
-
 
     extra_dimensions = dimensions.viewkeys() - ALLOWED_DIMENSIONS
     if extra_dimensions:
