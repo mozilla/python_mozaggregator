@@ -61,6 +61,8 @@ ALLOWED_DIMENSIONS = ('application', 'architecture', 'child', 'dates', 'label',
 # Disallowed metrics for serving
 METRICS_BLACKLIST = [
     "SEARCH_COUNTS",
+    "SCALARS_BROWSER.SEARCH.WITH_ADS",
+    "SCALARS_BROWSER.SEARCH.AD_CLICKS",
 ]
 
 NON_AUTH_METRICS_BLACKLIST = [
