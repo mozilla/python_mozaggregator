@@ -6,6 +6,7 @@ from urllib import urlencode, urlopen
 from expiringdict import ExpiringDict
 
 import boto3
+import re
 import ujson as json
 from botocore.exceptions import ClientError
 from dockerflow.flask import Dockerflow
@@ -58,12 +59,14 @@ CLIENT_CACHE_SLACK_SECONDS = 3600
 ALLOWED_DIMENSIONS = ('application', 'architecture', 'child', 'dates', 'label',
                       'metric', 'os', 'osVersion', 'version')
 
-# Disallowed metrics for serving
-METRICS_BLACKLIST = [
-    "SEARCH_COUNTS",
-    "SCALARS_BROWSER.SEARCH.WITH_ADS",
-    "SCALARS_BROWSER.SEARCH.AD_CLICKS",
-]
+# Disallowed metrics for serving - matches regex
+METRICS_BLACKLIST_RE = map(
+    lambda x: re.compile(x),
+    [
+        r"SEARCH_COUNTS",
+        r"SCALARS_BROWSER\.SEARCH\..+",
+    ]
+)
 
 NON_AUTH_METRICS_BLACKLIST = [
     "SCALARS_TELEMETRY.EVENT_COUNTS",
@@ -398,6 +401,10 @@ def get_dates(prefix, channel):
     return Response(json.dumps(pretty_result), mimetype="application/json")
 
 
+def matches_blacklist(string):
+    return any((regex.match(string) for regex in METRICS_BLACKLIST_RE))
+
+
 def get_filter_options(authed, channel, version, filters, filter):
     try:
         options = execute_query("select * from get_filter_options(%s, %s, %s)", (channel, version, filter))
@@ -412,7 +419,7 @@ def get_filter_options(authed, channel, version, filters, filter):
                     option = option[len(COUNT_HISTOGRAM_PREFIX) + 1:]
                 if option in NON_AUTH_METRICS_BLACKLIST and authed:
                     pretty_opts.append(option)
-                elif option not in METRICS_BLACKLIST and option not in NON_AUTH_METRICS_BLACKLIST:
+                elif not matches_blacklist(option) and option not in NON_AUTH_METRICS_BLACKLIST:
                     pretty_opts.append(option)
             else:
                 pretty_opts.append(option)
@@ -467,7 +474,7 @@ def _get_description(channel, prefix, metric):
 
 
 def _allow_metric(channel, metric):
-    if metric in METRICS_BLACKLIST:
+    if matches_blacklist(metric):
         return False
     elif channel == RELEASE_CHANNEL:
         if ALLOW_ALL_RELEASE_METRICS:
