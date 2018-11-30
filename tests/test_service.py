@@ -19,11 +19,13 @@ from mozaggregator.aggregator import (
     SIMPLE_MEASURES_LABELS, SIMPLE_MEASURES_PREFIX, _aggregate_metrics)
 from mozaggregator.db import clear_db, submit_aggregates
 from mozaggregator.service import (
-    CLIENT_CACHE_SLACK_SECONDS, METRICS_BLACKLIST, NON_AUTH_METRICS_BLACKLIST, SUBMISSION_DATE_ETAG, app, auth0_cache, cache)
+    CLIENT_CACHE_SLACK_SECONDS, NON_AUTH_METRICS_BLACKLIST, SUBMISSION_DATE_ETAG, app, auth0_cache, cache)
 from moztelemetry.histogram import Histogram
 
 
 class ServiceTestCase(unittest.TestCase):
+
+    blacklisted_metrics = ['SEARCH_COUNTS', 'SCALARS_BROWSER.SEARCH.TEST_SCALAR', 'SCALARS_BROWSER.SEARCH.ANOTHER']
 
     @classmethod
     def setUpClass(cls):
@@ -259,7 +261,7 @@ class ServiceTestCase(unittest.TestCase):
         self.assertEqual(resp.status_code, 200, ('Expected, 200. Got {}'.format(resp.status_code)))
 
     def test_blacklist(self):
-        for metric in METRICS_BLACKLIST:
+        for metric in self.blacklisted_metrics:
             resp = self.app.get(
                 '/aggregates_by/build_id/channels/nightly/?version=41&dates={}&metric={}'
                 .format(self.build_id_1, metric),
@@ -305,7 +307,7 @@ class ServiceTestCase(unittest.TestCase):
             for version in [v.split('.')[0] for v in ping_dimensions['version']]:
                 resp = self.as_json(self.app.get('/filters/?channel={}&version={}'.format(channel, version)))
 
-                self.assertEqual(set(resp['metric']) & set(METRICS_BLACKLIST), set())
+                self.assertEqual(set(resp['metric']) & set(self.blacklisted_metrics), set())
                 self.assertEqual(set(resp['metric']) & set(NON_AUTH_METRICS_BLACKLIST), set())
                 self.assertEqual(set(resp['application']), set(ping_dimensions['application']))
                 self.assertEqual(set(resp['architecture']), set(ping_dimensions['arch']))
@@ -321,9 +323,9 @@ class ServiceTestCase(unittest.TestCase):
                 resp = self.as_json(self.app.get('/filters/?channel={}&version={}'.format(channel, version),
                                                  headers={'If-None-Match': SUBMISSION_DATE_ETAG, 'Authorization': ' Bearer ' + token}))
 
-                self.assertEqual(set(resp['metric']) & set(METRICS_BLACKLIST), set())
+                self.assertEqual(set(resp['metric']) & set(self.blacklisted_metrics), set())
                 self.assertEqual(set(resp['metric']) & set(NON_AUTH_METRICS_BLACKLIST), set(NON_AUTH_METRICS_BLACKLIST))
-                self.assertEqual(set(resp['metric']) - set(METRICS_BLACKLIST), set(resp['metric']))
+                self.assertEqual(set(resp['metric']) - set(self.blacklisted_metrics), set(resp['metric']))
                 self.assertEqual(set(resp['application']), set(ping_dimensions['application']))
                 self.assertEqual(set(resp['architecture']), set(ping_dimensions['arch']))
                 self.assertEqual(set(resp['child']), set(['gpu', 'content', 'parent']))

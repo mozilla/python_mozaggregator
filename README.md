@@ -39,7 +39,8 @@ There are jenkins pipeline jobs to deploy this.  See cloudops-deployment/project
 
 ## Enabling and Disabling Metrics
 To completely disable viewing of a metric, add it to the `METRICS_BLACKLIST`. No matter how this is deployed, users will
-never be able to see that metric.
+never be able to see that metric. Any regex can be matched against with the blacklist, for example to disable all metrics
+prefixed with "USER_DATA", put in `r"USER_DATA.*"`.
 
 ### Release Metrics
 By default, release metrics are not allowed by the service. To enable a specific release metric, add it to `PUBLIC_RELEASE_METRICS`.
