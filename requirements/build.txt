@@ -16,7 +16,7 @@ greenlet==0.4.15
 gunicorn==19.9.0
 idna==2.8
 itsdangerous==1.1.0
-joblib==0.12.5
+joblib==0.13.1
 matplotlib==2.2.3
 numpy==1.15.4
 pandas==0.23.4
