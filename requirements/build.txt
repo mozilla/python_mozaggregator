@@ -17,7 +17,7 @@ gunicorn==19.9.0
 idna==2.8
 itsdangerous==1.1.0
 joblib==0.13.1
-matplotlib==2.2.3
+matplotlib==3.0.2
 numpy==1.15.4
 pandas==0.23.4
 protobuf==3.6.1
