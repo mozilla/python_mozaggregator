@@ -21,7 +21,7 @@ matplotlib==3.0.2
 numpy==1.16.0
 pandas==0.24.0
 protobuf==3.6.1
-psycogreen==1.0
+psycogreen==1.0.1
 psycopg2-binary==2.7.5
 pyspark==2.3.0
 python-dateutil==2.7.5
