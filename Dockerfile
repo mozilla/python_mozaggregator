@@ -1,4 +1,4 @@
-FROM python:2-jessie
+FROM python:2-stretch
 
 ENV PYTHONUNBUFFERED=1 \
     POSTGRES_USER=root \
@@ -7,14 +7,9 @@ ENV PYTHONUNBUFFERED=1 \
 
 EXPOSE $PORT
 
-# python-slim base image has missing directories required for psql install
-RUN mkdir -p /usr/share/man/man1
-RUN mkdir -p /usr/share/man/man7
-
 # Install Java
-RUN echo "deb http://http.debian.net/debian jessie-backports main" >> /etc/apt/sources.list && \
-    apt-get update -y && \
-    apt-get install -y --no-install-recommends -t jessie-backports openjdk-7-jdk
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends openjdk-8-jdk
 
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends \
