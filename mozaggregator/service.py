@@ -5,10 +5,8 @@ from functools import wraps
 from urllib import urlencode, urlopen
 from expiringdict import ExpiringDict
 
-import boto3
 import re
 import ujson as json
-from botocore.exceptions import ClientError
 from dockerflow.flask import Dockerflow
 from flask import Flask, Response, abort, jsonify, request, _request_ctx_stack
 from flask_cache import Cache
@@ -42,14 +40,6 @@ sslify = SSLify(app, permanent=True, skips=['__version__', '__heartbeat__', '__l
 patch_all()
 patch_psycopg()
 cache.clear()
-
-# Cloudwatch Logging Config
-MAX_RETRIES = 3
-LOG_GROUP_NAME = 'telemetry-aggregation-service'
-LOG_STREAM_NAME = 'requests'
-
-sequence_token = None
-log_client = boto3.client('logs', region_name='us-west-2')
 
 # For caching - change this if after backfilling submission_date data
 SUBMISSION_DATE_ETAG = 'submission_date_v1'
@@ -304,59 +294,6 @@ def apply_headers(response):
     response.headers["Content-Security-Policy"] = DEFAULT_CSP_POLICY
     response.headers["X-Content-Security-Policy"] = DEFAULT_CSP_POLICY
     return response
-
-
-@app.before_request
-def log_request():
-    """Log format: Origin, Referrer, IP Address, URL
-    """
-    global sequence_token, LOG_GROUP_NAME, LOG_STREAM_NAME
-
-    origin = request.headers.get('Origin') or ''
-    referrer = request.headers.get('Referer') or request.referrer or ''
-    ip_addr = request.access_route[0] or request.remote_addr or ''
-    data = (origin, referrer, ip_addr, request.url)
-
-    millis = int(round(time.time() * 1000))
-    log_line = ','.join([d.replace(',', '\,') for d in data])
-
-    if not os.getenv('DEVELOPMENT'):
-        # See https://github.com/kislyuk/watchtower for inspiration
-
-        kwargs = {
-            'logGroupName': LOG_GROUP_NAME,
-            'logStreamName': LOG_STREAM_NAME,
-            'logEvents': [
-                {
-                    'timestamp': millis,
-                    'message': log_line
-                }
-            ]
-        }
-
-        response = None
-
-        for retry in xrange(MAX_RETRIES + 1):
-            if sequence_token is not None:
-                kwargs['sequenceToken'] = sequence_token
-            try:
-                response = log_client.put_log_events(**kwargs)
-                break
-            except ClientError as e:
-                if e.response.get("Error", {}).get("Code") in \
-                   ("DataAlreadyAcceptedException", "InvalidSequenceTokenException"):
-                    try:
-                        stream_describe = log_client.describe_log_streams(
-                            logGroupName=LOG_GROUP_NAME,
-                            logStreamNamePrefix=LOG_STREAM_NAME)
-                        sequence_token = stream_describe['logStreams'][0]['uploadSequenceToken']
-                    except ClientError:
-                        pass
-                else:
-                    pass
-
-        if response and response.get('nextSequenceToken'):
-            sequence_token = response['nextSequenceToken']
 
 
 @app.route('/status')
