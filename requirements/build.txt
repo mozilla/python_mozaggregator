@@ -8,7 +8,7 @@ awscli==1.16.225
 blinker==1.4
 boto3==1.9.215
 botocore==1.12.215
-certifi==2018.10.15
+certifi==2019.6.16
 click==7.0
 dockerflow==2018.4.0
 gevent==1.3.7
