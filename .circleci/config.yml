@@ -20,15 +20,10 @@ jobs:
       - run: docker build -t app:build .
 
   test:
-    machine:
-      enable: true
+    machine: true
     working_directory: ~/mozilla/python_mozaggregator
     steps:
       - checkout
-      - run: sudo apt-get update
-      - run: sudo apt-get install python-dev
-      - run: sudo pip install --upgrade pip
-      - run: pip install docker-compose
       - run: docker info
       - run: docker --version
       - run: make test
