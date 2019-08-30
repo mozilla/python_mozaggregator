@@ -18,6 +18,10 @@ PATH_BUCKET = environ.get('bucket', 'telemetry-parquet')
 PATH_PREFIX = 'aggregates_poc'
 PATH_VERSION = 'v1'
 
+DEFAULT_PATH = 's3://{bucket}/{prefix}/{version}'.format(
+    bucket=PATH_BUCKET, prefix=PATH_PREFIX, version=PATH_VERSION
+)
+
 SCHEMA = StructType([
     StructField('period', StringType(), False),
     StructField('aggregate_type', StringType(), False),
@@ -46,17 +50,11 @@ BUILD_ID_CUTOFFS = {
 }
 
 
-def write_aggregates(sc, aggregates, mode):
+def write_aggregates(sc, aggregates, path=DEFAULT_PATH, mode="append"):
     build_id_agg = aggregates[0].flatMap(lambda row: _explode(row, 'build_id'))
     submission_date_agg = aggregates[1].flatMap(lambda row: _explode(row, 'submission_date'))
     df = sc.createDataFrame(build_id_agg, SCHEMA)
     df = df.union(sc.createDataFrame(submission_date_agg, SCHEMA))
-    write_parquet(sc, df, mode)
-
-
-def write_parquet(sc, df, mode):
-    path = 's3://{bucket}/{prefix}/{version}'.format(
-        bucket=PATH_BUCKET, prefix=PATH_PREFIX, version=PATH_VERSION)
 
     (df.repartition('metric', 'aggregate_type', 'period')
        .sortWithinPartitions(['channel', 'version', 'submission_date'])
@@ -217,6 +215,6 @@ if __name__ == '__main__':
                         datetime.timedelta(days=1)).strftime('%Y%m%d')
 
     aggs = aggregate_metrics(sparkSession.sparkContext, 'nightly', process_date)
-    write_aggregates(sparkSession, aggs, 'append')
+    write_aggregates(sparkSession, aggs, DEFAULT_PATH, 'append')
 
     # TODO: Merge parquet files.
