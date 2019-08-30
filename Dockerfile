@@ -36,6 +36,9 @@ WORKDIR /tmp
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements/build.txt
 
+ENV PYSPARK_PYTHON=python \
+    SPARK_HOME=/usr/local/lib/python2.7/site-packages/pyspark
+
 # Switch back to home directory
 WORKDIR /app
 
