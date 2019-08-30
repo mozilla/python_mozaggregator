@@ -43,10 +43,7 @@ def get_aggregates_dataframe(spark, aggregates):
     return spark.createDataFrame(build_id_agg, SCHEMA)
 
 
-def write_parquet(df):
-    path = 's3://{bucket}/{prefix}/{version}'.format(
-        bucket=PATH_BUCKET, prefix=PATH_PREFIX, version=PATH_VERSION)
-
+def write_parquet(df, path):
     (df.repartition('metric')
        .sortWithinPartitions(['channel', 'version', 'submission_date'])
        .write
@@ -179,4 +176,7 @@ def aggregate_metrics(sc, begin, end=None, num_partitions=10000):
 def run(sparkSession, begin, end=None):
     agg_metrics = aggregate_metrics(sparkSession.sparkContext, begin, end)
     aggs = get_aggregates_dataframe(sparkSession, agg_metrics)
-    write_parquet(aggs)
+    path = 's3://{bucket}/{prefix}/{version}'.format(
+        bucket=PATH_BUCKET, prefix=PATH_PREFIX, version=PATH_VERSION
+    )
+    write_parquet(aggs, path)
