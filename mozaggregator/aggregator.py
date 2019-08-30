@@ -64,7 +64,7 @@ def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1, fenne
                           .records(sc, sample=fennec_ping_fraction)
 
     all_pings = pings.union(fennec_pings)
-    return _aggregate_metrics(all_pings)
+    return _aggregate_metrics(all_pings, num_reducers)
 
 
 def _aggregate_metrics(pings, num_reducers=10000):
