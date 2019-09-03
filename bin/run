@@ -17,7 +17,7 @@ case $1 in
     exec python mozaggregator/service.py 0.0.0.0:${PORT}
     ;;
   test)
-    nosetests --with-coverage --cover-package=mozaggregator ./tests/*.py || exit 1
+    pytest --cov=mozaggregator tests || exit 1
 
     if [[ ! -z ${CI+check} ]]; then
       echo "TODO: Set up codecov."
