@@ -1,8 +1,10 @@
 import logging
 import unittest
 
-import dataset as d
 import pyspark
+import pytest
+
+import dataset as d
 from mozaggregator.parquet import _aggregate_metrics
 
 

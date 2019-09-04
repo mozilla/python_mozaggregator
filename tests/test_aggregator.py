@@ -2,39 +2,45 @@ import logging
 from collections import defaultdict
 
 import pandas as pd
-import dataset as d
+import pytest
 import pyspark
-from mozaggregator.aggregator import (
-    PROCESS_TYPES, COUNT_HISTOGRAM_PREFIX, NUMERIC_SCALARS_PREFIX,
-    SIMPLE_MEASURES_PREFIX, _aggregate_metrics)
+
+import dataset as d
+from mozaggregator.aggregator import (COUNT_HISTOGRAM_PREFIX,
+                                      NUMERIC_SCALARS_PREFIX, PROCESS_TYPES,
+                                      SIMPLE_MEASURES_PREFIX,
+                                      _aggregate_metrics)
 
 
-def setup_module():
-    global build_id_aggregates
-    global submission_date_aggregates
-
+@pytest.fixture()
+def aggregates(sc):
     logger = logging.getLogger("py4j")
     logger.setLevel(logging.ERROR)
 
-    sc = pyspark.SparkContext(master="local[*]")
     raw_pings = list(d.generate_pings())
-    build_id_aggregates, submission_date_aggregates = _aggregate_metrics(sc.parallelize(raw_pings), num_reducers=10)
-    build_id_aggregates = build_id_aggregates.collect()
-    submission_date_aggregates = submission_date_aggregates.collect()
+    return _aggregate_metrics(sc.parallelize(raw_pings), num_reducers=10)
 
+
+@pytest.fixture()
+def build_id_aggregates(aggregates):
     # Note: most tests are based on the build-id aggregates as the aggregation
     # code is the same for both scenarios.
-    sc.stop()
+    return aggregates[0].collect()
 
 
-def test_count():
+@pytest.fixture()
+def submission_date_aggregates(aggregates):
+    return aggregates[1].collect()
+
+
+def test_count(build_id_aggregates, submission_date_aggregates):
     pings = list(d.generate_pings())
     num_build_ids = len(d.ping_dimensions["build_id"])
     assert(len(pings) / d.NUM_PINGS_PER_DIMENSIONS == len(build_id_aggregates))
     assert(len(pings) / d.NUM_PINGS_PER_DIMENSIONS / num_build_ids == len(submission_date_aggregates))
 
 
-def test_keys():
+def test_keys(build_id_aggregates, submission_date_aggregates):
     for aggregate in build_id_aggregates:
         submission_date, channel, version, build_id, app, arch, os, os_version = aggregate[0]
 
@@ -65,7 +71,7 @@ def test_keys():
             assert(os_version in d.ping_dimensions["os_version"])
 
 
-def test_simple_measurements():
+def test_simple_measurements(build_id_aggregates):
     metric_count = defaultdict(lambda: defaultdict(int))
 
     for aggregate in build_id_aggregates:
@@ -88,7 +94,7 @@ def test_simple_measurements():
             assert(v == len(build_id_aggregates))
 
 
-def test_numerical_scalars():
+def test_numerical_scalars(build_id_aggregates):
     metric_count = defaultdict(lambda: defaultdict(int))
     scalar_metrics = set([k.upper() for k in d.scalars_template.keys()])
     keyed_scalar_metrics = set([k.upper() for k in d.keyed_scalars_template.keys()])
@@ -123,7 +129,7 @@ def test_numerical_scalars():
             assert(v == len(build_id_aggregates))
 
 
-def test_classic_histograms():
+def test_classic_histograms(build_id_aggregates):
     metric_count = defaultdict(lambda: defaultdict(int))
     histograms = {k: v for k, v in d.histograms_template.iteritems()
                   if v is not None and v.get("histogram_type", -1) != 4 and not k.startswith("USE_COUNTER2_")}
@@ -148,7 +154,7 @@ def test_classic_histograms():
             assert(v == len(build_id_aggregates))
 
 
-def test_count_histograms():
+def test_count_histograms(build_id_aggregates):
     metric_count = defaultdict(lambda: defaultdict(int))
     histograms = {"{}_{}".format(COUNT_HISTOGRAM_PREFIX, k): v for k, v in d.histograms_template.iteritems()
                   if v is not None and v.get("histogram_type", -1) == 4 and not k.endswith("CONTENT_DOCUMENTS_DESTROYED")}
@@ -172,7 +178,7 @@ def test_count_histograms():
             assert(v == len(build_id_aggregates))
 
 
-def test_keyed_histograms():
+def test_keyed_histograms(build_id_aggregates):
     metric_count = defaultdict(lambda: defaultdict(int))
 
     for aggregate in build_id_aggregates:

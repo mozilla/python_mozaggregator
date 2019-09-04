@@ -1,33 +1,32 @@
 import logging
 
-import mobile_dataset as d
 import pyspark
-from mozaggregator.mobile import _aggregate_metrics
+import pytest
+
+import mobile_dataset as d
+from mozaggregator.mobile import _aggregate_metrics, get_aggregates_dataframe
 
 
-def setup_module():
-    global sc
-    global aggregates
-
+@pytest.fixture()
+def aggregates_rdd(sc):
     logger = logging.getLogger("py4j")
     logger.setLevel(logging.ERROR)
 
-    sc = pyspark.SparkContext(master="local[*]")
     raw_pings = list(d.generate_mobile_pings())
-    aggregates = _aggregate_metrics(sc.parallelize(raw_pings), num_partitions=10)
-    aggregates = aggregates.collect()
-
-    # Note: most tests are based on the build-id aggregates as the aggregation
-    # code is the same for both scenarios.
-    sc.stop()
+    return _aggregate_metrics(sc.parallelize(raw_pings), num_partitions=10)
 
 
-def test_count():
+@pytest.fixture()
+def aggregates(aggregates_rdd):
+    return aggregates_rdd.collect()
+
+
+def test_count(aggregates):
     pings = list(d.generate_mobile_pings())
     assert(len(pings) / d.NUM_PINGS_PER_DIMENSIONS == len(aggregates))
 
 
-def test_keys():
+def test_keys(aggregates):
     for aggregate in aggregates:
         (submission_date, channel, version, build_id, application,
          architecture, os, os_version) = aggregate[0]
@@ -41,7 +40,7 @@ def test_keys():
         assert(os_version in d.ping_dimensions["osversion"])
 
 
-def test_histograms():
+def test_histograms(aggregates):
     n = d.NUM_PINGS_PER_DIMENSIONS
     for aggregate in aggregates:
         for metric_data in aggregate[1].items():
@@ -62,7 +61,7 @@ def test_histograms():
                     assert(metric_data[1]['histogram'][k] == v * n)
 
 
-def test_scalars():
+def test_scalars(aggregates):
     n = d.NUM_PINGS_PER_DIMENSIONS
     for aggregate in aggregates:
         for metric_data in aggregate[1].items():
