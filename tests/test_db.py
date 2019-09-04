@@ -2,12 +2,14 @@ import json
 import logging
 
 import pyspark
-from testfixtures import LogCapture
+import pytest
 
-from dataset import DATE_FMT, SUBMISSION_DATE_1, generate_pings, ping_dimensions
+from dataset import (DATE_FMT, SUBMISSION_DATE_1, generate_pings,
+                     ping_dimensions)
 from mozaggregator.aggregator import _aggregate_metrics
-from mozaggregator.db import (
-    NoticeLoggingCursor, _create_connection, submit_aggregates)
+from mozaggregator.db import (NoticeLoggingCursor, _create_connection,
+                              submit_aggregates)
+from testfixtures import LogCapture
 
 SERVICE_URI = "http://localhost:5000"
 
@@ -16,18 +18,12 @@ logger = logging.getLogger("py4j")
 logger.setLevel(logging.INFO)
 
 
-def setup_module():
-    global aggregates
-    global sc
-
-    sc = pyspark.SparkContext(master="local[*]")
+@pytest.fixture()
+def aggregates(sc):
     raw_pings = list(generate_pings())
     aggregates = _aggregate_metrics(sc.parallelize(raw_pings), num_reducers=10)
     submit_aggregates(aggregates)
-
-
-def teardown_module():
-    sc.stop()
+    return aggregates
 
 
 def test_connection():
@@ -35,7 +31,7 @@ def test_connection():
     assert(db)
 
 
-def test_submit():
+def test_submit(aggregates):
     # Multiple submissions should not alter the aggregates in the db
     build_id_count, submission_date_count = submit_aggregates(aggregates)
 
@@ -47,7 +43,7 @@ def test_submit():
     assert(submission_date_count == n_submission_dates * n_channels * n_versions)
 
 
-def test_null_label_character_submit():
+def test_null_label_character_submit(sc):
     metric_info = ("SIMPLE_MEASURES_NULL_METRIC_LABEL", u"\u0001\u0000\u0000\u0000\u7000\ub82c", False)
     payload = {"sum": 4, "count": 2, "histogram": {2: 2}}
     key = ('20161111', 'nightly', '52', '20161111', '', 'Firefox', 'arch', 'Windows', '2.4.21')
@@ -60,7 +56,7 @@ def test_null_label_character_submit():
     assert submission_date_count == 0, "submission date count should be 0, was {}".format(build_id_count)
 
 
-def test_null_arch_character_submit():
+def test_null_arch_character_submit(sc):
     metric_info = ("SIMPLE_MEASURES_NULL_ARCHITECTURE", "", False)
     payload = {"sum": 4, "count": 2, "histogram": {2: 2}}
     key = ('20161111', 'nightly', '52', '20161111', '', "Firefox", u"\x00", 'Windows', '2.4.21')
