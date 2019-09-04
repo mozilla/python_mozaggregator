@@ -4,9 +4,13 @@ import logging
 import pyspark
 import pytest
 
+import boto3
+from click.testing import CliRunner
 from dataset import (DATE_FMT, SUBMISSION_DATE_1, generate_pings,
                      ping_dimensions)
+from moto import mock_s3
 from mozaggregator.aggregator import _aggregate_metrics
+from mozaggregator.cli import run_aggregator
 from mozaggregator.db import (NoticeLoggingCursor, _create_connection,
                               submit_aggregates)
 from testfixtures import LogCapture
@@ -122,3 +126,57 @@ def test_notice_logging_cursor():
     with LogCapture("py4j") as lc:
         cursor.execute("SELECT cast_array_to_bigint_safe(ARRAY[9223372036854775808]);")
     lc.check(expected)
+
+
+@mock_s3
+def test_aggregation_cli(tmp_path, monkeypatch, spark):
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "access")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "secret")
+
+    bucket = "test_bucket"
+    prefix = "test_prefix"
+
+    # https://github.com/spulec/moto/issues/1926#issuecomment-437078541
+    boto3.setup_default_session()
+    s3 = boto3.resource("s3")
+    s3.create_bucket(Bucket=bucket)
+
+    test_creds = str(tmp_path / "creds")
+    # generally points to the production credentials
+    creds = {"DB_TEST_URL": "dbname=postgres user=postgres host=db"}
+    with open(test_creds, "w") as f:
+        json.dump(creds, f)
+    s3.Bucket(bucket).upload_file(str(test_creds), prefix)
+
+    class Dataset:
+        @staticmethod
+        def from_source(*args, **kwargs):
+            return Dataset()
+
+        def where(self, *args, **kwargs):
+            return self
+
+        def records(self, *args, **kwargs):
+            return spark.sparkContext.parallelize(generate_pings())
+
+    monkeypatch.setattr("mozaggregator.aggregator.Dataset", Dataset)
+
+    result = CliRunner().invoke(
+        run_aggregator,
+        [
+            "--date",
+            "20190901",
+            "--channels",
+            "nightly,beta",
+            "--credentials-bucket",
+            bucket,
+            "--credentials-prefix",
+            prefix,
+            "--num-partitions",
+            10,
+        ],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0
+    test_aggregate_histograms()

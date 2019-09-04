@@ -2,8 +2,10 @@ import logging
 
 import pyspark
 import pytest
+from click.testing import CliRunner
 
 import mobile_dataset as d
+from mozaggregator.cli import run_mobile
 from mozaggregator.mobile import _aggregate_metrics, get_aggregates_dataframe
 
 
@@ -78,3 +80,41 @@ def test_scalars(aggregates):
             assert(metric_data[1]['count'] == n)
             assert(metric_data[1]['sum'] == value * n)
             assert(metric_data[1]['histogram'] == {str(value): n})
+
+
+def test_mobile_aggregation_cli(tmp_path, monkeypatch, spark, aggregates_rdd):
+    output = str(tmp_path / "output")
+
+    class Dataset:
+        @staticmethod
+        def from_source(*args, **kwargs):
+            return Dataset()
+
+        def where(self, *args, **kwargs):
+            return self
+
+        def records(self, *args, **kwargs):
+            return spark.sparkContext.parallelize(d.generate_mobile_pings())
+
+    monkeypatch.setattr("mozaggregator.mobile.Dataset", Dataset)
+
+    result = CliRunner().invoke(
+        run_mobile,
+        [
+            "--date",
+            "20190901",
+            "--output",
+            output,
+            "--num-partitions",
+            10,
+        ],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0
+
+    expect = get_aggregates_dataframe(spark, aggregates_rdd)
+    actual = spark.read.parquet(output)
+
+    assert expect.count() > 0 and actual.count() > 0
+    assert expect.count() == actual.count()
