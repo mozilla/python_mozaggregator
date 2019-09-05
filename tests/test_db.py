@@ -136,8 +136,6 @@ def test_aggregation_cli(tmp_path, monkeypatch, spark):
     bucket = "test_bucket"
     prefix = "test_prefix"
 
-    # https://github.com/spulec/moto/issues/1926#issuecomment-437078541
-    boto3.setup_default_session()
     s3 = boto3.resource("s3")
     s3.create_bucket(Bucket=bucket)
 
