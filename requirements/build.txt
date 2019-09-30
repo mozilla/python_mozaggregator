@@ -26,7 +26,7 @@ psycopg2-binary==2.8.3
 pyspark==2.4.4
 python-dateutil==2.8.0
 python-jose-cryptodome==1.3.2
-python-moztelemetry==0.10.4
+python-moztelemetry==0.10.5
 python-snappy==0.5.3
 scipy==1.0.1
 ujson==1.35
