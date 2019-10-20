@@ -44,7 +44,7 @@ prefixed with "USER_DATA", put in `r"USER_DATA.*"`.
 
 ### Release Metrics
 By default, release metrics are not allowed by the service. To enable a specific release metric, add it to `PUBLIC_RELEASE_METRICS`.
-It will then be viewable publically.
+It will then be viewable publicly.
 
 To enable all release metrics (except those in `METRICS_BLACKLIST`), set the envvar `ALLOW_ALL_RELEASE_METRICS` to "True".
 
