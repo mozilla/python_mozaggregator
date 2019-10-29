@@ -1,13 +1,15 @@
 import logging
+import os
 import unittest
 
 import pyspark
-import pytest
 from click.testing import CliRunner
 
 import dataset as d
-from mozaggregator.parquet import _aggregate_metrics
+import pytest
 from mozaggregator.cli import run_parquet
+from mozaggregator.parquet import _aggregate_metrics
+from utils import runif_bigquery_testing_enabled
 
 
 class testParquetAggregation(unittest.TestCase):
@@ -80,4 +82,35 @@ def test_parquet_aggregation_cli(tmp_path, monkeypatch, spark, raw_pings):
 
     df = spark.read.parquet(output)
     # 31104 is the empirical count from the generated pings
+    assert df.count() > len(raw_pings)
+
+
+@runif_bigquery_testing_enabled
+def test_parquet_aggregation_cli_bigquery(tmp_path, spark, raw_pings, bq_testing_table):
+    output = str(tmp_path / "output")
+
+    result = CliRunner().invoke(
+        run_parquet,
+        [
+            "--date",
+            d.SUBMISSION_DATE_1.strftime('%Y%m%d'),
+            "--channels",
+            "nightly,beta",
+            "--output",
+            output,
+            "--num-partitions",
+            10,
+            "--source",
+            "bigquery",
+            "--project-id",
+            os.environ["PROJECT_ID"],
+            "--dataset-id",
+            "pytest_mozaggregator_test"
+        ],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0
+
+    df = spark.read.parquet(output)
     assert df.count() > len(raw_pings)
