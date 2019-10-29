@@ -1,19 +1,17 @@
 import json
 import logging
 
-import pyspark
-import pytest
-
-import boto3
 from click.testing import CliRunner
+
+import pytest
 from dataset import (DATE_FMT, SUBMISSION_DATE_1, generate_pings,
                      ping_dimensions)
-from moto import mock_s3
 from mozaggregator.aggregator import _aggregate_metrics
 from mozaggregator.cli import run_aggregator
 from mozaggregator.db import (NoticeLoggingCursor, _create_connection,
-                              submit_aggregates)
+                              submit_aggregates, clear_db)
 from testfixtures import LogCapture
+from utils import runif_bigquery_testing_enabled
 
 SERVICE_URI = "http://localhost:5000"
 
@@ -28,6 +26,11 @@ def aggregates(sc):
     aggregates = _aggregate_metrics(sc.parallelize(raw_pings), num_reducers=10)
     submit_aggregates(aggregates)
     return aggregates
+
+
+@pytest.fixture(autouse=True)
+def clear_state():
+    clear_db()
 
 
 def test_connection():
@@ -73,7 +76,7 @@ def test_null_arch_character_submit(sc):
     assert submission_date_count == 0, "submission date count should be 0, was {}".format(build_id_count)
 
 
-def test_new_db_functions_backwards_compatible():
+def test_new_db_functions_backwards_compatible(aggregates):
     conn = _create_connection()
     cursor = conn.cursor()
 
@@ -128,23 +131,15 @@ def test_notice_logging_cursor():
     lc.check(expected)
 
 
-@mock_s3
 def test_aggregation_cli(tmp_path, monkeypatch, spark):
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "access")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "secret")
-
-    bucket = "test_bucket"
-    prefix = "test_prefix"
-
-    s3 = boto3.resource("s3")
-    s3.create_bucket(Bucket=bucket)
 
     test_creds = str(tmp_path / "creds")
     # generally points to the production credentials
     creds = {"DB_TEST_URL": "dbname=postgres user=postgres host=db"}
     with open(test_creds, "w") as f:
         json.dump(creds, f)
-    s3.Bucket(bucket).upload_file(str(test_creds), prefix)
 
     class Dataset:
         @staticmethod
@@ -163,18 +158,55 @@ def test_aggregation_cli(tmp_path, monkeypatch, spark):
         run_aggregator,
         [
             "--date",
-            "20190901",
+            SUBMISSION_DATE_1.strftime('%Y%m%d'),
             "--channels",
             "nightly,beta",
+            "--credentials-protocol",
+            "file",
             "--credentials-bucket",
-            bucket,
+            "/",
             "--credentials-prefix",
-            prefix,
+            test_creds,
             "--num-partitions",
             10,
         ],
         catch_exceptions=False,
     )
 
-    assert result.exit_code == 0
-    test_aggregate_histograms()
+    assert result.exit_code == 0, result.output
+
+
+@runif_bigquery_testing_enabled
+def test_aggregation_cli_bigquery(tmp_path, monkeypatch, spark, bq_testing_table):
+    test_creds = str(tmp_path / "creds")
+    # generally points to the production credentials
+    creds = {"DB_TEST_URL": "dbname=postgres user=postgres host=db"}
+    with open(test_creds, "w") as f:
+        json.dump(creds, f)
+
+    result = CliRunner().invoke(
+        run_aggregator,
+        [
+            "--date",
+            SUBMISSION_DATE_1.strftime('%Y%m%d'),
+            "--channels",
+            "nightly,beta",
+            "--credentials-protocol",
+            "file",
+            "--credentials-bucket",
+            "/",
+            "--credentials-prefix",
+            test_creds,
+            "--num-partitions",
+            10,
+            "--source",
+            "bigquery",
+            "--project-id",
+            os.environ["PROJECT_ID"],
+            "--dataset-id",
+            "pytest_mozaggregator_test"
+        ],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0, result.output
