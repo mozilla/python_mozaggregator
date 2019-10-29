@@ -1,4 +1,4 @@
-version: '2'
+version: '2.1'
 
 services:
   db:
@@ -10,10 +10,16 @@ services:
       dockerfile: Dockerfile.dev
     ports:
       - "5000:5000"
-    volumes:
-      - $PWD:/app
     depends_on:
       - db
     links:
       - db
     command: serve
+    volumes:
+      - ./:/app/
+      - ${GOOGLE_APPLICATION_CREDENTIALS:-./setup.py}:/app/.credentials
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/.credentials
+      - PROJECT_ID
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
