@@ -13,6 +13,8 @@ from mozaggregator.db import histogram_revision_map
 from moztelemetry.dataset import Dataset
 from moztelemetry.histogram import Histogram
 
+from .bigquery import BigQueryDataset
+
 
 PATH_BUCKET = environ.get('bucket', 'telemetry-parquet')
 PATH_PREFIX = 'aggregates_poc'
@@ -166,7 +168,8 @@ def _map_ping_to_dimensions(ping):
 
 
 def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1,
-                      fennec_ping_fraction=1, num_reducers=10000):
+                      fennec_ping_fraction=1, num_reducers=10000,
+                      source="moztelemetry", project_id=None, dataset_id=None):
     """
     Returns the build-id and submission date aggregates for a given submission date.
 
@@ -179,25 +182,43 @@ def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1,
     if not isinstance(channels, (tuple, list)):
         channels = [channels]
 
-    channels = set(channels)
-    source = 'telemetry'
-    where = {
-        'appUpdateChannel': lambda x: x in channels,
-        'submissionDate': submission_date,
-        'sourceVersion': '4',
-    }
-
-    pings = (Dataset.from_source(source)
+    if source == "bigquery" and project_id and dataset_id:
+        dataset = BigQueryDataset()
+        pings = dataset.load(
+            project_id,
+            dataset_id,
+            "main",
+            submission_date,
+            channels,
+            "normalized_app_name <> 'Fennec'"
+        )
+        fennec_pings = dataset.load(
+            project_id,
+            dataset_id,
+            "saved_session",
+            submission_date,
+            channels,
+            "normalized_app_name = 'Fennec'"
+        )
+    else:
+        channels = set(channels)
+        source = 'telemetry'
+        where = {
+            'appUpdateChannel': lambda x: x in channels,
+            'submissionDate': submission_date,
+            'sourceVersion': '4',
+        }
+        pings = (Dataset.from_source(source)
                     .where(docType='main',
-                           appName=lambda x: x != 'Fennec',
-                           **where)
+                        appName=lambda x: x != 'Fennec',
+                        **where)
                     .records(sc, sample=main_ping_fraction))
 
-    fennec_pings = (Dataset.from_source(source)
-                           .where(docType='saved_session',
-                                  appName='Fennec',
-                                  **where)
-                           .records(sc, sample=fennec_ping_fraction))
+        fennec_pings = (Dataset.from_source(source)
+                            .where(docType='saved_session',
+                                appName='Fennec',
+                                **where)
+                        .records(sc, sample=fennec_ping_fraction))
 
     all_pings = pings.union(fennec_pings)
     return _aggregate_metrics(all_pings, num_reducers)

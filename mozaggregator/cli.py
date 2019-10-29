@@ -5,8 +5,6 @@ from os import environ
 import click
 from pyspark.sql import SparkSession
 
-import boto3
-
 from . import aggregator, db, parquet, mobile
 
 DS_NODASH_YESTERDAY = datetime.strftime(datetime.utcnow() - timedelta(1), "%Y%m%d")
