@@ -12,6 +12,7 @@ from mozaggregator.aggregator import (
 from mozaggregator.db import histogram_revision_map
 from moztelemetry.dataset import Dataset
 from moztelemetry.histogram import Histogram
+from .bigquery import BigQueryDataset
 
 import warnings
 warnings.filterwarnings("always")
@@ -150,7 +151,15 @@ def _map_ping_to_dimensions(ping):
         raise
 
 
-def aggregate_metrics(sc, begin, end=None, num_partitions=10000):
+def aggregate_metrics(
+    sc,
+    begin,
+    end=None,
+    num_partitions=10000,
+    source="moztelemetry",
+    project_id=None,
+    dataset_id=None,
+    ):
     """
     Returns the build-id and submission date aggregates for a given submission date.
 
@@ -165,11 +174,19 @@ def aggregate_metrics(sc, begin, end=None, num_partitions=10000):
     if end is None:
         end = begin
 
-    pings = (Dataset.from_source('telemetry')
-                    .where(docType='mobile_metrics',
-                           submissionDate=lambda x: begin <= x <= end)
-                    .records(sc))
-
+    if source == "bigquery" and project_id and dataset_id:
+        if end != begin:
+            raise NotImplementedError(
+                "processing multiple days of data is not supported for BigQuery source"
+            )
+        dataset = BigQueryDataset()
+        pings = dataset.load(project_id, dataset_id, "mobile_metrics", begin, doc_version="v1")
+    else:
+        pings = (Dataset.from_source('telemetry')
+                        .where(docType='mobile_metrics',
+                            submissionDate=lambda x: begin <= x <= end)
+                        .records(sc))
+    assert pings.count() > 0
     return _aggregate_metrics(pings, num_partitions)
 
 
