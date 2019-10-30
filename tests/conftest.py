@@ -61,4 +61,4 @@ def bq_testing_table():
 
     yield
 
-    # bq_client.delete_dataset(dataset_id, delete_contents=True, not_found_ok=True)
+    bq_client.delete_dataset(dataset_id, delete_contents=True, not_found_ok=True)

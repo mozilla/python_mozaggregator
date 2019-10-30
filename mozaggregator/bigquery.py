@@ -11,7 +11,7 @@ class BigQueryDataset:
         self.spark = SparkSession.builder.getOrCreate()
 
     @staticmethod
-    def _date_add(date_ds, days):
+    def _date_add_days(date_ds, days):
         dt = datetime.strptime(date_ds, "%Y%m%d")
         return datetime.strftime(dt + timedelta(days), "%Y-%m-%d")
 
@@ -56,6 +56,11 @@ class BigQueryDataset:
             |-- sample_id: long (nullable = true)
             |-- submission_timestamp: timestamp (nullable = true)
         """
+        # Add 32 to the window size to automatically decompress zlib or gzip.
+        # Because for python 2/3 compatibility, compression and decompression is
+        # done directly via zlib instead of the gzip library. Data is stored in
+        # payload_bytes_decoded as gzip.
+        # https://docs.python.org/2/library/zlib.html#zlib.decompress
         data = json.loads(zlib.decompress(bytes(row.payload), 15 + 32))
         # add `meta` fields for backwards compatibility
         data["meta"] = {
@@ -81,8 +86,8 @@ class BigQueryDataset:
         doc_version="v4",
     ):
 
-        start = self._date_add(submission_date, 0)
-        end = self._date_add(submission_date, 1)
+        start = self._date_add_days(submission_date, 0)
+        end = self._date_add_days(submission_date, 1)
 
         date_clause = "submission_timestamp >= '{start}' AND submission_timestamp < '{end}'".format(
             start=start, end=end
