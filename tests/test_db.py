@@ -52,7 +52,7 @@ def test_submit(aggregates):
 
 
 def test_null_label_character_submit(sc):
-    metric_info = ("SIMPLE_MEASURES_NULL_METRIC_LABEL", u"\u0001\u0000\u0000\u0000\u7000\ub82c", False)
+    metric_info = ("SIMPLE_MEASURES_NULL_METRIC_LABEL", "\u0001\u0000\u0000\u0000\u7000\ub82c", False)
     payload = {"sum": 4, "count": 2, "histogram": {2: 2}}
     key = ('20161111', 'nightly', '52', '20161111', '', 'Firefox', 'arch', 'Windows', '2.4.21')
     aggregate = (key, {metric_info: payload})
@@ -67,7 +67,7 @@ def test_null_label_character_submit(sc):
 def test_null_arch_character_submit(sc):
     metric_info = ("SIMPLE_MEASURES_NULL_ARCHITECTURE", "", False)
     payload = {"sum": 4, "count": 2, "histogram": {2: 2}}
-    key = ('20161111', 'nightly', '52', '20161111', '', "Firefox", u"\x00", 'Windows', '2.4.21')
+    key = ('20161111', 'nightly', '52', '20161111', '', "Firefox", "\x00", 'Windows', '2.4.21')
     aggregate = (key, {metric_info: payload})
 
     aggregates = [sc.parallelize([aggregate]), sc.parallelize([aggregate])]
@@ -118,7 +118,7 @@ def test_cast_array_to_bigint():
     cursor = conn.cursor()
     cursor.execute("SELECT cast_array_to_bigint_safe(ARRAY[-9223372036854775809, 9223372036854775808, 12]);")
     res = cursor.fetchall()
-    assert res == [([-9223372036854775808L, 9223372036854775807L, 12L],)]
+    assert res == [([-9223372036854775808, 9223372036854775807, 12],)]
 
 
 def test_notice_logging_cursor():

@@ -1,8 +1,8 @@
 import json
 import re
 import unittest
-import urlparse
-from urllib import urlencode
+import urllib.parse
+from urllib.parse import urlencode
 
 import pandas as pd
 import pyspark
@@ -148,7 +148,7 @@ class ServiceTestCase(unittest.TestCase):
             self.assertEqual(resp.status_code, 405)
             # Check that the 'Allow' URL query params match our base URL.
             self.assertEqual(
-                set(urlparse.parse_qs(urlparse.urlparse(resp.headers.get('Allow')).query).keys()),
+                set(urllib.parse.parse_qs(urllib.parse.urlparse(resp.headers.get('Allow')).query).keys()),
                 set(qs.keys())
             )
 
@@ -156,7 +156,7 @@ class ServiceTestCase(unittest.TestCase):
     def test_cached_auth(self):
         token = "cached-token"
         auth0_cache[token] = True
-        for metric in histograms_template.keys():
+        for metric in list(histograms_template.keys()):
             resp = self.app.get(
                 '/aggregates_by/build_id/channels/release/?version=41&dates={}&metric={}'.format(self.build_id_1, metric),
                 headers={'If-None-Match': SUBMISSION_DATE_ETAG, 'Authorization': ' Bearer ' + token})
@@ -238,14 +238,14 @@ class ServiceTestCase(unittest.TestCase):
         assert cache.get((url, False)) is None
 
     def test_auth_header(self):
-        for metric in histograms_template.keys():
+        for metric in list(histograms_template.keys()):
             resp = self.app.get(
                 '/aggregates_by/build_id/channels/release/?version=41&dates={}&metric={}'.format(self.build_id_1, metric),
                 headers={'If-None-Match': SUBMISSION_DATE_ETAG, 'Authorization': ' Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImtpZCI6IlJqUkZSREpFT0RnMk16UTNSRE0zT0VSRFFrWkZOalJETmpGQ05qZzBOVVEzTW9.eyJpc3MiOiJodHRwczovL2NodXR0ZW4uYXV0aDAuY29tLyIsInN1YiI6ImF1dGgwfDViYTNiOTVkYmExM2UyMzMxYzVmYzMzOCIsImF1ZCI6ImFnZ3JlZ2F0ZXMudGVsZW1ldHJ5Lm1vemlsbGEub3JnIiwiaWF0IjoxNTM3NTQ4Nzc2LCJleHAiOjE1Mzc1NTU5NzYsImF6cCI6InY0MjdDQmlwNjZoUzRxMm10SmVaSldpWUsxYUV2UVRLIiwic2NvcGUiOiJyZWFkOmFnZ3JlZ2F0ZXMifQ.ETE6m-fevEYxAoeg1lrER0Jm0nAMc-G_EgXsSF4t5at4RX6oYidcCT3dkbhWm3MYZrG3KHBYcGh8FRsdw2oxgJYsEFCKGxlA2lCta-3yrebIy_SmLGNjrXEWYpwXQ_yeCaOMz3aQ5hSvoIbUYDdaqEWqibfFvwD2Gu2cjsoXmoHKPVpBiwERUDIjfAfuW3-NP0qirpCR3LyuY2Iw7oOZB-uqdd_zeoD1IosliT7JhkRjzrQnYJN93Zx392KI3H_E08Assv_d9gUqFEiKvDQ7b10iB5A4fWnVYjtYqugvOmkDlQHTUY5Y7zbT8DJ4SYarXiJBxijwPeGpo4cslJVe5c'})
             self.assertEqual(resp.status_code, 403)
 
     def test_release_nonwhitelist(self):
-        for metric in histograms_template.keys():
+        for metric in list(histograms_template.keys()):
             resp = self.app.get(
                 '/aggregates_by/build_id/channels/release/?version=41&dates={}&metric={}'
                 .format(self.build_id_1, metric),
@@ -364,16 +364,16 @@ class ServiceTestCase(unittest.TestCase):
         template_build_id = [ping_dimensions['build_id'][0][:-6]]
         metric = 'USE_COUNTER2_SIR_NOT_APPEARING_IN_THIS_DOCUMENT'
         value = {
-            u'bucket_count': 3,
-            u'histogram_type': 2,
-            u'range': [1, 2],
-            u'values': {u'0': 640, u'1': 0, u'2': 0},
-            u'count': 0,
-            u'sum': 0,
+            'bucket_count': 3,
+            'histogram_type': 2,
+            'range': [1, 2],
+            'values': {'0': 640, '1': 0, '2': 0},
+            'count': 0,
+            'sum': 0,
         }
 
         expected_count = 1
-        for dimension, values in ping_dimensions.iteritems():
+        for dimension, values in ping_dimensions.items():
             if dimension not in ['channel', 'version', 'build_id']:
                 expected_count *= len(values)
 
@@ -388,7 +388,7 @@ class ServiceTestCase(unittest.TestCase):
         template_submission_date = ping_dimensions['submission_date']
 
         expected_count = 1
-        for dimension, values in ping_dimensions.iteritems():
+        for dimension, values in ping_dimensions.items():
             if dimension not in ['channel', 'version', 'submission_date']:
                 expected_count *= len(values)
 
@@ -396,7 +396,7 @@ class ServiceTestCase(unittest.TestCase):
             for version in template_version:
 
                 histogram_expected_count = NUM_PINGS_PER_DIMENSIONS * expected_count
-                for metric, value in histograms_template.iteritems():
+                for metric, value in histograms_template.items():
                     if value is None:
                         continue
                     self._histogram('submission_date', channel, version, template_submission_date,
@@ -406,7 +406,7 @@ class ServiceTestCase(unittest.TestCase):
                 # 1 Count for parent, then 1 Count for each NUM_CHILDREN_PER_PING
                 simple_measure_expected_count = expected_count * NUM_PINGS_PER_DIMENSIONS * (NUM_CHILDREN_PER_PING + 1)
 
-                for simple_measure, value in simple_measurements_template.iteritems():
+                for simple_measure, value in simple_measurements_template.items():
                     if not isinstance(value, int):
                         continue
 
@@ -419,7 +419,7 @@ class ServiceTestCase(unittest.TestCase):
                 # for parent processes, NUM_PINGS_PER_DIMENSIONS * expected_count
                 numeric_scalar_expected_count = ((2 * NUM_AGGREGATED_CHILD_PINGS) + NUM_PINGS_PER_DIMENSIONS) * expected_count
 
-                for scalar, value in scalars_template.iteritems():
+                for scalar, value in scalars_template.items():
                     if not isinstance(value, int):
                         continue
                     metric = '{}_{}'.format(NUMERIC_SCALARS_PREFIX, scalar.upper())
@@ -427,12 +427,12 @@ class ServiceTestCase(unittest.TestCase):
                                          metric, value, numeric_scalar_expected_count, NUMERIC_SCALAR_BUCKET,
                                          NUMERIC_SCALARS_LABELS, True)
 
-                for metric, _dict in keyed_scalars_template.iteritems():
+                for metric, _dict in keyed_scalars_template.items():
                     metric_name = '{}_{}'.format(NUMERIC_SCALARS_PREFIX, metric.upper())
                     self._keyed_numeric_scalar('submission_date', channel, version, template_submission_date,
                                                metric_name, _dict, numeric_scalar_expected_count)
 
-                for metric, histograms in keyed_histograms_template.iteritems():
+                for metric, histograms in keyed_histograms_template.items():
                     self._keyed_histogram('submission_date', channel, version, template_submission_date,
                                           metric, histograms, histogram_expected_count)
 
@@ -442,7 +442,7 @@ class ServiceTestCase(unittest.TestCase):
         template_build_id = [x[:-6] for x in ping_dimensions['build_id']]
 
         expected_count = 1
-        for dimension, values in ping_dimensions.iteritems():
+        for dimension, values in ping_dimensions.items():
             if dimension not in ['channel', 'version', 'build_id']:
                 expected_count *= len(values)
 
@@ -450,7 +450,7 @@ class ServiceTestCase(unittest.TestCase):
             for version in template_version:
 
                 histogram_expected_count = NUM_PINGS_PER_DIMENSIONS * expected_count
-                for metric, value in histograms_template.iteritems():
+                for metric, value in histograms_template.items():
                     if value is None:
                         continue
                     self._histogram('build_id', channel, version, template_build_id, metric, value, histogram_expected_count)
@@ -459,7 +459,7 @@ class ServiceTestCase(unittest.TestCase):
                 # 1 Count for parent, then 1 Count for each NUM_CHILDREN_PER_PING
                 simple_measure_expected_count = expected_count * NUM_PINGS_PER_DIMENSIONS * (NUM_CHILDREN_PER_PING + 1)
 
-                for simple_measure, value in simple_measurements_template.iteritems():
+                for simple_measure, value in simple_measurements_template.items():
                     if not isinstance(value, int):
                         continue
 
@@ -471,7 +471,7 @@ class ServiceTestCase(unittest.TestCase):
                 # for parent processes, NUM_PINGS_PER_DIMENSIONS * expected_count
                 numeric_scalar_expected_count = ((2 * NUM_AGGREGATED_CHILD_PINGS) + NUM_PINGS_PER_DIMENSIONS) * expected_count
 
-                for scalar, value in scalars_template.iteritems():
+                for scalar, value in scalars_template.items():
                     if not isinstance(value, int):
                         continue
 
@@ -480,12 +480,12 @@ class ServiceTestCase(unittest.TestCase):
                                          value, numeric_scalar_expected_count, NUMERIC_SCALAR_BUCKET,
                                          NUMERIC_SCALARS_LABELS, True)
 
-                for metric, _dict in keyed_scalars_template.iteritems():
+                for metric, _dict in keyed_scalars_template.items():
                     metric_name = '{}_{}'.format(NUMERIC_SCALARS_PREFIX, metric.upper())
                     self._keyed_numeric_scalar('build_id', channel, version, template_build_id,
                                                metric_name, _dict, numeric_scalar_expected_count)
 
-                for metric, histograms in keyed_histograms_template.iteritems():
+                for metric, histograms in keyed_histograms_template.items():
                     self._keyed_histogram('build_id', channel, version, template_build_id, metric,
                                           histograms, histogram_expected_count)
 
@@ -512,7 +512,7 @@ class ServiceTestCase(unittest.TestCase):
                 new_pings_expected_count * NUM_PROCESS_TYPES + old_pings_expected_count * (NUM_CHILDREN_PER_PING + 1))
 
             if value['histogram_type'] == 4:  # Count histogram
-                current = pd.Series(res['histogram'], index=map(int, resp['buckets']))
+                current = pd.Series(res['histogram'], index=list(map(int, resp['buckets'])))
                 expected = pd.Series(index=COUNT_HISTOGRAM_LABELS, data=0)
                 expected[COUNT_SCALAR_BUCKET] = res['count']
 
@@ -527,7 +527,7 @@ class ServiceTestCase(unittest.TestCase):
                     destroyed = histograms_template['CONTENT_DOCUMENTS_DESTROYED']['sum']
                 value['values']['0'] = destroyed - value['values']['1']
 
-                current = pd.Series(res['histogram'], index=map(int, resp['buckets']))
+                current = pd.Series(res['histogram'], index=list(map(int, resp['buckets'])))
                 expected = Histogram(metric, value).get_value() * res['count']
 
                 self.assertTrue((current == expected).all())
@@ -535,7 +535,7 @@ class ServiceTestCase(unittest.TestCase):
 
             else:
                 ind_type = int if value['histogram_type'] != 5 else str  # Categorical histograms
-                current = pd.Series(res['histogram'], index=map(ind_type, resp['buckets']))
+                current = pd.Series(res['histogram'], index=list(map(ind_type, resp['buckets'])))
                 expected = Histogram(metric, value).get_value() * res['count']
 
                 self.assertTrue((current == expected).all())
@@ -558,7 +558,7 @@ class ServiceTestCase(unittest.TestCase):
         for res in resp['data']:
             self.assertEqual(res['count'], expected_count)
 
-            current = pd.Series(res['histogram'], index=map(int, resp['buckets']))
+            current = pd.Series(res['histogram'], index=list(map(int, resp['buckets'])))
             expected = pd.Series(index=labels, data=0)
             expected[bucket] = res['count']
 
@@ -572,7 +572,7 @@ class ServiceTestCase(unittest.TestCase):
                 prefix, channel, version, ','.join(dates), metric)))
         self.assertEqual(len(resp['data']), len(histograms) * len(dates))
 
-        for label, value in histograms.iteritems():
+        for label, value in histograms.items():
             resp = self.as_json(self.app.get(
                 '/aggregates_by/{}/channels/{}/?version={}&dates={}&metric={}&label={}'.format(
                     prefix, channel, version, ','.join(dates), metric, label.upper())))
@@ -582,7 +582,7 @@ class ServiceTestCase(unittest.TestCase):
             for res in resp['data']:
                 self.assertEqual(res['count'], expected_count)
 
-                current = pd.Series(res['histogram'], index=map(int, resp['buckets']))
+                current = pd.Series(res['histogram'], index=list(map(int, resp['buckets'])))
                 expected = pd.Series(index=NUMERIC_SCALARS_LABELS, data=0)
                 expected[NUMERIC_SCALAR_BUCKET] = expected_count
 
@@ -595,7 +595,7 @@ class ServiceTestCase(unittest.TestCase):
                 prefix, channel, version, ','.join(dates), metric)))
         self.assertEqual(len(resp['data']), len(histograms) * len(dates))
 
-        for label, value in histograms.iteritems():
+        for label, value in histograms.items():
             resp = self.as_json(self.app.get(
                 '/aggregates_by/{}/channels/{}/?version={}&dates={}&metric={}&label={}'.format(
                     prefix, channel, version, ','.join(dates), metric, label)))
@@ -609,7 +609,7 @@ class ServiceTestCase(unittest.TestCase):
                     new_pings_expected_count * NUM_PROCESS_TYPES + old_pings_expected_count * (NUM_CHILDREN_PER_PING + 1)
                 )
 
-                current = pd.Series(res['histogram'], index=map(int, resp['buckets']))
+                current = pd.Series(res['histogram'], index=list(map(int, resp['buckets'])))
                 expected = Histogram(metric, value).get_value() * res['count']
 
                 self.assertTrue((current == expected).all())
