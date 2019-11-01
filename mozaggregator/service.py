@@ -482,7 +482,7 @@ def get_dates_metrics(prefix, channel):
         elif kind == "flag":
             labels = [0, 1]
         else:
-            labels = list(definition.get_value().keys()).tolist()
+            labels = list(definition.get_value().keys())
 
     altered_dimensions = deepcopy(dimensions)
     if 'child' in dimensions:

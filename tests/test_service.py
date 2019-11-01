@@ -63,7 +63,7 @@ class ServiceTestCase(unittest.TestCase):
     def test_status(self):
         resp = self.app.get('/status')
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.data, 'OK')
+        self.assertEqual(resp.data.decode(), 'OK')
 
     def test_submission_dates_cache_control(self):
         resp = self.app.get(
