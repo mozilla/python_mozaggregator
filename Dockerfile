@@ -1,4 +1,4 @@
-FROM python:2-stretch
+FROM python:3.7-stretch
 
 ENV PYTHONUNBUFFERED=1 \
     POSTGRES_USER=root \
@@ -16,7 +16,7 @@ RUN apt-get update -y && \
         # production only libs on next line.
         gcc awscli net-tools \
         libsnappy-dev liblzma-dev g++ curl libpq-dev bzip2 libffi-dev \
-        python-numpy python-pandas python-scipy wget ca-certificates openssl libssl-dev \
+        libblas-dev liblapack-dev wget ca-certificates openssl libssl-dev \
         postgresql && \
     apt-get autoremove -y && \
     apt-get clean && \
@@ -37,7 +37,7 @@ RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r requirements/build.txt
 
 ENV PYSPARK_PYTHON=python \
-    SPARK_HOME=/usr/local/lib/python2.7/site-packages/pyspark
+    SPARK_HOME=/usr/local/lib/python3.7/site-packages/pyspark
 
 RUN wget --directory-prefix $SPARK_HOME/jars/ https://storage.googleapis.com/spark-lib/bigquery/spark-bigquery-latest.jar
 RUN wget --directory-prefix $SPARK_HOME/jars/ https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-hadoop2-latest.jar
