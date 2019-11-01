@@ -2,7 +2,8 @@ import os
 import time
 from copy import deepcopy
 from functools import wraps
-from urllib import urlencode, urlopen
+from urllib.parse import urlencode
+from urllib.request import urlopen
 from expiringdict import ExpiringDict
 
 import re
@@ -22,9 +23,9 @@ from werkzeug.exceptions import MethodNotAllowed
 from jose import jwt
 from jose.jwt import JWTError
 
-from aggregator import (
+from .aggregator import (
     COUNT_HISTOGRAM_LABELS, COUNT_HISTOGRAM_PREFIX, NUMERIC_SCALARS_PREFIX, SCALAR_MEASURE_MAP)
-from db import get_db_connection_string, histogram_revision_map, _preparedb
+from .db import get_db_connection_string, histogram_revision_map, _preparedb
 
 pool = None
 db_connection_string = get_db_connection_string(read_only=True)
@@ -50,13 +51,10 @@ ALLOWED_DIMENSIONS = ('application', 'architecture', 'child', 'dates', 'label',
                       'metric', 'os', 'osVersion', 'version')
 
 # Disallowed metrics for serving - matches regex
-METRICS_BLACKLIST_RE = map(
-    lambda x: re.compile(x),
-    [
+METRICS_BLACKLIST_RE = [re.compile(x) for x in [
         r"SEARCH_COUNTS",
         r"SCALARS_BROWSER\.SEARCH\..+",
-    ]
-)
+    ]]
 
 NON_AUTH_METRICS_BLACKLIST = [
     "SCALARS_TELEMETRY.EVENT_COUNTS",
@@ -334,7 +332,7 @@ def get_dates(prefix, channel):
     if channel == RELEASE_CHANNEL:
         check_auth()
     result = execute_query("select * from list_buildids(%s, %s)", (prefix, channel))
-    pretty_result = map(lambda r: {"version": r[0], "date": r[1]}, result)
+    pretty_result = [{"version": r[0], "date": r[1]} for r in result]
     return Response(json.dumps(pretty_result), mimetype="application/json")
 
 
@@ -433,14 +431,14 @@ def _allow_metric(channel, metric):
 @cache_request
 def get_dates_metrics(prefix, channel):
     mapping = {"true": True, "false": False}
-    dimensions = {k: mapping.get(v, v) for k, v in request.args.iteritems()}
+    dimensions = {k: mapping.get(v, v) for k, v in request.args.items()}
 
-    extra_dimensions = dimensions.viewkeys() - ALLOWED_DIMENSIONS
+    extra_dimensions = dimensions.keys() - ALLOWED_DIMENSIONS
     if extra_dimensions:
         # We received an unsupported query string to filter by, return 405.
         valid_url = '{}?{}'.format(
             request.path,
-            urlencode({k: v for k, v in dimensions.items() if k in ALLOWED_DIMENSIONS}))
+            urlencode({k: v for k, v in list(dimensions.items()) if k in ALLOWED_DIMENSIONS}))
         raise MethodNotAllowed(valid_methods=[valid_url])
 
     if 'child' in dimensions:
@@ -460,7 +458,7 @@ def get_dates_metrics(prefix, channel):
         abort(404, description="This metric is not allowed to be served.")
 
     # Get bucket labels
-    for _prefix, _labels in SCALAR_MEASURE_MAP.iteritems():
+    for _prefix, _labels in SCALAR_MEASURE_MAP.items():
         if metric.startswith(_prefix) and _prefix != COUNT_HISTOGRAM_PREFIX:
             labels = _labels
             kind = "exponential"
@@ -486,7 +484,7 @@ def get_dates_metrics(prefix, channel):
         elif kind == "flag":
             labels = [0, 1]
         else:
-            labels = definition.get_value().keys().tolist()
+            labels = list(definition.get_value().keys()).tolist()
 
     altered_dimensions = deepcopy(dimensions)
     if 'child' in dimensions:

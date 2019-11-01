@@ -55,7 +55,7 @@ def write_parquet(df, path):
 def _explode(row):
     dimensions, metrics = row
 
-    for k, v in metrics.iteritems():
+    for k, v in metrics.items():
         try:
             histogram = _get_complete_histogram(dimensions[1], k[0], v['histogram'])
         except KeyError:
@@ -66,16 +66,16 @@ def _explode(row):
 def _get_complete_histogram(channel, metric, values):
     revision = histogram_revision_map[channel]
 
-    for prefix, labels in SCALAR_MEASURE_MAP.iteritems():
+    for prefix, labels in SCALAR_MEASURE_MAP.items():
         if metric.startswith(prefix):
-            histogram = pd.Series({int(k): v for k, v in values.iteritems()},
+            histogram = pd.Series({int(k): v for k, v in values.items()},
                                   index=labels).fillna(0)
             break
     else:
         histogram = Histogram(metric, {"values": values},
                               revision=revision).get_value(autocast=False)
 
-    return {str(k): long(v) for k, v in histogram.to_dict().iteritems()}
+    return {str(k): int(v) for k, v in histogram.to_dict().items()}
 
 
 def _extract_process_scalars(state, metrics, process):
@@ -97,7 +97,7 @@ def _extract_process_histograms(state, metrics, process):
         raise Exception("Histogram is not a histogram!")
 
     _extract_main_histograms(state, histograms, process)
-    for name, histogram in keyedHistograms.iteritems():
+    for name, histogram in keyedHistograms.items():
         _extract_keyed_histograms(state, name, histogram, process)
 
 
@@ -108,7 +108,7 @@ def _aggregate_ping(state, metrics):
             % type(metrics)
         )
 
-    for process in metrics.keys():
+    for process in list(metrics.keys()):
         process_metrics = metrics.get(process, {})
         _extract_process_histograms(state, process_metrics, process)
         _extract_process_scalars(state, process_metrics, process)

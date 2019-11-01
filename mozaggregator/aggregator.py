@@ -111,7 +111,7 @@ def _sample_clients(ping):
     try:
         sample_id = ping.get("meta", {}).get("sampleId")
 
-        if not isinstance(sample_id, (int, float, long)):
+        if not isinstance(sample_id, (int, float)):
             return False
 
         # Here "aurora" is actually the dev edition.
@@ -134,7 +134,7 @@ def _extract_histograms(state, payload, process_type="parent"):
     if not isinstance(keyed_histograms, dict):
         return
 
-    for name, histograms in keyed_histograms.iteritems():
+    for name, histograms in keyed_histograms.items():
         # See Bug 1275010 and 1275019
         if name in ["MESSAGE_MANAGER_MESSAGE_SIZE",
                     "VIDEO_DETAILED_DROPPED_FRAMES_PROPORTION"]:
@@ -151,7 +151,7 @@ def _extract_histogram(state, histogram, histogram_name, label, process_type):
         return
 
     sum = histogram.get("sum")
-    if not isinstance(sum, (int, long)) or sum < 0:
+    if not isinstance(sum, int) or sum < 0:
         return
 
     histogram_type = histogram.get("histogram_type")
@@ -160,7 +160,7 @@ def _extract_histogram(state, histogram, histogram_name, label, process_type):
 
     if histogram_type == 4:  # Count histogram
         return _extract_scalar_value(
-            state, u'_'.join((COUNT_HISTOGRAM_PREFIX, histogram_name)), label,
+            state, '_'.join((COUNT_HISTOGRAM_PREFIX, histogram_name)), label,
             sum, COUNT_HISTOGRAM_LABELS, process_type=process_type)
 
     # Note that some dimensions don't vary within a single submissions
@@ -169,32 +169,32 @@ def _extract_histogram(state, histogram, histogram_name, label, process_type):
     accessor = (histogram_name, label, process_type)
     aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
 
-    state[accessor]["sum"] = state[accessor].get("sum", 0L) + sum
-    state[accessor]["count"] = state[accessor].get("count", 0L) + 1L
-    for k, v in values.iteritems():
+    state[accessor]["sum"] = state[accessor].get("sum", 0) + sum
+    state[accessor]["count"] = state[accessor].get("count", 0) + 1
+    for k, v in values.items():
         try:
             int(k)
         except ValueError:
             # We have seen some histograms with non-integer bucket keys.
             continue
 
-        v = v if isinstance(v, (int, long)) else 0L
-        aggregated_histogram[k] = aggregated_histogram.get(k, 0L) + v
+        v = v if isinstance(v, int) else 0
+        aggregated_histogram[k] = aggregated_histogram.get(k, 0) + v
 
 
 def _extract_main_histograms(state, histograms, process_type):
     if not isinstance(histograms, dict):
         return
 
-    for histogram_name, histogram in histograms.iteritems():
-        _extract_histogram(state, histogram, histogram_name, u"", process_type)
+    for histogram_name, histogram in histograms.items():
+        _extract_histogram(state, histogram, histogram_name, "", process_type)
 
 
 def _extract_keyed_histograms(state, histogram_name, histograms, process_type):
     if not isinstance(histograms, dict):
         return
 
-    for key, histogram in histograms.iteritems():
+    for key, histogram in histograms.items():
         _extract_histogram(state, histogram, histogram_name, key, process_type)
 
 
@@ -202,18 +202,18 @@ def _extract_simple_measures(state, simple, process_type="parent"):
     if not isinstance(simple, dict):
         return
 
-    for name, value in simple.iteritems():
+    for name, value in simple.items():
         if isinstance(value, dict):
-            for sub_name, sub_value in value.iteritems():
-                if isinstance(sub_value, (int, float, long)):
+            for sub_name, sub_value in value.items():
+                if isinstance(sub_value, (int, float)):
                     _extract_scalar_value(
                         state,
                         "_".join((SIMPLE_MEASURES_PREFIX, name.upper(), sub_name.upper())),
-                        u"", sub_value, SIMPLE_MEASURES_LABELS, process_type)
-        elif isinstance(value, (int, float, long)):
+                        "", sub_value, SIMPLE_MEASURES_LABELS, process_type)
+        elif isinstance(value, (int, float)):
             _extract_scalar_value(
-                state, u"_".join((SIMPLE_MEASURES_PREFIX, name.upper())),
-                u"", value, SIMPLE_MEASURES_LABELS, process_type)
+                state, "_".join((SIMPLE_MEASURES_PREFIX, name.upper())),
+                "", value, SIMPLE_MEASURES_LABELS, process_type)
 
 
 def _extract_scalars(state, process_payloads):
@@ -226,31 +226,31 @@ def _extract_numeric_scalars(state, scalar_dict, process):
     if not isinstance(scalar_dict, dict):
         return
 
-    for name, value in scalar_dict.iteritems():
-        if not isinstance(value, (int, float, long)):
+    for name, value in scalar_dict.items():
+        if not isinstance(value, (int, float)):
             continue
 
         if name.startswith("browser.engagement.navigation"):
             continue
 
-        scalar_name = u"_".join((NUMERIC_SCALARS_PREFIX, name.upper()))
-        _extract_scalar_value(state, scalar_name, u"", value, NUMERIC_SCALARS_LABELS, process)
+        scalar_name = "_".join((NUMERIC_SCALARS_PREFIX, name.upper()))
+        _extract_scalar_value(state, scalar_name, "", value, NUMERIC_SCALARS_LABELS, process)
 
 
 def _extract_keyed_numeric_scalars(state, scalar_dict, process):
     if not isinstance(scalar_dict, dict):
         return
 
-    for name, value in scalar_dict.iteritems():
+    for name, value in scalar_dict.items():
         if not isinstance(value, dict):
             continue
 
         if name.startswith("browser.engagement.navigation"):
             continue
 
-        scalar_name = u"_".join((NUMERIC_SCALARS_PREFIX, name.upper()))
-        for sub_name, sub_value in value.iteritems():
-            if not isinstance(sub_value, (int, float, long)):
+        scalar_name = "_".join((NUMERIC_SCALARS_PREFIX, name.upper()))
+        for sub_name, sub_value in value.items():
+            if not isinstance(sub_value, (int, float)):
                 continue
 
             _extract_scalar_value(state, scalar_name, sub_name.upper(), sub_value, NUMERIC_SCALARS_LABELS, process)
@@ -262,8 +262,8 @@ def _extract_scalar_value(state, name, label, value, bucket_labels, process_type
 
     accessor = (name, label, process_type)
     aggregated_histogram = state[accessor]["histogram"] = state[accessor].get("histogram", {})
-    state[accessor]["sum"] = state[accessor].get("sum", 0L) + value
-    state[accessor]["count"] = state[accessor].get("count", 0L) + 1L
+    state[accessor]["sum"] = state[accessor].get("sum", 0) + value
+    state[accessor]["count"] = state[accessor].get("count", 0) + 1
 
     insert_bucket = bucket_labels[0]  # Initialized to underflow bucket
     for bucket in reversed(bucket_labels):
@@ -271,7 +271,7 @@ def _extract_scalar_value(state, name, label, value, bucket_labels, process_type
             insert_bucket = bucket
             break
 
-    aggregated_histogram[unicode(insert_bucket)] = aggregated_histogram.get(unicode(insert_bucket), 0L) + 1L
+    aggregated_histogram[str(insert_bucket)] = aggregated_histogram.get(str(insert_bucket), 0) + 1
 
 
 def _extract_child_payloads(state, child_payloads):
@@ -297,7 +297,7 @@ def _aggregate_ping(state, ping):
 
 
 def _aggregate_aggregates(agg1, agg2):
-    for metric, payload in agg2.iteritems():
+    for metric, payload in agg2.items():
         if metric not in agg1:
             agg1[metric] = payload
             continue
@@ -305,14 +305,14 @@ def _aggregate_aggregates(agg1, agg2):
         agg1[metric]["count"] += payload["count"]
         agg1[metric]["sum"] += payload["sum"]
 
-        for k, v in payload["histogram"].iteritems():
-            agg1[metric]["histogram"][k] = agg1[metric]["histogram"].get(k, 0L) + v
+        for k, v in payload["histogram"].items():
+            agg1[metric]["histogram"][k] = agg1[metric]["histogram"].get(k, 0) + v
 
     return agg1
 
 
 def _trim_payload(payload):
-    return {k: v for k, v in payload.iteritems()
+    return {k: v for k, v in payload.items()
             if k in ["histograms", "keyedHistograms", "simpleMeasurements", "processes"]}
 
 

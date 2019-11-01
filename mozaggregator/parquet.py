@@ -70,7 +70,7 @@ def _explode(row, aggregate_type):
 
     period = _period(dimensions[3] if aggregate_type == 'build_id' else dimensions[0])
 
-    for k, v in metrics.iteritems():
+    for k, v in metrics.items():
         try:
             histogram = _get_complete_histogram(dimensions[1], k[0], v['histogram'])
         except KeyError:
@@ -92,16 +92,16 @@ def _period(date_str):
 def _get_complete_histogram(channel, metric, values):
     revision = histogram_revision_map[channel]
 
-    for prefix, labels in SCALAR_MEASURE_MAP.iteritems():
+    for prefix, labels in SCALAR_MEASURE_MAP.items():
         if metric.startswith(prefix):
-            histogram = pd.Series({int(k): v for k, v in values.iteritems()},
+            histogram = pd.Series({int(k): v for k, v in values.items()},
                                   index=labels).fillna(0)
             break
     else:
         histogram = Histogram(metric, {"values": values},
                               revision=revision).get_value(autocast=False)
 
-    return {str(k): long(v) for k, v in histogram.to_dict().iteritems()}
+    return {str(k): int(v) for k, v in histogram.to_dict().items()}
 
 
 def _aggregate_metrics(pings, num_reducers=10000):
