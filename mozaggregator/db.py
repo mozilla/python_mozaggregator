@@ -9,16 +9,16 @@ import logging
 import os
 import string
 from collections import defaultdict
-from cStringIO import StringIO
+from io import StringIO
 
 import pandas as pd
 import psycopg2
-import sql
+from . import sql
 import ujson as json
 from moztelemetry.histogram import Histogram
 
-import config
-from aggregator import SCALAR_MEASURE_MAP
+from . import config
+from .aggregator import SCALAR_MEASURE_MAP
 
 # Use latest revision, we don't really care about histograms that have
 # been removed. This only works though if histogram definitions are
@@ -104,7 +104,7 @@ def get_db_connection_string(read_only=False):
             rds_user = os.getenv(db_user)
             rds_db = os.getenv(db_name)
         else:
-            print "One or more POSTGRES env vars not set."
+            print("One or more POSTGRES env vars not set.")
             exit(1)
 
         rds_endpoint = rds_ro_host if read_only else rds_host
@@ -158,9 +158,9 @@ def _preparedb():
 def _get_complete_histogram(channel, metric, values):
     revision = histogram_revision_map[channel]
 
-    for prefix, labels in SCALAR_MEASURE_MAP.iteritems():
+    for prefix, labels in SCALAR_MEASURE_MAP.items():
         if metric.startswith(prefix):
-            histogram = pd.Series({int(k): v for k, v in values.iteritems()}, index=labels).fillna(0).values
+            histogram = pd.Series({int(k): v for k, v in values.items()}, index=labels).fillna(0).values
             break
     else:
         histogram = Histogram(metric, {"values": values}, revision=revision).get_value(autocast=False).values
@@ -179,13 +179,13 @@ def _aggregate_to_sql(aggregate):
         "osVersion": os_version,
     }
 
-    for metric, payload in metrics.iteritems():
+    for metric, payload in metrics.items():
         metric, label, process_type = metric
 
         if not set(metric).issubset(_metric_printable):
             continue  # Ignore metrics with non printable characters...
 
-        if any((u"\u0000" in x for x in [metric, label, application, architecture, os, os_version])):
+        if any(("\u0000" in x for x in [metric, label, application, architecture, os, os_version])):
             continue  # Ignore dimensions with null character
 
         try:
@@ -195,7 +195,7 @@ def _aggregate_to_sql(aggregate):
                 continue
 
             histogram = _get_complete_histogram(channel, metric, payload["histogram"]) + [payload["sum"], payload["count"]]
-            histogram = [str(long(x)) for x in histogram]
+            histogram = [str(int(x)) for x in histogram]
         except KeyError:
             # Should eventually log errors
             continue
