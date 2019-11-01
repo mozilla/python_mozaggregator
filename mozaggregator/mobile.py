@@ -12,7 +12,7 @@ from mozaggregator.aggregator import (
 from mozaggregator.db import histogram_revision_map
 from moztelemetry.dataset import Dataset
 from moztelemetry.histogram import Histogram
-from .bigquery import BigQueryDataset
+from mozaggregator.bigquery import BigQueryDataset
 
 import warnings
 warnings.filterwarnings("always")

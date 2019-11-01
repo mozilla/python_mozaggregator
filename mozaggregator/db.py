@@ -13,12 +13,11 @@ from io import StringIO
 
 import pandas as pd
 import psycopg2
-from . import sql
 import ujson as json
 from moztelemetry.histogram import Histogram
 
-from . import config
-from .aggregator import SCALAR_MEASURE_MAP
+from mozaggregator import sql, config
+from mozaggregator.aggregator import SCALAR_MEASURE_MAP
 
 # Use latest revision, we don't really care about histograms that have
 # been removed. This only works though if histogram definitions are

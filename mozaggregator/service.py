@@ -22,9 +22,9 @@ from werkzeug.exceptions import MethodNotAllowed
 from jose import jwt
 from jose.jwt import JWTError
 
-from .aggregator import (
+from mozaggregator.aggregator import (
     COUNT_HISTOGRAM_LABELS, COUNT_HISTOGRAM_PREFIX, NUMERIC_SCALARS_PREFIX, SCALAR_MEASURE_MAP)
-from .db import get_db_connection_string, histogram_revision_map, _preparedb
+from mozaggregator.db import get_db_connection_string, histogram_revision_map, _preparedb
 
 pool = None
 db_connection_string = get_db_connection_string(read_only=True)

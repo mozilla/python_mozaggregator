@@ -10,7 +10,7 @@ from collections import defaultdict
 from moztelemetry.dataset import Dataset
 from moztelemetry.histogram import cached_exponential_buckets
 
-from .bigquery import BigQueryDataset
+from mozaggregator.bigquery import BigQueryDataset
 
 
 # Simple measurement, count histogram, and numeric scalars labels & prefixes
