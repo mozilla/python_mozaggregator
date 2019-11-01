@@ -13,7 +13,6 @@ from flask import Flask, Response, abort, jsonify, request, _request_ctx_stack
 from flask_cache import Cache
 from flask_cors import CORS
 from flask_sslify import SSLify
-from gevent.monkey import patch_all
 from joblib import Parallel, delayed
 from moztelemetry.histogram import Histogram
 from moztelemetry.scalar import MissingScalarError, Scalar
@@ -38,7 +37,6 @@ CORS(app, resources=r'/*', allow_headers=['Authorization', 'Content-Type'])
 cache = Cache(app, config={'CACHE_TYPE': app.config["CACHETYPE"]})
 sslify = SSLify(app, permanent=True, skips=['__version__', '__heartbeat__', '__lbheartbeat__', 'status'])
 
-patch_all()
 patch_psycopg()
 cache.clear()
 
