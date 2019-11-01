@@ -124,7 +124,7 @@ def test_numerical_scalars(build_id_aggregates):
     keyed_scalars_template_len += len([key for m, dic in d.private_keyed_scalars_template.items() for key in dic])
     assert len(metric_count) == len(d.scalars_template) + keyed_scalars_template_len
     for metric, process_counts in metric_count.items():
-        assert(process_counts.keys() == PROCESS_TYPES)
+        assert(set(process_counts.keys()) == PROCESS_TYPES)
         for v in list(process_counts.values()):
             assert(v == len(build_id_aggregates))
 
@@ -149,7 +149,7 @@ def test_classic_histograms(build_id_aggregates):
 
     assert(len(metric_count) == len(histograms))
     for process_counts in list(metric_count.values()):
-        assert(process_counts.keys() == PROCESS_TYPES)
+        assert(set(process_counts.keys()) == PROCESS_TYPES)
         for v in list(process_counts.values()):
             assert(v == len(build_id_aggregates))
 
@@ -173,7 +173,7 @@ def test_count_histograms(build_id_aggregates):
 
     assert len(metric_count) == len(histograms)
     for process_counts in list(metric_count.values()):
-        assert(process_counts.keys() == PROCESS_TYPES)
+        assert(set(process_counts.keys()) == PROCESS_TYPES)
         for v in list(process_counts.values()):
             assert(v == len(build_id_aggregates))
 
@@ -202,6 +202,6 @@ def test_keyed_histograms(build_id_aggregates):
 
     assert(len(metric_count) == len(d.keyed_histograms_template))  # Assume one label per keyed histogram
     for process_counts in list(metric_count.values()):
-        assert(process_counts.keys() == PROCESS_TYPES)
+        assert(set(process_counts.keys()) == PROCESS_TYPES)
         for v in list(process_counts.values()):
             assert(v == len(build_id_aggregates))
