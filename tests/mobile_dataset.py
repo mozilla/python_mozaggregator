@@ -13,110 +13,110 @@ SUBMISSION_DATE_1 = NOW
 SUBMISSION_DATE_2 = NOW - datetime.timedelta(days=2)
 
 ping_dimensions = {
-    "arch": [u"arm64-v7a", u"arm64-v8a"],
+    "arch": ["arm64-v7a", "arm64-v8a"],
     "osversion": [26, 27],
     "normalizedChannel": ["release", "nightly"],
 }
 
 meta_template = {
-    u'Type': u'telemetry',
-    u'appBuildId': u'323001230-GeckoView',
-    u'appName': u'Focus',
-    u'appUpdateChannel': u'nightly',
-    u'appVersion': u'8.0',
-    u'docType': u'mobile-metrics',
-    u'normalizedAppName': u'Focus',
-    u'normalizedOs': u'Android',
-    u'sampleId': u'34.0',
-    u'sourceName': u'telemetry',
-    u'sourceVersion': u'1',
-    u'submissionDate': SUBMISSION_DATE_1.strftime('%Y%m%d'),
+    'Type': 'telemetry',
+    'appBuildId': '323001230-GeckoView',
+    'appName': 'Focus',
+    'appUpdateChannel': 'nightly',
+    'appVersion': '8.0',
+    'docType': 'mobile-metrics',
+    'normalizedAppName': 'Focus',
+    'normalizedOs': 'Android',
+    'sampleId': '34.0',
+    'sourceName': 'telemetry',
+    'sourceVersion': '1',
+    'submissionDate': SUBMISSION_DATE_1.strftime('%Y%m%d'),
 }
 
 histograms_template = {
-    u'USE_COUNTER2_PROPERTY_FILL_PAGE': {
-        u'bucket_count': 3,
-        u'histogram_type': 2,
-        u'range': [1, 2],
-        u'sum': 96,
-        u'values': {
-            u'0': 0,
-            u'1': 96,
-            u'2': 0
+    'USE_COUNTER2_PROPERTY_FILL_PAGE': {
+        'bucket_count': 3,
+        'histogram_type': 2,
+        'range': [1, 2],
+        'sum': 96,
+        'values': {
+            '0': 0,
+            '1': 96,
+            '2': 0
         }
     },
-    u'GC_MAX_PAUSE_MS_2': {
-        u'bucket_count': 50,
-        u'histogram_type': 0,
-        u'range': [1, 10000],
-        u'sum': 18587,
-        u'values': {
-            u'0': 0,
-            u'1': 13,
-            u'2': 7,
-            u'3': 9,
-            u'4': 13,
-            u'5': 24,
-            u'6': 19,
-            u'7': 26,
-            u'8': 76,
-            u'10': 93,
-            u'12': 55,
-            u'14': 73,
-            u'17': 74,
-            u'20': 56,
-            u'24': 54,
-            u'29': 48,
-            u'34': 48,
-            u'40': 38,
-            u'48': 60,
-            u'57': 18,
-            u'68': 8,
-            u'81': 6,
-            u'96': 2,
-            u'114': 3,
-            u'135': 0
+    'GC_MAX_PAUSE_MS_2': {
+        'bucket_count': 50,
+        'histogram_type': 0,
+        'range': [1, 10000],
+        'sum': 18587,
+        'values': {
+            '0': 0,
+            '1': 13,
+            '2': 7,
+            '3': 9,
+            '4': 13,
+            '5': 24,
+            '6': 19,
+            '7': 26,
+            '8': 76,
+            '10': 93,
+            '12': 55,
+            '14': 73,
+            '17': 74,
+            '20': 56,
+            '24': 54,
+            '29': 48,
+            '34': 48,
+            '40': 38,
+            '48': 60,
+            '57': 18,
+            '68': 8,
+            '81': 6,
+            '96': 2,
+            '114': 3,
+            '135': 0
         }
     },
 }
 
 keyed_histograms_template = {
-    u'NETWORK_HTTP_REDIRECT_TO_SCHEME': {
-        u'http': {
-            u'bucket_count': 51,
-            u'histogram_type': 5,
-            u'range': [1, 50],
-            u'sum': 2,
-            u'values': {
-                u'0': 34,
-                u'1': 2,
-                u'2': 0
+    'NETWORK_HTTP_REDIRECT_TO_SCHEME': {
+        'http': {
+            'bucket_count': 51,
+            'histogram_type': 5,
+            'range': [1, 50],
+            'sum': 2,
+            'values': {
+                '0': 34,
+                '1': 2,
+                '2': 0
             }
         },
-        u'https': {
-            u'bucket_count': 51,
-            u'histogram_type': 5,
-            u'range': [1, 50],
-            u'sum': 55,
-            u'values': {
-                u'0': 89,
-                u'1': 55,
-                u'2': 0
+        'https': {
+            'bucket_count': 51,
+            'histogram_type': 5,
+            'range': [1, 50],
+            'sum': 55,
+            'values': {
+                '0': 89,
+                '1': 55,
+                '2': 0
             }
         }
     }
 }
 
 keyed_scalars_template = {
-    u'telemetry.accumulate_clamped_values': {
-        u'HTTP_CACHE_IO_QUEUE_2_EVICT': 18
+    'telemetry.accumulate_clamped_values': {
+        'HTTP_CACHE_IO_QUEUE_2_EVICT': 18
     }
 }
 
 scalars_template = {
-    u'media.page_count': 176,
-    u'media.page_had_media_count': 2,
-    u'telemetry.persistence_timer_hit_count': 230,
+    'media.page_count': 176,
+    'media.page_had_media_count': 2,
+    'telemetry.persistence_timer_hit_count': 230,
 }
 
 
@@ -124,8 +124,8 @@ def generate_mobile_pings():
 
     for dimension in [
         dict(x)
-        for x in product(*[zip(repeat(k), v)
-                         for k, v in ping_dimensions.iteritems()])
+        for x in product(*[list(zip(repeat(k), v))
+                         for k, v in ping_dimensions.items()])
     ]:
         for i in range(NUM_PINGS_PER_DIMENSIONS):
             yield generate_payload(dimension)
@@ -164,19 +164,19 @@ def generate_payload(dimension):
     meta['normalizedChannel'] = dimension['normalizedChannel']
 
     return {
-        u'arch': dimension['arch'],
-        u'clientId': str(uuid.uuid4()),
-        u'createdDate': SUBMISSION_DATE_1.strftime(DATE_FMT),
-        u'createdTimestamp': SUBMISSION_DATE_1.strftime("%s"),
-        u'device': u'Google-Pixel 2',
-        u'locale': u'en-US',
-        u'meta': meta,
-        u'metrics': metrics,
-        u'os': u'Android',
-        u'osversion': dimension['osversion'],
-        u'processStartTimestamp': SUBMISSION_DATE_1.strftime("%s"),
-        u'profileDate': 17747,
-        u'seq': 123,
-        u'tz': 120,
-        u'v': 1,
+        'arch': dimension['arch'],
+        'clientId': str(uuid.uuid4()),
+        'createdDate': SUBMISSION_DATE_1.strftime(DATE_FMT),
+        'createdTimestamp': SUBMISSION_DATE_1.strftime("%s"),
+        'device': 'Google-Pixel 2',
+        'locale': 'en-US',
+        'meta': meta,
+        'metrics': metrics,
+        'os': 'Android',
+        'osversion': dimension['osversion'],
+        'processStartTimestamp': SUBMISSION_DATE_1.strftime("%s"),
+        'profileDate': 17747,
+        'seq': 123,
+        'tz': 120,
+        'v': 1,
     }

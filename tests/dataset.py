@@ -27,69 +27,69 @@ SUBMISSION_DATE_2 = TODAY - datetime.timedelta(days=2)
 ping_dimensions = {
     "submission_date": [SUBMISSION_DATE_2.strftime(DATE_FMT),
                         SUBMISSION_DATE_1.strftime(DATE_FMT)],
-    "channel": [u"nightly", u"beta", u"release"],
-    "version": [u"40.0b1", u"41"],
+    "channel": ["nightly", "beta", "release"],
+    "version": ["40.0b1", "41"],
     "build_id": [BUILD_ID_2.strftime(DATETIME_FMT),
                  BUILD_ID_1.strftime(DATETIME_FMT)],
-    "application": [u"Firefox", u"Fennec"],
-    "arch": [u"x86", u"x86-64"],
-    "os": [u"Linux", u"Windows_NT"],
-    "os_version": [u"6.1", u"3.1.12"],
+    "application": ["Firefox", "Fennec"],
+    "arch": ["x86", "x86-64"],
+    "os": ["Linux", "Windows_NT"],
+    "os_version": ["6.1", "3.1.12"],
 }
 
 histograms_template = {
-    u"EVENTLOOP_UI_ACTIVITY_EXP_MS": {u"bucket_count": 20,
-                                      u"histogram_type": 0,
-                                      u"log_sum": 0,
-                                      u"log_sum_squares": 0,
-                                      u"range": [50, 60000],
-                                      u"sum": 9362,
-                                      u"values": {u"0": 0,
-                                                  u"110": 16,
-                                                  u"1170": 0,
-                                                  u"163": 8,
-                                                  u"242": 5,
-                                                  u"359": 2,
-                                                  u"50": 18,
-                                                  u"74": 16,
-                                                  u"789": 1}},
-    u"UPDATE_PING_COUNT_EXTERNAL": {u"bucket_count": 3,
-                                    u"histogram_type": 4,
-                                    u"range": [1, 2],
-                                    u"sum": SCALAR_VALUE,
-                                    u"values": {u"0": SCALAR_VALUE, u"1": 0}},
-    u"USE_COUNTER2_PROPERTY_FILL_PAGE": {u'bucket_count': 3,
-                                         u'histogram_type': 2,
-                                         u'range': [1, 2],
-                                         u'sum': 2,
-                                         u'values': {u'0': 0, u'1': 2, u'2': 0}},
-    u"USE_COUNTER2_ISNULL_PAGE": None,
-    u"USE_COUNTER2_PROPERTY_FILL_DOCUMENT": {u'bucket_count': 3,
-                                             u'histogram_type': 2,
-                                             u'range': [1, 2],
-                                             u'sum': 1,
-                                             u'values': {u'0': 0, u'1': 1, u'2': 0}},
-    u"CONTENT_DOCUMENTS_DESTROYED": {u"bucket_count": 3,
-                                     u"histogram_type": 4,
-                                     u"range": [1, 2],
-                                     u"sum": 17,
-                                     u"values": {u"0": 17, u"1": 0}},
-    u"TOP_LEVEL_CONTENT_DOCUMENTS_DESTROYED": {u"bucket_count": 3,
-                                               u"histogram_type": 4,
-                                               u"range": [1, 2],
-                                               u"sum": 19,
-                                               u"values": {u"0": 19, u"1": 0}},
-    u"USE_COUNTER_PROPERTY_FILL_DOCUMENT": {u'bucket_count': 3,
-                                            u'histogram_type': 2,
-                                            u'range': [1, 2],
-                                            u'sum': 1,
-                                            u'values': {u'0': 0, u'1': 1}},
-    u"TELEMETRY_TEST_CATEGORICAL": {u"bucket_count": 4,
-                                    u"histogram_type": 5,
-                                    u"range": [1, 2],
-                                    u"sum": 3,
-                                    u"values": {u"0": 1, u"1": 1, u"2": 1, u"3": 0}},
-    u"GC_MAX_PAUSE_MS_2": {"bucket_count": 50,
+    "EVENTLOOP_UI_ACTIVITY_EXP_MS": {"bucket_count": 20,
+                                      "histogram_type": 0,
+                                      "log_sum": 0,
+                                      "log_sum_squares": 0,
+                                      "range": [50, 60000],
+                                      "sum": 9362,
+                                      "values": {"0": 0,
+                                                  "110": 16,
+                                                  "1170": 0,
+                                                  "163": 8,
+                                                  "242": 5,
+                                                  "359": 2,
+                                                  "50": 18,
+                                                  "74": 16,
+                                                  "789": 1}},
+    "UPDATE_PING_COUNT_EXTERNAL": {"bucket_count": 3,
+                                    "histogram_type": 4,
+                                    "range": [1, 2],
+                                    "sum": SCALAR_VALUE,
+                                    "values": {"0": SCALAR_VALUE, "1": 0}},
+    "USE_COUNTER2_PROPERTY_FILL_PAGE": {'bucket_count': 3,
+                                         'histogram_type': 2,
+                                         'range': [1, 2],
+                                         'sum': 2,
+                                         'values': {'0': 0, '1': 2, '2': 0}},
+    "USE_COUNTER2_ISNULL_PAGE": None,
+    "USE_COUNTER2_PROPERTY_FILL_DOCUMENT": {'bucket_count': 3,
+                                             'histogram_type': 2,
+                                             'range': [1, 2],
+                                             'sum': 1,
+                                             'values': {'0': 0, '1': 1, '2': 0}},
+    "CONTENT_DOCUMENTS_DESTROYED": {"bucket_count": 3,
+                                     "histogram_type": 4,
+                                     "range": [1, 2],
+                                     "sum": 17,
+                                     "values": {"0": 17, "1": 0}},
+    "TOP_LEVEL_CONTENT_DOCUMENTS_DESTROYED": {"bucket_count": 3,
+                                               "histogram_type": 4,
+                                               "range": [1, 2],
+                                               "sum": 19,
+                                               "values": {"0": 19, "1": 0}},
+    "USE_COUNTER_PROPERTY_FILL_DOCUMENT": {'bucket_count': 3,
+                                            'histogram_type': 2,
+                                            'range': [1, 2],
+                                            'sum': 1,
+                                            'values': {'0': 0, '1': 1}},
+    "TELEMETRY_TEST_CATEGORICAL": {"bucket_count": 4,
+                                    "histogram_type": 5,
+                                    "range": [1, 2],
+                                    "sum": 3,
+                                    "values": {"0": 1, "1": 1, "2": 1, "3": 0}},
+    "GC_MAX_PAUSE_MS_2": {"bucket_count": 50,
                            "histogram_type": 1,
                            "range": [1, 1000],
                            "sum": 554,
@@ -97,7 +97,7 @@ histograms_template = {
 }
 
 keyed_histograms_template = {
-    u"DEVTOOLS_PERFTOOLS_RECORDING_FEATURES_USED": {
+    "DEVTOOLS_PERFTOOLS_RECORDING_FEATURES_USED": {
         "withMarkers": {
             "range": [1, 2],
             "bucket_count": 3,
@@ -113,15 +113,15 @@ keyed_histograms_template = {
 }
 
 ignored_keyed_histograms_template = {
-    u"MESSAGE_MANAGER_MESSAGE_SIZE": {u"foo": {u"bucket_count": 20,
-                                               u"histogram_type": 0,
-                                               u"sum": 0,
-                                               u"values": {u"0": 0}}},
-    "VIDEO_DETAILED_DROPPED_FRAMES_PROPORTION": {u"foo": {u"bucket_count": 20,
-                                                          u"histogram_type": 0,
-                                                          u"sum": 0,
-                                                          u"values": {u"0": 0}}},
-    u"SEARCH_COUNTS": {"ddg.urlbar": {"range": [1, 2],
+    "MESSAGE_MANAGER_MESSAGE_SIZE": {"foo": {"bucket_count": 20,
+                                               "histogram_type": 0,
+                                               "sum": 0,
+                                               "values": {"0": 0}}},
+    "VIDEO_DETAILED_DROPPED_FRAMES_PROPORTION": {"foo": {"bucket_count": 20,
+                                                          "histogram_type": 0,
+                                                          "sum": 0,
+                                                          "values": {"0": 0}}},
+    "SEARCH_COUNTS": {"ddg.urlbar": {"range": [1, 2],
                                       "bucket_count": 3,
                                       "histogram_type": 4,
                                       "values": {"0": 1, "1": 0},
@@ -132,7 +132,7 @@ ignored_keyed_histograms_template = {
 simple_measurements_template = {
     "uptime": SCALAR_VALUE,
     "addonManager": {
-        u"XPIDB_parseDB_MS": SCALAR_VALUE
+        "XPIDB_parseDB_MS": SCALAR_VALUE
     }
 }
 
@@ -180,7 +180,7 @@ private_keyed_scalars_template = {
 def generate_pings():
     for dimensions in [
         dict(x) for x in product(
-            *[zip(repeat(k), v) for k, v in ping_dimensions.iteritems()]
+            *[list(zip(repeat(k), v)) for k, v in ping_dimensions.items()]
         )
     ]:
         for i in range(NUM_PINGS_PER_DIMENSIONS):
@@ -189,72 +189,72 @@ def generate_pings():
 
 def generate_payload(dimensions, aggregated_child_histograms):
     meta = {
-        u"submissionDate": dimensions["submission_date"],
-        u"sampleId": 42,
+        "submissionDate": dimensions["submission_date"],
+        "sampleId": 42,
     }
     application = {
-        u"channel": dimensions["channel"],
-        u"version": dimensions["version"],
-        u"buildId": dimensions["build_id"],
-        u"name": dimensions["application"],
-        u"architecture": dimensions["arch"],
+        "channel": dimensions["channel"],
+        "version": dimensions["version"],
+        "buildId": dimensions["build_id"],
+        "name": dimensions["application"],
+        "architecture": dimensions["arch"],
     }
 
     child_payloads = [{"simpleMeasurements": simple_measurements_template}
                       for i in range(NUM_CHILDREN_PER_PING)]
 
-    scalars = dict(chain(scalars_template.iteritems(), ignored_scalars_template.iteritems()))
-    keyed_scalars = dict(chain(keyed_scalars_template.iteritems(),
-                               ignored_keyed_scalars_template.iteritems(),
-                               private_keyed_scalars_template.iteritems()))
+    scalars = dict(chain(iter(scalars_template.items()), iter(ignored_scalars_template.items())))
+    keyed_scalars = dict(chain(iter(keyed_scalars_template.items()),
+                               iter(ignored_keyed_scalars_template.items()),
+                               iter(private_keyed_scalars_template.items())))
 
     processes_payload = {
-        u"parent": {
-            u"scalars": scalars,
-            u"keyedScalars": keyed_scalars
+        "parent": {
+            "scalars": scalars,
+            "keyedScalars": keyed_scalars
         }
     }
 
     if aggregated_child_histograms:
-        processes_payload[u"content"] = {
-            u"histograms": histograms_template,
-            u"keyedHistograms": keyed_histograms_template,
-            u"scalars": scalars,
-            u"keyedScalars": keyed_scalars
+        processes_payload["content"] = {
+            "histograms": histograms_template,
+            "keyedHistograms": keyed_histograms_template,
+            "scalars": scalars,
+            "keyedScalars": keyed_scalars
         }
-        processes_payload[u"gpu"] = {
-            u"histograms": histograms_template,
-            u"keyedHistograms": keyed_histograms_template,
-            u"scalars": scalars,
-            u"keyedScalars": keyed_scalars
+        processes_payload["gpu"] = {
+            "histograms": histograms_template,
+            "keyedHistograms": keyed_histograms_template,
+            "scalars": scalars,
+            "keyedScalars": keyed_scalars
         }
     else:
         for i in range(NUM_CHILDREN_PER_PING):
-            child_payloads[i][u"histograms"] = histograms_template
-            child_payloads[i][u"keyedHistograms"] = keyed_histograms_template
+            child_payloads[i]["histograms"] = histograms_template
+            child_payloads[i]["keyedHistograms"] = keyed_histograms_template
 
     payload = {
-        u"simpleMeasurements": simple_measurements_template,
-        u"histograms": histograms_template,
-        u"keyedHistograms": dict(keyed_histograms_template.items() +
-                                 ignored_keyed_histograms_template.items()),
-        u"childPayloads": child_payloads,
-        u"processes": processes_payload,
+        "simpleMeasurements": simple_measurements_template,
+        "histograms": histograms_template,
+        "keyedHistograms": dict(list(keyed_histograms_template.items()) +
+                                 list(ignored_keyed_histograms_template.items())),
+        "childPayloads": child_payloads,
+        "processes": processes_payload,
     }
 
     environment = {
-        u"system": {u"os": {u"name": dimensions["os"],
-                            u"version": dimensions["os_version"]}},
-        u"settings": {u"telemetryEnabled": False,
-                      u"e10sEnabled": dimensions.get("e10s", True)}
+        "system": {"os": {"name": dimensions["os"],
+                            "version": dimensions["os_version"]}},
+        "settings": {"telemetryEnabled": False,
+                      "e10sEnabled": dimensions.get("e10s", True)}
     }
 
     return {
-        u"clientId": str(uuid.uuid4()),
-        u"meta": meta,
-        u"application": application,
-        u"payload": payload,
-        u"environment": environment,
+        "clientId": str(uuid.uuid4()),
+        "meta": meta,
+        "application": application,
+        "payload": payload,
+        "environment": environment,
     }
 
 
