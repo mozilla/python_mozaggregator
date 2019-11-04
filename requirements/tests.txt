@@ -8,4 +8,4 @@ pyflakes==2.1.1
 testfixtures==6.10.1
 pytest==5.2.2
 pytest-cov==2.8.1
-google-cloud-bigquery
+google-cloud-bigquery==1.21.0
