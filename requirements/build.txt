@@ -3,7 +3,7 @@ Flask-Cors==3.0.8
 Flask-SSLify==0.1.5
 Flask==1.1.1
 Jinja2==2.10.3
-Werkzeug==0.14.1
+Werkzeug==0.16.0
 awscli==1.16.47
 blinker==1.4
 boto3==1.9.37
