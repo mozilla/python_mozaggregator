@@ -12,7 +12,7 @@ from mozaggregator.cli import run_aggregator
 from mozaggregator.db import (NoticeLoggingCursor, _create_connection,
                               submit_aggregates, clear_db)
 from testfixtures import LogCapture
-from utils import runif_bigquery_testing_enabled
+from utils import runif_bigquery_testing_enabled, runif_avro_testing_enabled
 
 SERVICE_URI = "http://localhost:5000"
 
@@ -76,8 +76,7 @@ def test_null_arch_character_submit(sc):
     assert build_id_count == 0, "Build id count should be 0, was {}".format(build_id_count)
     assert submission_date_count == 0, "submission date count should be 0, was {}".format(build_id_count)
 
-
-def test_new_db_functions_backwards_compatible(aggregates):
+def assert_new_db_functions_backwards_compatible():
     conn = _create_connection()
     cursor = conn.cursor()
 
@@ -101,6 +100,9 @@ def test_new_db_functions_backwards_compatible(aggregates):
     # but this behavior is expected
     assert len(cursor.fetchall()) == 2
 
+
+def test_new_db_functions_backwards_compatible(aggregates):
+    assert_new_db_functions_backwards_compatible()
 
 def test_aggregate_histograms():
     conn = _create_connection()
@@ -175,10 +177,11 @@ def test_aggregation_cli(tmp_path, monkeypatch, spark):
     )
 
     assert result.exit_code == 0, result.output
+    assert_new_db_functions_backwards_compatible()
 
 
 @runif_bigquery_testing_enabled
-def test_aggregation_cli_bigquery(tmp_path, monkeypatch, spark, bq_testing_table):
+def test_aggregation_cli_bigquery(tmp_path, bq_testing_table):
     test_creds = str(tmp_path / "creds")
     # generally points to the production credentials
     creds = {"DB_TEST_URL": "dbname=postgres user=postgres host=db"}
@@ -211,3 +214,39 @@ def test_aggregation_cli_bigquery(tmp_path, monkeypatch, spark, bq_testing_table
     )
 
     assert result.exit_code == 0, result.output
+    assert_new_db_functions_backwards_compatible()
+
+
+@runif_avro_testing_enabled
+def test_aggregation_cli_avro(tmp_path, avro_testing_files):
+    test_creds = str(tmp_path / "creds")
+    # generally points to the production credentials
+    creds = {"DB_TEST_URL": "dbname=postgres user=postgres host=db"}
+    with open(test_creds, "w") as f:
+        json.dump(creds, f)
+
+    result = CliRunner().invoke(
+        run_aggregator,
+        [
+            "--date",
+            SUBMISSION_DATE_1.strftime('%Y%m%d'),
+            "--channels",
+            "nightly,beta",
+            "--credentials-protocol",
+            "file",
+            "--credentials-bucket",
+            "/",
+            "--credentials-prefix",
+            test_creds,
+            "--num-partitions",
+            10,
+            "--source",
+            "avro",
+            "--avro-prefix",
+            avro_testing_files
+        ],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0, result.output
+    assert_new_db_functions_backwards_compatible()
