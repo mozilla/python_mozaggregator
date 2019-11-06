@@ -85,7 +85,7 @@ def aggregate_metrics(
             channels,
             "normalized_app_name <> 'Fennec'"
         )
-        fennec_pings = dataset.load(
+        fennec_pings = dataset.load_avro(
             avro_prefix,
             "saved_session",
             submission_date,

@@ -144,7 +144,7 @@ class BigQueryDataset:
             filters.append(filter_clause)
 
         df = self.spark.read.format("avro").load(
-            "{prefix}/submission_date={submission_date}/telemetry_{doc_type}_{doc_version}".format(
+            "{prefix}/{submission_date}/{doc_type}_{doc_version}".format(
                 prefix=prefix,
                 submission_date=submission_date,
                 doc_type=doc_type,
