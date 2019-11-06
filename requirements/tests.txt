@@ -9,3 +9,4 @@ testfixtures==6.3.0
 pytest
 pytest-cov
 google-cloud-bigquery
+google-cloud-storage
