@@ -82,8 +82,10 @@ def runif_avro_testing_enabled(func):
         and os.environ.get("PROJECT_ID")
         and os.environ.get("TMP_AVRO_PATH")
     )
-
-    assert os.environ["TMP_AVRO_PATH"].startswith("gs://"), "temporary avro path must be start with gs://"
+    if os.environ.get("TMP_AVRO_PATH"):
+        assert os.environ["TMP_AVRO_PATH"].startswith(
+            "gs://"
+        ), "temporary avro path must be start with gs://"
     return pytest.mark.skipif(
         not avro_testing_enabled,
         reason="requires valid gcp credentials, project id, and temporary avro path",
