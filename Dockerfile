@@ -43,6 +43,7 @@ RUN wget --directory-prefix $SPARK_HOME/jars/ https://storage.googleapis.com/spa
 RUN wget --directory-prefix $SPARK_HOME/jars/ https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-hadoop2-latest.jar
 RUN wget --directory-prefix $SPARK_HOME/jars/ https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/2.7.3/hadoop-aws-2.7.3.jar
 RUN wget --directory-prefix $SPARK_HOME/jars/ https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk/1.7.4/aws-java-sdk-1.7.4.jar
+RUN wget --directory-prefix $SPARK_HOME/jars/ https://repo1.maven.org/maven2/org/apache/spark/spark-avro_2.11/2.4.3/spark-avro_2.11-2.4.3.jar
 
 # Switch back to home directory
 WORKDIR /app
