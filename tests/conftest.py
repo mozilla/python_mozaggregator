@@ -57,7 +57,11 @@ def bq_testing_table():
         table_id = "{dataset_id}.telemetry_telemetry__{table_name}".format(
             dataset_id=dataset_id, table_name=table_name
         )
-        table = bq_client.create_table(bigquery.table.Table(table_id, schema))
+        table = bigquery.table.Table(table_id, schema)
+        table.time_partitioning = bigquery.TimePartitioning(
+            type_=bigquery.TimePartitioningType.DAY, field="submission_timestamp"
+        )
+        bq_client.create_table(table)
         bq_client.load_table_from_json(
             df, table, job_config=bigquery.job.LoadJobConfig(schema=schema)
         ).result()
@@ -76,19 +80,26 @@ def avro_testing_files(bq_testing_table):
     parent_path = os.environ["TMP_AVRO_PATH"] + "/mozaggregator_test_avro"
 
     for table_name, table_id in bq_testing_table:
-        path = parent_path + "/" + table_name + "/*.avro"
-        bq_client.extract_table(
-            table_id,
-            path,
-            job_config=bigquery.job.ExtractJobConfig(destination_format="AVRO"),
-        ).result()
+        job = bq_client.query(
+            "SELECT distinct cast(extract(date from submission_timestamp) as string) as ds FROM `{}`".format(
+                table_id
+            )
+        )
+        for row in job.result():
+            ds_nodash = row.ds.replace("-", "")
+            path = "{}/{}/{}/*.avro".format(parent_path, ds_nodash, table_name)
+            bq_client.extract_table(
+                "{}${}".format(table_id, ds_nodash),
+                path,
+                job_config=bigquery.job.ExtractJobConfig(destination_format="AVRO"),
+            ).result()
 
     yield parent_path
 
     storage_client = storage.Client()
     parts = parent_path.strip("gs://").split("/")
     bucket = parts[0]
-    prefix = "/".join(parts[1:])
+    prefix = "/".join(parts[parts.index("mozaggregator_test_avro") :])
     bucket = storage_client.get_bucket(bucket)
     for blob in bucket.list_blobs(prefix=prefix):
         blob.delete()

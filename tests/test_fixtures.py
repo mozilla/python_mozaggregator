@@ -11,7 +11,7 @@ def test_avro_matches_bigquery_resource(spark, bq_testing_table, avro_testing_fi
 
     for table_name, table_id in bq_testing_table:
         df = spark.read.format("avro").load(
-            avro_testing_files + "/" + table_name + "/*.avro"
+            "{}/*/{}/*.avro".format(avro_testing_files, table_name)
         )
         avro_counts = df.count()
 
