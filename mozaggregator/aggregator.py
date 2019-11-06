@@ -46,6 +46,7 @@ def aggregate_metrics(
     source="moztelemetry",
     project_id=None,
     dataset_id=None,
+    avro_prefix=None,
     ):
     """ Returns the build-id and submission date aggregates for a given submission date.
 
@@ -70,6 +71,22 @@ def aggregate_metrics(
         fennec_pings = dataset.load(
             project_id,
             dataset_id,
+            "saved_session",
+            submission_date,
+            channels,
+            "normalized_app_name = 'Fennec'"
+        )
+    elif source == "avro" and avro_prefix:
+        dataset = BigQueryDataset()
+        pings = dataset.load_avro(
+            avro_prefix,
+            "main",
+            submission_date,
+            channels,
+            "normalized_app_name <> 'Fennec'"
+        )
+        fennec_pings = dataset.load(
+            avro_prefix,
             "saved_session",
             submission_date,
             channels,
