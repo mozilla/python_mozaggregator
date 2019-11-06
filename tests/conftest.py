@@ -1,12 +1,13 @@
 import os
 
-from google.cloud import bigquery
+from google.cloud import bigquery, storage
 from pyspark.sql import SparkSession
 
 import pytest
 from dataset import generate_pings
 from mobile_dataset import generate_mobile_pings
 from utils import (
+    runif_avro_testing_enabled,
     runif_bigquery_testing_enabled,
     format_payload_bytes_decoded,
     format_payload_bytes_decoded_mobile,
@@ -45,6 +46,8 @@ def bq_testing_table():
         format_payload_bytes_decoded_mobile(ping) for ping in generate_mobile_pings()
     ]
 
+    # result set to be yielded are (table_name, fully-qualified path) pairs
+    results = []
     # create the relevant tables
     for table_name, df in [
         ("main_v4", df),
@@ -59,6 +62,33 @@ def bq_testing_table():
             df, table, job_config=bigquery.job.LoadJobConfig(schema=schema)
         ).result()
 
-    yield
+        results.append((table_name, table_id))
+
+    yield results
 
     bq_client.delete_dataset(dataset_id, delete_contents=True, not_found_ok=True)
+
+
+@runif_avro_testing_enabled
+@pytest.fixture
+def avro_testing_files(bq_testing_table):
+    bq_client = bigquery.Client()
+    parent_path = os.environ["TMP_AVRO_PATH"] + "/mozaggregator_test_avro"
+
+    for table_name, table_id in bq_testing_table:
+        path = parent_path + "/" + table_name + "/*.avro"
+        bq_client.extract_table(
+            table_id,
+            path,
+            job_config=bigquery.job.ExtractJobConfig(destination_format="AVRO"),
+        ).result()
+
+    yield parent_path
+
+    storage_client = storage.Client()
+    parts = parent_path.strip("gs://").split("/")
+    bucket = parts[0]
+    prefix = "/".join(parts[1:])
+    bucket = storage_client.get_bucket(bucket)
+    for blob in bucket.list_blobs(prefix=prefix):
+        blob.delete()

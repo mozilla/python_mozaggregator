@@ -65,3 +65,26 @@ def runif_bigquery_testing_enabled(func):
         not bigquery_testing_enabled,
         reason="requires valid gcp credentials and project id",
     )(func)
+
+
+def runif_avro_testing_enabled(func):
+    """A decorator that will skip the test if the current environment is not set up for running tests.
+
+        @runif_avro_testing_enabled
+        def test_my_function_that_uses_gcs_connector(table_fixture):
+            ...
+    """
+    # importing this at module scope will break test discoverability
+    import pytest
+
+    avro_testing_enabled = (
+        os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+        and os.environ.get("PROJECT_ID")
+        and os.environ.get("TMP_AVRO_PATH")
+    )
+
+    assert os.environ["TMP_AVRO_PATH"].startswith("gs://"), "temporary avro path must be start with gs://"
+    return pytest.mark.skipif(
+        not avro_testing_enabled,
+        reason="requires valid gcp credentials, project id, and temporary avro path",
+    )(func)
