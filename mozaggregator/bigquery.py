@@ -122,3 +122,34 @@ class BigQueryDataset:
 
         # Size of the RDD sample is not deterministic
         return df.rdd.map(self._extract_payload).sample(False, fraction)
+
+    def load_avro(
+        self,
+        prefix,
+        doc_type,
+        submission_date,
+        channels=None,
+        filter_clause=None,
+        doc_version="v4",
+    ):
+        filters = []
+        if channels:
+            # build up a clause like "(normalized_channel = 'nightly' OR normalized_channel = 'beta')"
+            clauses = [
+                "normalized_channel = '{}'".format(channel) for channel in channels
+            ]
+            joined = "({})".format(" OR ".join(clauses))
+            filters.append(joined)
+        if filter_clause:
+            filters.append(filter_clause)
+
+        df = self.spark.read.format("avro").load(
+            "{prefix}/submission_date={submission_date}/telemetry_{doc_type}_{doc_version}".format(
+                prefix=prefix,
+                submission_date=submission_date,
+                doc_type=doc_type,
+                doc_version=doc_version,
+            )
+        )
+
+        return df.rdd.map(self._extract_payload)

@@ -25,12 +25,13 @@ def entry_point():
 @click.option("--credentials-prefix", type=str, required=True)
 @click.option("--num-partitions", type=int, default=10000)
 @click.option(
-    "--source", type=click.Choice(["bigquery", "moztelemetry"]), default="moztelemetry"
+    "--source", type=click.Choice(["bigquery", "moztelemetry", "avro"]), default="moztelemetry"
 )
 @click.option(
     "--project-id", envvar="PROJECT_ID", type=str, default="moz-fx-data-shared-prod"
 )
 @click.option("--dataset-id", type=str, default="payload_bytes_decoded")
+@click.option("--avro-prefix", type=str)
 def run_aggregator(
     date,
     channels,
@@ -41,6 +42,7 @@ def run_aggregator(
     source,
     project_id,
     dataset_id,
+    avro_prefix,
 ):
     spark = SparkSession.builder.getOrCreate()
 
@@ -71,6 +73,7 @@ def run_aggregator(
         source=source,
         project_id=project_id,
         dataset_id=dataset_id,
+        avro_prefix=avro_prefix,
     )
     print(f"Number of build-id aggregates: {aggregates[0].count()}")
     print(f"Number of submission date aggregates: {aggregates[1].count()}")
