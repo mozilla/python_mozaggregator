@@ -46,35 +46,35 @@ def test_keys(aggregates):
 def test_histograms(aggregates):
     n = d.NUM_PINGS_PER_DIMENSIONS
     for aggregate in aggregates:
-        for metric_data in list(aggregate[1].items()):
+        for metric_data in aggregate[1].items():
             metric_name, metric_key, process = metric_data[0]
             # A regular histogram.
-            if metric_name in list(d.histograms_template.keys()):
+            if metric_name in d.histograms_template.keys():
                 tpl = d.histograms_template[metric_name]
                 assert(metric_data[1]['count'] == n)
                 assert(metric_data[1]['sum'] == tpl['sum'] * n)
-                for k, v in list(tpl['values'].items()):
+                for k, v in tpl['values'].items():
                     assert(metric_data[1]['histogram'][k] == v * n)
             # A keyed histogram.
-            elif metric_name in list(d.keyed_histograms_template.keys()):
+            elif metric_name in d.keyed_histograms_template.keys():
                 tpl = d.keyed_histograms_template[metric_name]
                 assert(metric_data[1]['count'] == n)
                 assert(metric_data[1]['sum'] == tpl[metric_key]['sum'] * n)
-                for k, v in list(tpl[metric_key]['values'].items()):
+                for k, v in tpl[metric_key]['values'].items():
                     assert(metric_data[1]['histogram'][k] == v * n)
 
 
 def test_scalars(aggregates):
     n = d.NUM_PINGS_PER_DIMENSIONS
     for aggregate in aggregates:
-        for metric_data in list(aggregate[1].items()):
+        for metric_data in aggregate[1].items():
             metric_name, metric_key, process = metric_data[0]
             metric_name = metric_name.split('_')[1].lower()
             # A regular scalar.
-            if metric_name in list(d.scalars_template.keys()):
+            if metric_name in d.scalars_template.keys():
                 value = d.scalars_template[metric_name]
             # A keyed scalar.
-            elif metric_name in list(d.keyed_scalars_template.keys()):
+            elif metric_name in d.keyed_scalars_template.keys():
                 value = d.keyed_scalars_template[metric_name][metric_key]
             else:
                 continue

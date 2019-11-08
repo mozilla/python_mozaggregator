@@ -108,7 +108,7 @@ def _aggregate_ping(state, metrics):
             % type(metrics)
         )
 
-    for process in list(metrics.keys()):
+    for process in metrics.keys():
         process_metrics = metrics.get(process, {})
         _extract_process_histograms(state, process_metrics, process)
         _extract_process_scalars(state, process_metrics, process)

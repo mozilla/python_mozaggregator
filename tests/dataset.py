@@ -203,10 +203,12 @@ def generate_payload(dimensions, aggregated_child_histograms):
     child_payloads = [{"simpleMeasurements": simple_measurements_template}
                       for i in range(NUM_CHILDREN_PER_PING)]
 
-    scalars = dict(chain(iter(scalars_template.items()), iter(ignored_scalars_template.items())))
-    keyed_scalars = dict(chain(iter(keyed_scalars_template.items()),
-                               iter(ignored_keyed_scalars_template.items()),
-                               iter(private_keyed_scalars_template.items())))
+    scalars = {**scalars_template, **ignored_scalars_template}
+    keyed_scalars = {
+        **keyed_scalars_template,
+        **ignored_keyed_scalars_template,
+        **private_keyed_scalars_template,
+    }
 
     processes_payload = {
         "parent": {
@@ -236,8 +238,10 @@ def generate_payload(dimensions, aggregated_child_histograms):
     payload = {
         "simpleMeasurements": simple_measurements_template,
         "histograms": histograms_template,
-        "keyedHistograms": dict(list(keyed_histograms_template.items()) +
-                                 list(ignored_keyed_histograms_template.items())),
+        "keyedHistograms": {
+            **keyed_histograms_template,
+            **ignored_keyed_histograms_template
+        },
         "childPayloads": child_payloads,
         "processes": processes_payload,
     }

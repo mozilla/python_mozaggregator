@@ -55,14 +55,14 @@ def run_aggregator(
 
     path = create_path(credentials_protocol, credentials_bucket, credentials_prefix)
     creds = spark.read.json(path, multiLine=True).first().asDict()
-    for k, v in list(creds.items()):
+    for k, v in creds.items():
         environ[k] = v
 
     # Attempt a database connection now so we can fail fast if credentials are broken.
     db._preparedb()
 
     channels = [channel.strip() for channel in channels.split(",")]
-    print(("Running job for {}".format(date)))
+    print(f"Running job for {date}")
     aggregates = aggregator.aggregate_metrics(
         spark.sparkContext,
         channels,
@@ -72,8 +72,8 @@ def run_aggregator(
         project_id=project_id,
         dataset_id=dataset_id,
     )
-    print(("Number of build-id aggregates: {}".format(aggregates[0].count())))
-    print(("Number of submission date aggregates: {}".format(aggregates[1].count())))
+    print(f"Number of build-id aggregates: {aggregates[0].count()}")
+    print(f"Number of submission date aggregates: {aggregates[1].count()}")
 
     # Store the results in Postgres.
     db.submit_aggregates(aggregates)
@@ -105,8 +105,8 @@ def run_parquet(date, channels, output, num_partitions, source, project_id, data
         project_id=project_id,
         dataset_id=dataset_id,
     )
-    print(("Number of build-id aggregates: {}".format(aggregates[0].count())))
-    print(("Number of submission date aggregates: {}".format(aggregates[1].count())))
+    print(f"Number of build-id aggregates: {aggregates[0].count()}")
+    print(f"Number of submission date aggregates: {aggregates[1].count()}")
 
     parquet.write_aggregates(spark, aggregates, output, "append")
 
@@ -131,7 +131,7 @@ def run_parquet(date, channels, output, num_partitions, source, project_id, data
 def run_mobile(date, output, num_partitions, source, project_id, dataset_id):
     spark = SparkSession.builder.getOrCreate()
 
-    print(("Running job for {}".format(date)))
+    print(f"Running job for {date}")
     agg_metrics = mobile.aggregate_metrics(
         spark.sparkContext,
         date,
