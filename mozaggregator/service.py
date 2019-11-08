@@ -436,7 +436,7 @@ def get_dates_metrics(prefix, channel):
         # We received an unsupported query string to filter by, return 405.
         valid_url = '{}?{}'.format(
             request.path,
-            urlencode({k: v for k, v in list(dimensions.items()) if k in ALLOWED_DIMENSIONS}))
+            urlencode({k: v for k, v in dimensions.items() if k in ALLOWED_DIMENSIONS}))
         raise MethodNotAllowed(valid_methods=[valid_url])
 
     if 'child' in dimensions:
