@@ -239,20 +239,3 @@ def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1,
 
     all_pings = pings.union(fennec_pings)
     return _aggregate_metrics(all_pings, num_reducers)
-
-
-if __name__ == '__main__':
-    from pyspark.sql import SparkSession
-
-    sparkSession = SparkSession.builder.appName('tmo-poc').getOrCreate()
-
-    process_date = environ.get('date')
-    if not process_date:
-        # If no date in environment, use yesterday's date.
-        process_date = (datetime.date.today() -
-                        datetime.timedelta(days=1)).strftime('%Y%m%d')
-
-    aggs = aggregate_metrics(sparkSession.sparkContext, 'nightly', process_date)
-    write_aggregates(sparkSession, aggs, DEFAULT_PATH, 'append')
-
-    # TODO: Merge parquet files.
