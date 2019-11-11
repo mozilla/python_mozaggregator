@@ -159,6 +159,7 @@ def aggregate_metrics(
     source="moztelemetry",
     project_id=None,
     dataset_id=None,
+    avro_prefix=None,
     ):
     """
     Returns the build-id and submission date aggregates for a given submission date.
@@ -181,6 +182,14 @@ def aggregate_metrics(
             )
         dataset = BigQueryDataset()
         pings = dataset.load(project_id, dataset_id, "mobile_metrics", begin, doc_version="v1")
+    elif source == "avro" and avro_prefix:
+        dataset = BigQueryDataset()
+        pings = dataset.load_avro(
+            avro_prefix,
+            "mobile_metrics",
+            begin,
+            doc_version="v1",
+        )
     else:
         pings = (Dataset.from_source('telemetry')
                         .where(docType='mobile_metrics',

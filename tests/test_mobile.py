@@ -8,7 +8,7 @@ from click.testing import CliRunner
 import mobile_dataset as d
 from mozaggregator.cli import run_mobile
 from mozaggregator.mobile import _aggregate_metrics, get_aggregates_dataframe
-from utils import runif_bigquery_testing_enabled
+from utils import runif_bigquery_testing_enabled, runif_avro_testing_enabled
 
 @pytest.fixture()
 def aggregates_rdd(sc):
@@ -141,6 +141,36 @@ def test_mobile_aggregation_cli_bigquery(tmp_path, spark, aggregates_rdd, bq_tes
             os.environ["PROJECT_ID"],
             "--dataset-id",
             "pytest_mozaggregator_test"
+        ],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0
+
+    expect = get_aggregates_dataframe(spark, aggregates_rdd)
+    actual = spark.read.parquet(output)
+
+    assert expect.count() > 0 and actual.count() > 0
+    assert expect.count() == actual.count()
+
+
+@runif_avro_testing_enabled
+def test_mobile_aggregation_cli_avro(tmp_path, spark, aggregates_rdd, avro_testing_files):
+    output = str(tmp_path / "output")
+
+    result = CliRunner().invoke(
+        run_mobile,
+        [
+            "--date",
+            d.SUBMISSION_DATE_1.strftime('%Y%m%d'),
+            "--output",
+            output,
+            "--num-partitions",
+            10,
+            "--source",
+            "avro",
+            "--avro-prefix",
+            avro_testing_files,
         ],
         catch_exceptions=False,
     )
