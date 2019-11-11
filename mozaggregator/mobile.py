@@ -188,12 +188,3 @@ def aggregate_metrics(
                         .records(sc))
     assert pings.count() > 0
     return _aggregate_metrics(pings, num_partitions)
-
-
-def run(sparkSession, begin, end=None):
-    agg_metrics = aggregate_metrics(sparkSession.sparkContext, begin, end)
-    aggs = get_aggregates_dataframe(sparkSession, agg_metrics)
-    path = 's3://{bucket}/{prefix}/{version}'.format(
-        bucket=PATH_BUCKET, prefix=PATH_PREFIX, version=PATH_VERSION
-    )
-    write_parquet(aggs, path)
