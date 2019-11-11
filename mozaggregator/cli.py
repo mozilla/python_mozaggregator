@@ -25,7 +25,9 @@ def entry_point():
 @click.option("--credentials-prefix", type=str, required=True)
 @click.option("--num-partitions", type=int, default=10000)
 @click.option(
-    "--source", type=click.Choice(["bigquery", "moztelemetry", "avro"]), default="moztelemetry"
+    "--source",
+    type=click.Choice(["bigquery", "moztelemetry", "avro"]),
+    default="moztelemetry",
 )
 @click.option(
     "--project-id", envvar="PROJECT_ID", type=str, default="moz-fx-data-shared-prod"
@@ -88,17 +90,22 @@ def run_aggregator(
 @click.option("--output", type=str, default="s3://telemetry-parquet/aggregates_poc/v1")
 @click.option("--num-partitions", type=int, default=10000)
 @click.option(
-    "--source", type=click.Choice(["bigquery", "moztelemetry"]), default="moztelemetry"
+    "--source",
+    type=click.Choice(["bigquery", "moztelemetry", "avro"]),
+    default="moztelemetry",
 )
 @click.option(
     "--project-id", envvar="PROJECT_ID", type=str, default="moz-fx-data-shared-prod"
 )
 @click.option("--dataset-id", type=str, default="payload_bytes_decoded")
-def run_parquet(date, channels, output, num_partitions, source, project_id, dataset_id):
+@click.option("--avro-prefix", type=str)
+def run_parquet(
+    date, channels, output, num_partitions, source, project_id, dataset_id, avro_prefix
+):
     spark = SparkSession.builder.getOrCreate()
     channels = [channel.strip() for channel in channels.split(",")]
 
-    print(("Running job for {}".format(date)))
+    print(f"Running job for {date}")
     aggregates = parquet.aggregate_metrics(
         spark.sparkContext,
         channels,
@@ -107,6 +114,7 @@ def run_parquet(date, channels, output, num_partitions, source, project_id, data
         source=source,
         project_id=project_id,
         dataset_id=dataset_id,
+        avro_prefix=avro_prefix,
     )
     print(f"Number of build-id aggregates: {aggregates[0].count()}")
     print(f"Number of submission date aggregates: {aggregates[1].count()}")
