@@ -33,7 +33,7 @@ def bq_testing_table():
     bq_client = bigquery.Client()
 
     project_id = os.environ["PROJECT_ID"]
-    dataset_id = "{project_id}.pytest_mozaggregator_test".format(project_id=project_id)
+    dataset_id = f"{project_id}.pytest_mozaggregator_test"
     bq_client.delete_dataset(dataset_id, delete_contents=True, not_found_ok=True)
     bq_client.create_dataset(dataset_id)
 
@@ -54,9 +54,7 @@ def bq_testing_table():
         ("saved_session_v4", df),
         ("mobile_metrics_v1", mobile_df),
     ]:
-        table_id = "{dataset_id}.telemetry_telemetry__{table_name}".format(
-            dataset_id=dataset_id, table_name=table_name
-        )
+        table_id = f"{dataset_id}.telemetry_telemetry__{table_name}"
         table = bigquery.table.Table(table_id, schema)
         table.time_partitioning = bigquery.TimePartitioning(
             type_=bigquery.TimePartitioningType.DAY, field="submission_timestamp"
@@ -81,15 +79,13 @@ def avro_testing_files(bq_testing_table):
 
     for table_name, table_id in bq_testing_table:
         job = bq_client.query(
-            "SELECT distinct cast(extract(date from submission_timestamp) as string) as ds FROM `{}`".format(
-                table_id
-            )
+            f"SELECT distinct cast(extract(date from submission_timestamp) as string) as ds FROM `{table_id}`"
         )
         for row in job.result():
             ds_nodash = row.ds.replace("-", "")
-            path = "{}/{}/{}/*.avro".format(parent_path, ds_nodash, table_name)
+            path = f"{parent_path}/{ds_nodash}/{table_name}/*.avro"
             bq_client.extract_table(
-                "{}${}".format(table_id, ds_nodash),
+                f"{table_id}${ds_nodash}",
                 path,
                 job_config=bigquery.job.ExtractJobConfig(destination_format="AVRO"),
             ).result()
@@ -99,7 +95,8 @@ def avro_testing_files(bq_testing_table):
     storage_client = storage.Client()
     parts = parent_path.strip("gs://").split("/")
     bucket = parts[0]
-    prefix = "/".join(parts[parts.index("mozaggregator_test_avro") :])
+    prefix = "/".join(parts[1:parts.index("mozaggregator_test_avro")+1])
     bucket = storage_client.get_bucket(bucket)
     for blob in bucket.list_blobs(prefix=prefix):
+        print(f"deleting {blob.name}")
         blob.delete()

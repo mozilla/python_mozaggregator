@@ -11,11 +11,11 @@ def test_avro_matches_bigquery_resource(spark, bq_testing_table, avro_testing_fi
 
     for table_name, table_id in bq_testing_table:
         df = spark.read.format("avro").load(
-            "{}/*/{}/*.avro".format(avro_testing_files, table_name)
+            f"{avro_testing_files}/*/{table_name}/*.avro"
         )
         avro_counts = df.count()
 
-        job = bq_client.query("SELECT count(*) as row_count FROM `{}`".format(table_id))
+        job = bq_client.query(f"SELECT count(*) as row_count FROM `{table_id}`")
         bq_counts = list(job.result())[0].row_count
 
         assert avro_counts > 0
