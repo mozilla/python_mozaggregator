@@ -89,17 +89,14 @@ class BigQueryDataset:
         start = self._date_add_days(submission_date, 0)
         end = self._date_add_days(submission_date, 1)
 
-        date_clause = "submission_timestamp >= '{start}' AND submission_timestamp < '{end}'".format(
-            start=start, end=end
+        date_clause = (
+            f"submission_timestamp >= '{start}' AND submission_timestamp < '{end}'"
         )
-
         filters = [date_clause]
         if channels:
             # build up a clause like "(normalized_channel = 'nightly' OR normalized_channel = 'beta')"
-            clauses = [
-                "normalized_channel = '{}'".format(channel) for channel in channels
-            ]
-            joined = "({})".format(" OR ".join(clauses))
+            clauses = [f"normalized_channel = '{channel}'" for channel in channels]
+            joined = f"({' OR '.join(clauses)})"
             filters.append(joined)
         if filter_clause:
             filters.append(filter_clause)
@@ -109,12 +106,7 @@ class BigQueryDataset:
             # Assumes the namespace is telemetry
             .option(
                 "table",
-                "{project_id}.{dataset_id}.telemetry_telemetry__{doc_type}_{doc_version}".format(
-                    project_id=project_id,
-                    dataset_id=dataset_id,
-                    doc_type=doc_type,
-                    doc_version=doc_version,
-                ),
+                f"{project_id}.{dataset_id}.telemetry_telemetry__{doc_type}_{doc_version}",
             )
             .option("filter", " AND ".join(filters))
             .load()
@@ -135,21 +127,14 @@ class BigQueryDataset:
         filters = []
         if channels:
             # build up a clause like "(normalized_channel = 'nightly' OR normalized_channel = 'beta')"
-            clauses = [
-                "normalized_channel = '{}'".format(channel) for channel in channels
-            ]
-            joined = "({})".format(" OR ".join(clauses))
+            clauses = [f"normalized_channel = '{channel}'" for channel in channels]
+            joined = f"({' OR '.join(clauses)})"
             filters.append(joined)
         if filter_clause:
             filters.append(filter_clause)
 
         df = self.spark.read.format("avro").load(
-            "{prefix}/{submission_date}/{doc_type}_{doc_version}".format(
-                prefix=prefix,
-                submission_date=submission_date,
-                doc_type=doc_type,
-                doc_version=doc_version,
-            )
+            f"{prefix}/{submission_date}/{doc_type}_{doc_version}"
         )
 
         return df.rdd.map(self._extract_payload)
