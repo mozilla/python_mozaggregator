@@ -75,7 +75,7 @@ def bq_testing_table():
 @pytest.fixture
 def avro_testing_files(bq_testing_table):
     bq_client = bigquery.Client()
-    parent_path = os.environ["TMP_AVRO_PATH"] + "/mozaggregator_test_avro"
+    parent_path = os.path.join(os.environ["TMP_AVRO_PATH"], "mozaggregator_test_avro")
 
     for table_name, table_id in bq_testing_table:
         job = bq_client.query(
