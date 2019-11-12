@@ -1,5 +1,5 @@
 import json
-import zlib
+import gzip
 
 from datetime import datetime, timedelta
 
@@ -56,12 +56,8 @@ class BigQueryDataset:
             |-- sample_id: long (nullable = true)
             |-- submission_timestamp: timestamp (nullable = true)
         """
-        # Add 32 to the window size to automatically decompress zlib or gzip.
-        # Because for python 2/3 compatibility, compression and decompression is
-        # done directly via zlib instead of the gzip library. Data is stored in
-        # payload_bytes_decoded as gzip.
-        # https://docs.python.org/2/library/zlib.html#zlib.decompress
-        data = json.loads(zlib.decompress(bytes(row.payload), 15 + 32))
+        # Data is stored in payload_bytes_decoded as gzip.
+        data = json.loads(gzip.decompress(row.payload).decode("utf-8"))
         # add `meta` fields for backwards compatibility
         data["meta"] = {
             "submissionDate": datetime.strftime(row.submission_timestamp, "%Y%m%d"),
