@@ -127,8 +127,8 @@ class BigQueryDataset:
         filters = []
         if channels:
             # build up a clause like "(normalized_channel = 'nightly' OR normalized_channel = 'beta')"
-            clauses = [f"normalized_channel = '{channel}'" for channel in channels]
-            joined = f"({' OR '.join(clauses)})"
+            clauses = ' OR '.join([f"normalized_channel = '{channel}'" for channel in channels])
+            joined = f"({clauses})"
             filters.append(joined)
         if filter_clause:
             filters.append(filter_clause)
@@ -136,5 +136,7 @@ class BigQueryDataset:
         df = self.spark.read.format("avro").load(
             f"{prefix}/{submission_date}/{doc_type}_{doc_version}"
         )
+        if filters:
+            df.where(" AND ".join(filters))
 
         return df.rdd.map(self._extract_payload)
