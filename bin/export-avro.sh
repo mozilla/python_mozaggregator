@@ -12,18 +12,39 @@ function default_date() {
     python3 - <<END
 from datetime import date, timedelta
 ds = f"{date.today() - timedelta(1)}"
-print(ds.replace("-",""))
+print(ds)
 END
+}
+
+function query_to_destination() {
+    local table_name=$1
+    local channels=$2
+
+    local table="${SOURCE_PROJECT}.payload_bytes_decoded.telemetry_telemetry__${table_name}"
+
+    local channel_clause=""
+    if [[ -n ${channels} ]]; then
+        channel_clause="AND normalized_channel in (${channels})"
+    fi
+    bq query \
+        --max_rows=0 \
+        --destination_table "${DESTINATION_DATASET}.${table_name}" \
+        --replace \
+        --use_legacy_sql=false \
+        "SELECT * FROM \`${table}\` WHERE DATE(submission_timestamp) = DATE \"${DATE}\" ${channel_clause}"
+
 }
 
 function extract_table() {
     local table_name=$1
-    local suffix='*.avro'
 
-    # date partition must be escaped
-    local table="${SOURCE_PROJECT}:payload_bytes_decoded.telemetry_telemetry__${table_name}\$${DATE}" 
-    local output="${OUTPUT_PREFIX}/${SOURCE_PROJECT}/${DATE}/${table_name}/${suffix}"
-    
+    local suffix='*.avro'
+    local ds_nodash
+    ds_nodash=$(echo "${DATE}" | tr -d "-")
+
+    local table="${DESTINATION_DATASET}.${table_name}"
+    local output="${OUTPUT_PREFIX}/${SOURCE_PROJECT}/${ds_nodash}/${table_name}/${suffix}"
+
     if gsutil -q stat "${output}"; then
         echo "${output} already exists! skipping..."
         return
@@ -36,8 +57,14 @@ function extract_table() {
 function main() {
     # moz-fx-data-shared-prod OR moz-fx-data-shar-nonprod-efed
     SOURCE_PROJECT=${1?expected source project of BigQuery tables in first argument}
-    OUTPUT_PREFIX=${2?expected gs:// output path in second argument}
-    DATE=${3:-$(default_date)}
+    DESTINATION_DATASET=${2?expect destination dataset of form project_id:dataset}
+    OUTPUT_PREFIX=${3?expected gs:// output path in second argument}
+    DATE=${4:-$(default_date)}
+
+    # NOTE: channels are hardcoded...
+    query_to_destination "main_v4"              "'nightly', 'beta'"
+    query_to_destination "saved_session_v4"     "'nightly', 'beta'"
+    query_to_destination "mobile_metrics_v1"    ""
 
     extract_table "main_v4"
     extract_table "saved_session_v4"
