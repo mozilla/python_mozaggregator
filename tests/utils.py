@@ -1,7 +1,7 @@
 import base64
 import json
 import os
-import zlib
+import gzip
 from datetime import datetime
 
 
@@ -22,7 +22,7 @@ def format_payload_bytes_decoded(ping):
         "submission_timestamp": datetime.strptime(
             ping["meta"]["submissionDate"], "%Y%m%d"
         ).strftime("%Y-%m-%d %H:%M:%S"),
-        "payload": base64.b64encode(zlib.compress(json.dumps(ping).encode())).decode(),
+        "payload": base64.b64encode(gzip.compress(json.dumps(ping).encode())).decode(),
     }
 
 
@@ -44,7 +44,7 @@ def format_payload_bytes_decoded_mobile(ping):
                 "app_name": ping["meta"]["appName"],
             }
         },
-        "payload": base64.b64encode(zlib.compress(json.dumps(ping).encode())).decode(),
+        "payload": base64.b64encode(gzip.compress(json.dumps(ping).encode())).decode(),
     }
 
 

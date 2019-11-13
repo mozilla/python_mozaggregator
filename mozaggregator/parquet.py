@@ -169,7 +169,8 @@ def _map_ping_to_dimensions(ping):
 
 def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1,
                       fennec_ping_fraction=1, num_reducers=10000,
-                      source="moztelemetry", project_id=None, dataset_id=None):
+                      source="moztelemetry", project_id=None, dataset_id=None,
+                      avro_prefix=None):
     """
     Returns the build-id and submission date aggregates for a given submission date.
 
@@ -195,6 +196,22 @@ def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1,
         fennec_pings = dataset.load(
             project_id,
             dataset_id,
+            "saved_session",
+            submission_date,
+            channels,
+            "normalized_app_name = 'Fennec'"
+        )
+    elif source == "avro" and avro_prefix:
+        dataset = BigQueryDataset()
+        pings = dataset.load_avro(
+            avro_prefix,
+            "main",
+            submission_date,
+            channels,
+            "normalized_app_name <> 'Fennec'"
+        )
+        fennec_pings = dataset.load_avro(
+            avro_prefix,
             "saved_session",
             submission_date,
             channels,

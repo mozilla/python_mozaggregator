@@ -16,7 +16,7 @@ function bootstrap() {
 
     # create the package artifacts
     rm -rf dist build
-    python setup.py bdist_egg
+    python3 setup.py bdist_egg
     gsutil cp "dist/${MODULE}*.egg" "gs://${bucket}/bootstrap/${MODULE}.egg"
 
     # create the initialization script and runner
@@ -56,14 +56,17 @@ function create_cluster() {
     }
     trap cleanup EXIT
 
-    gcloud dataproc clusters create ${cluster_id} \
+    gcloud beta dataproc clusters create ${cluster_id} \
         --image-version 1.4 \
+        --enable-component-gateway \
+        --worker-machine-type=n1-standard-8 \
         --num-preemptible-workers ${NUM_WORKERS} \
-        --properties ^#^spark:spark.jars=gs://spark-lib/bigquery/spark-bigquery-latest.jar#spark:spark.hadoop.fs.s3a.access.key=${AWS_ACCESS_KEY_ID}#spark:spark.hadoop.fs.s3a.secret.key=${AWS_SECRET_ACCESS_KEY}#spark:spark.jars.packages=org.apache.spark:spark-avro_2.11:2.4.4 \
+        --properties ^#^spark:spark.jars=gs://spark-lib/bigquery/spark-bigquery-latest.jar#spark:spark.hadoop.fs.s3a.access.key=${AWS_ACCESS_KEY_ID}#spark:spark.hadoop.fs.s3a.secret.key=${AWS_SECRET_ACCESS_KEY}#spark:spark.jars.packages=org.apache.spark:spark-avro_2.11:2.4.4#spark:spark.python.profile=true \
         --metadata "PIP_PACKAGES=${requirements}" \
         --initialization-actions \
             gs://${bucket}/bootstrap/install-python-dev.sh,gs://dataproc-initialization-actions/python/pip-install.sh \
-        --region=${REGION}
+        --region=${REGION} \
+        --max-idle 10m
 }
 
 
@@ -84,7 +87,7 @@ function submit() {
 function main() {
     cd "$(dirname "$0")/.."
     bucket=$(gcloud config get-value project)
-    cluster_id=test-mozaggregator
+    cluster_id="test-mozaggregator-${RANDOM}"
     bootstrap $bucket
     create_cluster $cluster_id $bucket
     submit $cluster_id $bucket "$@"

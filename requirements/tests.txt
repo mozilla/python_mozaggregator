@@ -10,3 +10,4 @@ pytest
 pytest-cov
 google-cloud-bigquery
 google-cloud-storage
+google-resumable-media

@@ -9,7 +9,7 @@ import dataset as d
 import pytest
 from mozaggregator.cli import run_parquet
 from mozaggregator.parquet import _aggregate_metrics
-from utils import runif_bigquery_testing_enabled
+from utils import runif_bigquery_testing_enabled, runif_avro_testing_enabled
 
 
 class testParquetAggregation(unittest.TestCase):
@@ -93,7 +93,7 @@ def test_parquet_aggregation_cli_bigquery(tmp_path, spark, raw_pings, bq_testing
         run_parquet,
         [
             "--date",
-            d.SUBMISSION_DATE_1.strftime('%Y%m%d'),
+            d.SUBMISSION_DATE_1.strftime("%Y%m%d"),
             "--channels",
             "nightly,beta",
             "--output",
@@ -105,7 +105,36 @@ def test_parquet_aggregation_cli_bigquery(tmp_path, spark, raw_pings, bq_testing
             "--project-id",
             os.environ["PROJECT_ID"],
             "--dataset-id",
-            "pytest_mozaggregator_test"
+            "pytest_mozaggregator_test",
+        ],
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0
+
+    df = spark.read.parquet(output)
+    assert df.count() > len(raw_pings)
+
+
+@runif_avro_testing_enabled
+def test_parquet_aggregation_cli_avro(tmp_path, spark, raw_pings, avro_testing_files):
+    output = str(tmp_path / "output")
+
+    result = CliRunner().invoke(
+        run_parquet,
+        [
+            "--date",
+            d.SUBMISSION_DATE_1.strftime("%Y%m%d"),
+            "--channels",
+            "nightly,beta",
+            "--output",
+            output,
+            "--num-partitions",
+            10,
+            "--source",
+            "avro",
+            "--avro-prefix",
+            avro_testing_files,
         ],
         catch_exceptions=False,
     )

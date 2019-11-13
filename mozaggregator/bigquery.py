@@ -1,5 +1,5 @@
 import json
-import zlib
+import gzip
 
 from datetime import datetime, timedelta
 
@@ -56,12 +56,8 @@ class BigQueryDataset:
             |-- sample_id: long (nullable = true)
             |-- submission_timestamp: timestamp (nullable = true)
         """
-        # Add 32 to the window size to automatically decompress zlib or gzip.
-        # Because for python 2/3 compatibility, compression and decompression is
-        # done directly via zlib instead of the gzip library. Data is stored in
-        # payload_bytes_decoded as gzip.
-        # https://docs.python.org/2/library/zlib.html#zlib.decompress
-        data = json.loads(zlib.decompress(bytes(row.payload), 15 + 32))
+        # Data is stored in payload_bytes_decoded as gzip.
+        data = json.loads(gzip.decompress(row.payload).decode("utf-8"))
         # add `meta` fields for backwards compatibility
         data["meta"] = {
             "submissionDate": datetime.strftime(row.submission_timestamp, "%Y%m%d"),
@@ -89,17 +85,14 @@ class BigQueryDataset:
         start = self._date_add_days(submission_date, 0)
         end = self._date_add_days(submission_date, 1)
 
-        date_clause = "submission_timestamp >= '{start}' AND submission_timestamp < '{end}'".format(
-            start=start, end=end
+        date_clause = (
+            f"submission_timestamp >= '{start}' AND submission_timestamp < '{end}'"
         )
-
         filters = [date_clause]
         if channels:
             # build up a clause like "(normalized_channel = 'nightly' OR normalized_channel = 'beta')"
-            clauses = [
-                "normalized_channel = '{}'".format(channel) for channel in channels
-            ]
-            joined = "({})".format(" OR ".join(clauses))
+            clauses = [f"normalized_channel = '{channel}'" for channel in channels]
+            joined = f"({' OR '.join(clauses)})"
             filters.append(joined)
         if filter_clause:
             filters.append(filter_clause)
@@ -109,12 +102,7 @@ class BigQueryDataset:
             # Assumes the namespace is telemetry
             .option(
                 "table",
-                "{project_id}.{dataset_id}.telemetry_telemetry__{doc_type}_{doc_version}".format(
-                    project_id=project_id,
-                    dataset_id=dataset_id,
-                    doc_type=doc_type,
-                    doc_version=doc_version,
-                ),
+                f"{project_id}.{dataset_id}.telemetry_telemetry__{doc_type}_{doc_version}",
             )
             .option("filter", " AND ".join(filters))
             .load()
@@ -135,21 +123,16 @@ class BigQueryDataset:
         filters = []
         if channels:
             # build up a clause like "(normalized_channel = 'nightly' OR normalized_channel = 'beta')"
-            clauses = [
-                "normalized_channel = '{}'".format(channel) for channel in channels
-            ]
-            joined = "({})".format(" OR ".join(clauses))
+            clauses = ' OR '.join([f"normalized_channel = '{channel}'" for channel in channels])
+            joined = f"({clauses})"
             filters.append(joined)
         if filter_clause:
             filters.append(filter_clause)
 
         df = self.spark.read.format("avro").load(
-            "{prefix}/{submission_date}/{doc_type}_{doc_version}".format(
-                prefix=prefix,
-                submission_date=submission_date,
-                doc_type=doc_type,
-                doc_version=doc_version,
-            )
+            f"{prefix}/{submission_date}/{doc_type}_{doc_version}"
         )
+        if filters:
+            df.where(" AND ".join(filters))
 
         return df.rdd.map(self._extract_payload)
