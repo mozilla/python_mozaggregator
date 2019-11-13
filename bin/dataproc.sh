@@ -60,7 +60,7 @@ function create_cluster() {
         --image-version 1.4 \
         --enable-component-gateway \
         --num-preemptible-workers ${NUM_WORKERS} \
-        --properties ^#^spark:spark.jars=gs://spark-lib/bigquery/spark-bigquery-latest.jar#spark:spark.hadoop.fs.s3a.access.key=${AWS_ACCESS_KEY_ID}#spark:spark.hadoop.fs.s3a.secret.key=${AWS_SECRET_ACCESS_KEY}#spark:spark.jars.packages=org.apache.spark:spark-avro_2.11:2.4.4 \
+        --properties ^#^spark:spark.jars=gs://spark-lib/bigquery/spark-bigquery-latest.jar#spark:spark.hadoop.fs.s3a.access.key=${AWS_ACCESS_KEY_ID}#spark:spark.hadoop.fs.s3a.secret.key=${AWS_SECRET_ACCESS_KEY}#spark:spark.jars.packages=org.apache.spark:spark-avro_2.11:2.4.4#spark:spark.python.profile=true \
         --metadata "PIP_PACKAGES=${requirements}" \
         --initialization-actions \
             gs://${bucket}/bootstrap/install-python-dev.sh,gs://dataproc-initialization-actions/python/pip-install.sh \
