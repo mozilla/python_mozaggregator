@@ -23,6 +23,11 @@ def entry_point():
 )
 @click.option("--credentials-bucket", type=str, required=False)
 @click.option("--credentials-prefix", type=str, required=False)
+@click.option("--postgres-db", type=str, required=False)
+@click.option("--postgres-user", type=str, required=False)
+@click.option("--postgres-pass", type=str, required=False)
+@click.option("--postgres-host", type=str, required=False)
+@click.option("--postgres-ro-host", type=str, required=False)
 @click.option("--num-partitions", type=int, default=10000)
 @click.option(
     "--source",
@@ -40,6 +45,11 @@ def run_aggregator(
     credentials_protocol,
     credentials_bucket,
     credentials_prefix,
+    postgres_db,
+    postgres_user,
+    postgres_pass,
+    postgres_host,
+    postgres_ro_host,
     num_partitions,
     source,
     project_id,
@@ -55,12 +65,22 @@ def run_aggregator(
         mapping = {"file": "file", "s3": "s3a", "gcs": "gs"}
         return f"{mapping[protocol]}://{bucket}/{prefix}"
 
-    if credentials_bucket and credentials_prefix:
+    # priority of reading credentials is options > credentials file > environment
+    option_credentials = {
+        "POSTGRES_DB": postgres_db,
+        "POSTGRES_USER": postgres_user,
+        "POSTGRES_PASS": postgres_pass,
+        "POSTGRES_HOST": postgres_host,
+        "POSTGRES_RO_HOST": postgres_ro_host,
+    }
+    if all(option_credentials.values()):
+        print("reading credentials from options")
+        environ.update(option_credentials)
+    elif credentials_bucket and credentials_prefix:
         path = create_path(credentials_protocol, credentials_bucket, credentials_prefix)
         print(f"reading credentials from {path}")
         creds = spark.read.json(path, multiLine=True).first().asDict()
-        for k, v in creds.items():
-            environ[k] = v
+        environ.update(creds)
     else:
         print(f"assuming credentials from the environment")
 
