@@ -180,6 +180,45 @@ def test_aggregation_cli(tmp_path, monkeypatch, spark):
     assert_new_db_functions_backwards_compatible()
 
 
+def test_aggregation_cli_no_credentials_file(monkeypatch, spark):
+    class Dataset:
+        @staticmethod
+        def from_source(*args, **kwargs):
+            return Dataset()
+
+        def where(self, *args, **kwargs):
+            return self
+
+        def records(self, *args, **kwargs):
+            return spark.sparkContext.parallelize(generate_pings())
+
+    monkeypatch.setattr("mozaggregator.aggregator.Dataset", Dataset)
+
+    result = CliRunner().invoke(
+        run_aggregator,
+        [
+            "--date",
+            SUBMISSION_DATE_1.strftime('%Y%m%d'),
+            "--channels",
+            "nightly,beta",
+            "--num-partitions",
+            10,
+        ],
+        env={
+            "DB_TEST_URL": "",
+            "POSTGRES_DB": "postgres",
+            "POSTGRES_USER": "postgres",
+            "POSTGRES_PASS": "pass",
+            "POSTGRES_HOST": "db",
+            "POSTGRES_RO_HOST": "db",
+        },
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0, result.output
+    assert_new_db_functions_backwards_compatible()
+
+
 @runif_bigquery_testing_enabled
 def test_aggregation_cli_bigquery(tmp_path, bq_testing_table):
     test_creds = str(tmp_path / "creds")
