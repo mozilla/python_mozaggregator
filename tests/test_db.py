@@ -134,16 +134,8 @@ def test_notice_logging_cursor():
     lc.check(expected)
 
 
-def test_aggregation_cli(tmp_path, monkeypatch, spark):
-    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "access")
-    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "secret")
-
-    test_creds = str(tmp_path / "creds")
-    # generally points to the production credentials
-    creds = {"DB_TEST_URL": "dbname=postgres user=postgres host=db"}
-    with open(test_creds, "w") as f:
-        json.dump(creds, f)
-
+@pytest.fixture
+def mock_dataset(monkeypatch, spark):
     class Dataset:
         @staticmethod
         def from_source(*args, **kwargs):
@@ -156,6 +148,14 @@ def test_aggregation_cli(tmp_path, monkeypatch, spark):
             return spark.sparkContext.parallelize(generate_pings())
 
     monkeypatch.setattr("mozaggregator.aggregator.Dataset", Dataset)
+
+
+def test_aggregation_cli(tmp_path, mock_dataset):
+    test_creds = str(tmp_path / "creds")
+    # generally points to the production credentials
+    creds = {"DB_TEST_URL": "dbname=postgres user=postgres host=db"}
+    with open(test_creds, "w") as f:
+        json.dump(creds, f)
 
     result = CliRunner().invoke(
         run_aggregator,
@@ -180,20 +180,7 @@ def test_aggregation_cli(tmp_path, monkeypatch, spark):
     assert_new_db_functions_backwards_compatible()
 
 
-def test_aggregation_cli_no_credentials_file(monkeypatch, spark):
-    class Dataset:
-        @staticmethod
-        def from_source(*args, **kwargs):
-            return Dataset()
-
-        def where(self, *args, **kwargs):
-            return self
-
-        def records(self, *args, **kwargs):
-            return spark.sparkContext.parallelize(generate_pings())
-
-    monkeypatch.setattr("mozaggregator.aggregator.Dataset", Dataset)
-
+def test_aggregation_cli_no_credentials_file(mock_dataset):
     result = CliRunner().invoke(
         run_aggregator,
         [
@@ -217,6 +204,61 @@ def test_aggregation_cli_no_credentials_file(monkeypatch, spark):
 
     assert result.exit_code == 0, result.output
     assert_new_db_functions_backwards_compatible()
+
+
+def test_aggregation_cli_credentials_option(mock_dataset):
+    empty_env = {
+        "DB_TEST_URL": "",
+        "POSTGRES_DB": "",
+        "POSTGRES_USER": "",
+        "POSTGRES_PASS": "",
+        "POSTGRES_HOST": "",
+        "POSTGRES_RO_HOST": ","
+    }
+    options = [
+        "--postgres-db",
+        "postgres",
+        "--postgres-user",
+        "postgres",
+        "--postgres-pass",
+        "pass",
+        "--postgres-host",
+        "db",
+        "--postgres-ro-host",
+        "db"
+    ]
+    result = CliRunner().invoke(
+        run_aggregator,
+        [
+            "--date",
+            SUBMISSION_DATE_1.strftime('%Y%m%d'),
+            "--channels",
+            "nightly,beta",
+            "--num-partitions",
+            10,
+        ] + options,
+        env=empty_env,
+        catch_exceptions=False,
+    )
+
+    assert result.exit_code == 0, result.output
+    assert_new_db_functions_backwards_compatible()
+
+    # now test that missing an option will exit with non-zero
+    result = CliRunner().invoke(
+        run_aggregator,
+        [
+            "--date",
+            SUBMISSION_DATE_1.strftime('%Y%m%d'),
+            "--channels",
+            "nightly,beta",
+            "--num-partitions",
+            10,
+        ] + options[:2], # missing ro_host
+        env=empty_env,
+        catch_exceptions=False,
+    )
+    assert result.exit_code == 1
 
 
 @runif_bigquery_testing_enabled
