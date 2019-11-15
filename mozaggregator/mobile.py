@@ -19,7 +19,7 @@ warnings.filterwarnings("always")
 
 PATH_BUCKET = environ.get('bucket', 'telemetry-parquet')
 PATH_PREFIX = 'mobile_metrics_aggregates'
-PATH_VERSION = 'v2'
+PATH_VERSION = 'v3'
 
 SCHEMA = StructType([
     StructField('submission_date', StringType(), False),
@@ -44,12 +44,11 @@ def get_aggregates_dataframe(spark, aggregates):
     return spark.createDataFrame(build_id_agg, SCHEMA)
 
 
-def write_parquet(df, path):
-    (df.repartition('metric')
-       .sortWithinPartitions(['channel', 'version', 'submission_date'])
+def write_parquet(df, path, num_partitions=8):
+    (df.repartitionByRange(num_partitions, "submission_date", "metric", "channel", "version")
        .write
-       .partitionBy('metric')
-       .parquet(path, mode='append'))
+       .partitionBy("submission_date")
+       .parquet(path, mode="overwrite"))
 
 
 def _explode(row):
