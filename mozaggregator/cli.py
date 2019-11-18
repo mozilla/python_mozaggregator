@@ -168,6 +168,7 @@ def run_mobile(
     date, output, num_partitions, source, project_id, dataset_id, avro_prefix
 ):
     spark = SparkSession.builder.getOrCreate()
+    spark.conf.set("spark.sql.sources.partitionOverwriteMode", "dynamic")
 
     print(f"Running job for {date}")
     agg_metrics = mobile.aggregate_metrics(

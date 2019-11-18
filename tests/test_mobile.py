@@ -144,8 +144,7 @@ def test_mobile_aggregation_cli_bigquery(tmp_path, spark, aggregates_rdd, bq_tes
         ],
         catch_exceptions=False,
     )
-
-    assert result.exit_code == 0
+    assert len({f"submission_date={d.SUBMISSION_DATE_1.strftime('%Y%m%d')}"} - set(os.listdir(output))) == 0
 
     expect = get_aggregates_dataframe(spark, aggregates_rdd)
     actual = spark.read.parquet(output)
