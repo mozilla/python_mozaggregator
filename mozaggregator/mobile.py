@@ -44,7 +44,7 @@ def get_aggregates_dataframe(spark, aggregates):
     return spark.createDataFrame(build_id_agg, SCHEMA)
 
 
-def write_parquet(df, path, num_partitions=8):
+def write_parquet(df, path, num_partitions=1):
     (df.repartitionByRange(num_partitions, "submission_date", "metric", "channel", "version")
        .write
        .partitionBy("submission_date")
