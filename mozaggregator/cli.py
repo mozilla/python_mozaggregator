@@ -5,7 +5,7 @@ from os import environ
 import click
 from pyspark.sql import SparkSession
 
-from mozaggregator import aggregator, db, parquet, mobile
+from mozaggregator import aggregator, db, parquet, mobile, trim_db
 
 DS_NODASH_YESTERDAY = datetime.strftime(datetime.utcnow() - timedelta(1), "%Y%m%d")
 
@@ -187,6 +187,7 @@ def run_mobile(
 entry_point.add_command(run_aggregator, "aggregator")
 entry_point.add_command(run_mobile, "mobile")
 entry_point.add_command(run_parquet, "parquet")
+entry_point.add_command(trim_db.main, "trim-database")
 
 if __name__ == "__main__":
     entry_point()
