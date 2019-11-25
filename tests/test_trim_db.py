@@ -95,7 +95,7 @@ def test_trim_tables(conn):
     retain, trim = trim_db.query_submission_date(cursor, set(dates[:1]))
 
     expect = full - trim
-    trim_db.trim_tables(cursor, trim)
+    trim_db.trim_tables(conn, trim)
     conn.commit()
     cursor.execute(list_tables)
     actual = {row[0] for row in cursor.fetchall()}

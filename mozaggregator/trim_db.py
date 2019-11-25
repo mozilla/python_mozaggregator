@@ -84,10 +84,17 @@ def query_build_id(cursor, retain_suffix_set: Set[str]) -> Tuple[Set[str], Set[s
     return build_id_retain, build_id_trim
 
 
-def trim_tables(cursor, trim_set: Set[str]):
-    tables = ", ".join(trim_set)
-    query = f"drop table {tables};"
-    cursor.execute(query)
+def trim_tables(conn, trim_set: Set[str], batch_size=100):
+    cursor = conn.cursor()
+    trim_list = list(trim_set)
+    num_batches = len(trim_list) // batch_size
+    for i in range(num_batches):
+        print(f"dropping {i} out of {num_batches} tables in batches of {batch_size}")
+        trim_subset = trim_list[i * batch_size : (i + 1) * batch_size]
+        tables = ", ".join(trim_subset)
+        query = f"drop table {tables};"
+        cursor.execute(query)
+        conn.commit()
 
 
 @click.command()
@@ -120,8 +127,7 @@ def main(
 
     if not dry_run:
         print("Dropping tables...")
-        trim_tables(cursor, submission_trim | build_id_trim)
-        conn.commit()
+        trim_tables(conn, submission_trim | build_id_trim)
     else:
         print("Dry run enabled, not dropping tables...")
     conn.close()
