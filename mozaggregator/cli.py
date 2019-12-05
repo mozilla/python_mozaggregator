@@ -99,6 +99,8 @@ def run_aggregator(
         dataset_id=dataset_id,
         avro_prefix=avro_prefix,
     )
+    aggregates[0].cache()
+    aggregates[1].cache()
     print(f"Number of build-id aggregates: {aggregates[0].count()}")
     print(f"Number of submission date aggregates: {aggregates[1].count()}")
 
