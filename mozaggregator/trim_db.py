@@ -87,10 +87,12 @@ def query_build_id(cursor, retain_suffix_set: Set[str]) -> Tuple[Set[str], Set[s
 def trim_tables(conn, trim_set: Set[str], batch_size=100):
     cursor = conn.cursor()
     trim_list = list(trim_set)
-    num_batches = len(trim_list) // batch_size
+    num_batches = (len(trim_list) // batch_size) + 1
     for i in range(num_batches):
-        print(f"dropping {i} out of {num_batches} tables in batches of {batch_size}")
         trim_subset = trim_list[i * batch_size : (i + 1) * batch_size]
+        if not trim_subset:
+            continue
+        print(f"dropping {i+1} out of {num_batches} batches in groups of {batch_size}")
         tables = ", ".join(trim_subset)
         query = f"drop table {tables};"
         cursor.execute(query)

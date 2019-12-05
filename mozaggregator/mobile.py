@@ -194,5 +194,4 @@ def aggregate_metrics(
                         .where(docType='mobile_metrics',
                             submissionDate=lambda x: begin <= x <= end)
                         .records(sc))
-    assert pings.count() > 0
     return _aggregate_metrics(pings, num_partitions)
