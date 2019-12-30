@@ -56,19 +56,15 @@ function extract_table() {
 
 function main() {
     # moz-fx-data-shared-prod OR moz-fx-data-shar-nonprod-efed
-    SOURCE_PROJECT=${1?expected source project of BigQuery tables in first argument}
-    DESTINATION_DATASET=${2?expect destination dataset of form project_id:dataset}
-    OUTPUT_PREFIX=${3?expected gs:// output path in second argument}
-    DATE=${4:-$(default_date)}
+    SOURCE_PROJECT=${1?expected source project of BigQuery tables in 1st argument}
+    DESTINATION_DATASET=${2?expected destination dataset of form project_id:dataset}
+    OUTPUT_PREFIX=${3?expected gs:// output path in 3rd argument}
+    TABLE_NAME=${4?expected table name in 4th argument}
+    CHANNELS=${5?expected channels in the 5th argument}
+    DATE=${6:-$(default_date)}
 
-    # NOTE: channels are hardcoded...
-    query_to_destination "main_v4"              "'nightly', 'beta'"
-    query_to_destination "saved_session_v4"     "'nightly', 'beta'"
-    query_to_destination "mobile_metrics_v1"    ""
-
-    extract_table "main_v4"
-    extract_table "saved_session_v4"
-    extract_table "mobile_metrics_v1"
+    query_to_destination "${TABLE_NAME}" "${CHANNELS}"
+    extract_table "${TABLE_NAME}"
 }
 
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
