@@ -8,6 +8,6 @@ pyflakes==2.1.1
 testfixtures==6.11.0
 pytest==5.3.5
 pytest-cov==2.8.1
-google-cloud-bigquery
+google-cloud-bigquery==1.24.0
 google-cloud-storage
 google-resumable-media
