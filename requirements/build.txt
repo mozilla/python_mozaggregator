@@ -9,7 +9,7 @@ boto3==1.12.0
 botocore==1.15.0
 certifi==2019.11.28
 click==7.0
-dockerflow==2018.4.0
+dockerflow==2019.10.0
 gevent==1.3.7
 greenlet==0.4.15
 gunicorn==19.9.0
