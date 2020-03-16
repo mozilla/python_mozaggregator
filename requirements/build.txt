@@ -8,7 +8,7 @@ blinker==1.4
 boto3==1.12.21
 botocore==1.15.21
 certifi==2019.11.28
-click==7.0
+click==7.1.1
 dockerflow==2018.4.0
 gevent==1.3.7
 greenlet==0.4.15
