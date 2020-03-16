@@ -19,7 +19,7 @@ joblib==0.14.1
 numpy==1.18.1
 pandas==1.0.2
 protobuf==3.11.3
-psycogreen==1.0
+psycogreen==1.0.2
 psycopg2-binary==2.7.5
 pyspark==2.4.4
 python-dateutil==2.7.5
