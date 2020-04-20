@@ -28,4 +28,4 @@ python-moztelemetry==0.10.6
 python-snappy==0.5.4
 ujson==2.0.3
 urllib3==1.25.9
-requests==2.22.0
+requests==2.23.0
