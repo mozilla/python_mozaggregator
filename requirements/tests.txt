@@ -1,6 +1,6 @@
 configparser==5.0.0
 coverage==5.1
-enum34==1.1.6
+enum34==1.1.10
 flake8==3.6.0
 mccabe==0.6.1
 pycodestyle==2.4.0
