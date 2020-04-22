@@ -17,7 +17,7 @@ from joblib import Parallel, delayed
 from moztelemetry.histogram import Histogram
 from moztelemetry.scalar import MissingScalarError, Scalar
 from psycogreen.gevent import patch_psycopg
-from psycopg2.pool import SimpleConnectionPool
+from psycopg2.pool import ThreadedConnectionPool
 from werkzeug.exceptions import MethodNotAllowed
 from jose import jwt
 from jose.jwt import JWTError
@@ -263,7 +263,7 @@ def create_pool():
     global pool
     if pool is None:
         _preparedb()
-        pool = SimpleConnectionPool(
+        pool = ThreadedConnectionPool(
             app.config["MINCONN"],
             app.config["MAXCONN"],
             dsn=db_connection_string)
