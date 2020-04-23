@@ -3,6 +3,10 @@ version: '2.1'
 services:
   db:
     image: postgres:9.4
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
 
   web:
     build:
@@ -11,8 +15,6 @@ services:
     ports:
       - "5000:5000"
     depends_on:
-      - db
-    links:
       - db
     command: serve
     volumes:
