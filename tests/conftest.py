@@ -51,7 +51,6 @@ def bq_testing_table():
     # create the relevant tables
     for table_name, df in [
         ("main_v4", df),
-        ("saved_session_v4", df),
         ("mobile_metrics_v1", mobile_df),
     ]:
         table_id = f"{dataset_id}.telemetry_telemetry__{table_name}"
