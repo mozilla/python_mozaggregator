@@ -52,14 +52,10 @@ def test_parquet_aggregation_cli(tmp_path, monkeypatch, spark, raw_pings):
             return Dataset()
 
         def where(self, *args, **kwargs):
-            self.is_fennec = kwargs.get("docType") == "saved_session"
             return self
 
         def records(self, *args, **kwargs):
-            if self.is_fennec:
-                return spark.sparkContext.emptyRDD()
-            else:
-                return spark.sparkContext.parallelize(raw_pings)
+            return spark.sparkContext.parallelize(raw_pings)
 
     monkeypatch.setattr("mozaggregator.parquet.Dataset", Dataset)
 

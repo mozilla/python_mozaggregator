@@ -168,8 +168,8 @@ def _map_ping_to_dimensions(ping):
 
 
 def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1,
-                      fennec_ping_fraction=1, num_reducers=10000,
-                      source="moztelemetry", project_id=None, dataset_id=None,
+                      num_reducers=10000, source="moztelemetry",
+                      project_id=None, dataset_id=None,
                       avro_prefix=None):
     """
     Returns the build-id and submission date aggregates for a given submission date.
@@ -178,7 +178,6 @@ def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1,
     :param channel: Either the name of a channel or a list/tuple of names
     :param submission_date: The submission date for which the data will be aggregated
     :param main_ping_fraction: An approximative fraction of submissions to consider for aggregation
-    :param fennec_ping_fraction: An approximative fraction of submissions to consider for aggregation
     """
     if not isinstance(channels, (tuple, list)):
         channels = [channels]
@@ -193,14 +192,6 @@ def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1,
             channels,
             "normalized_app_name <> 'Fennec'"
         )
-        fennec_pings = dataset.load(
-            project_id,
-            dataset_id,
-            "saved_session",
-            submission_date,
-            channels,
-            "normalized_app_name = 'Fennec'"
-        )
     elif source == "avro" and avro_prefix:
         dataset = BigQueryDataset()
         pings = dataset.load_avro(
@@ -209,13 +200,6 @@ def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1,
             submission_date,
             channels,
             "normalized_app_name <> 'Fennec'"
-        )
-        fennec_pings = dataset.load_avro(
-            avro_prefix,
-            "saved_session",
-            submission_date,
-            channels,
-            "normalized_app_name = 'Fennec'"
         )
     else:
         channels = set(channels)
@@ -231,11 +215,4 @@ def aggregate_metrics(sc, channels, submission_date, main_ping_fraction=1,
                         **where)
                     .records(sc, sample=main_ping_fraction))
 
-        fennec_pings = (Dataset.from_source(source)
-                            .where(docType='saved_session',
-                                appName='Fennec',
-                                **where)
-                        .records(sc, sample=fennec_ping_fraction))
-
-    all_pings = pings.union(fennec_pings)
-    return _aggregate_metrics(all_pings, num_reducers)
+    return _aggregate_metrics(pings, num_reducers)

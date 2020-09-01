@@ -41,7 +41,6 @@ def aggregate_metrics(
     channels,
     submission_date,
     main_ping_fraction=1,
-    fennec_ping_fraction=1,
     num_reducers=10000,
     source="moztelemetry",
     project_id=None,
@@ -68,14 +67,6 @@ def aggregate_metrics(
             channels,
             "normalized_app_name <> 'Fennec'"
         )
-        fennec_pings = dataset.load(
-            project_id,
-            dataset_id,
-            "saved_session",
-            submission_date,
-            channels,
-            "normalized_app_name = 'Fennec'"
-        )
     elif source == "avro" and avro_prefix:
         dataset = BigQueryDataset()
         pings = dataset.load_avro(
@@ -85,13 +76,6 @@ def aggregate_metrics(
             channels,
             "normalized_app_name <> 'Fennec'"
         )
-        fennec_pings = dataset.load_avro(
-            avro_prefix,
-            "saved_session",
-            submission_date,
-            channels,
-            "normalized_app_name = 'Fennec'"
-        )
     else:
         pings = Dataset.from_source('telemetry') \
                     .where(appUpdateChannel=lambda x: x in channels,
@@ -100,17 +84,7 @@ def aggregate_metrics(
                             sourceVersion='4',
                             appName=lambda x: x != 'Fennec') \
                     .records(sc, sample=main_ping_fraction)
-
-        fennec_pings = Dataset.from_source('telemetry') \
-                            .where(appUpdateChannel=lambda x: x in channels,
-                                    submissionDate=submission_date,
-                                    docType='saved_session',
-                                    sourceVersion='4',
-                                    appName='Fennec') \
-                            .records(sc, sample=fennec_ping_fraction)
-
-    all_pings = pings.union(fennec_pings)
-    return _aggregate_metrics(all_pings, num_reducers)
+    return _aggregate_metrics(pings, num_reducers)
 
 
 def _aggregate_metrics(pings, num_reducers=10000):

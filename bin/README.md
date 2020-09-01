@@ -73,6 +73,5 @@ The production settings for pre-release aggregates are as follows:
 
 ```bash
 "main_v4"              "'nightly', 'beta'"
-"saved_session_v4"     "'nightly', 'beta'"
 "mobile_metrics_v1"    ""
 ```
