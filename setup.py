@@ -32,7 +32,12 @@ setup(name='python_mozaggregator',
         'psycopg2-binary',
         'pyspark',
         'python-jose-cryptodome',
-        'python-moztelemetry',
+        # using git reference as python_moztelemetry
+        # has been deleted from pypi repository
+        # TODO: investigate python_moztelemetry usage
+        # and remove this dependency if possible.
+        'python-moztelemetry @ git+http://github.com/mozilla/python_moztelemetry.git@v0.10.4#egg=python-moztelemetry',
+        # 'git+http://github.com/mozilla/python_moztelemetry.git@v0.10.4#egg=python-moztelemetry',
         'ujson',
     ]
 )

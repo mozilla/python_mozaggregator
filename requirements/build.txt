@@ -24,7 +24,11 @@ psycopg2-binary==2.7.5
 pyspark==2.4.4
 python-dateutil==2.7.5
 python-jose-cryptodome==1.3.2
-python-moztelemetry==0.10.4
+# using git reference as python_moztelemetry
+# has been deleted from pypi repository
+# TODO: investigate python_moztelemetry usage
+# and remove this dependency if possible.
+git+http://github.com/mozilla/python_moztelemetry.git@v0.10.4#egg=python-moztelemetry
 python-snappy==0.5.3
 ujson==1.35
 urllib3==1.24.2
