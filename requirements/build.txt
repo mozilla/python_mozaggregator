@@ -28,7 +28,7 @@ python-jose-cryptodome==1.3.2
 # has been deleted from pypi repository
 # TODO: investigate python_moztelemetry usage
 # and remove this dependency if possible.
-git+http://github.com/mozilla/python_moztelemetry.git@v0.10.4#egg=python-moztelemetry
+git+https://github.com/mozilla/python_moztelemetry.git@v0.10.4#egg=python-moztelemetry
 python-snappy==0.5.3
 ujson==1.35
 urllib3==1.24.2
