@@ -16,7 +16,7 @@ gunicorn==19.9.0
 idna==2.7
 itsdangerous==1.1.0
 joblib==0.12.5
-numpy==1.16.1
+numpy==1.22.0
 pandas==0.23.4
 protobuf==3.13.0
 psycogreen==1.0
