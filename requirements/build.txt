@@ -30,6 +30,6 @@ python-jose-cryptodome==1.3.2
 # and remove this dependency if possible.
 git+https://github.com/mozilla/python_moztelemetry.git@v0.10.4#egg=python-moztelemetry
 python-snappy==0.5.3
-ujson==1.35
+ujson==5.4.0
 urllib3==1.24.2
 requests==2.22.0
