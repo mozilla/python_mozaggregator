@@ -19,17 +19,17 @@ jobs:
           printf '{"commit":"%s","version":"%s","source":"https://github.com/%s/%s","build":"%s"}\n' "$CIRCLE_SHA1" "$CIRCLE_TAG" "$CIRCLE_PROJECT_USERNAME" "$CIRCLE_PROJECT_REPONAME" "$CIRCLE_BUILD_URL" > version.json
       - run: docker build -t app:build .
 
-  # test:
-  #   machine: true
-  #   working_directory: ~/mozilla/python_mozaggregator
-  #   steps:
-  #     - checkout
-  #     - run:
-  #         name: Build
-  #         command: make build
-  #     - run: docker info
-  #     - run: docker --version
-  #     - run: make test
+  test:
+    machine: true
+    working_directory: ~/mozilla/python_mozaggregator
+    steps:
+      - checkout
+      - run:
+          name: Build
+          command: make build
+      - run: docker info
+      - run: docker --version
+      - run: make test
 
   deploy:
     docker:
@@ -68,14 +68,14 @@ workflows:
             tags:
               only: /.*/
 
-      # - test:
-      #     filters:
-      #       tags:
-      #         only: /.*/
+      - test:
+          filters:
+            tags:
+              only: /.*/
 
       - deploy:
-          # requires:
-          #   - test
+          requires:
+            - test
           filters:
             tags:
               only: /.*/
