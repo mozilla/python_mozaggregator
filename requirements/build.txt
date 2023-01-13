@@ -31,5 +31,5 @@ python-jose-cryptodome==1.3.2
 git+https://github.com/mozilla/python_moztelemetry.git@v0.10.4#egg=python-moztelemetry
 python-snappy==0.5.3
 ujson==1.35
-urllib3==1.24.2
+urllib3==1.26.5
 requests==2.22.0
