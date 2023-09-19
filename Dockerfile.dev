@@ -14,6 +14,12 @@ ENV PYTHONUNBUFFERED=1 \
 
 EXPOSE $PORT
 
+# Update stretch repositories
+# https://stackoverflow.com/a/76095392
+RUN sed -i -e 's/deb.debian.org/archive.debian.org/g' \
+           -e 's|security.debian.org|archive.debian.org/|g' \
+           -e '/stretch-updates/d' /etc/apt/sources.list
+
 # Install Java
 RUN apt-get update -y && \
     apt-get install -y --no-install-recommends openjdk-8-jdk
