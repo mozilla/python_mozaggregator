@@ -27,10 +27,11 @@ setup(name='python_mozaggregator',
         'gevent',
         'gunicorn',
         'joblib',
+        'markupsafe==2.0.1',
         'pandas',
         'psycogreen',
         'psycopg2-binary',
-        'pyspark==2.4.4',
+        'pyspark',
         'python-jose-cryptodome',
         # using git reference as python_moztelemetry
         # has been deleted from pypi repository
