@@ -2,7 +2,7 @@
 
 # A testing script for verifying the avro exports work with the existing
 # mozaggregator code. This requires `gcloud` to be configured to point at a
-# sandbox project for reading data from `payload_bytes_decoded`. There is a
+# sandbox project for reading data from `telemetry_stable`. There is a
 # 10 TB export limit per day, so be conservative with usage.
 
 set -eou pipefail
@@ -20,7 +20,7 @@ function query_to_destination() {
     local table_name=$1
     local channels=$2
 
-    local table="${SOURCE_PROJECT}.payload_bytes_decoded.telemetry_telemetry__${table_name}"
+    local table="${SOURCE_PROJECT}.telemetry_stable.${table_name}"
 
     local channel_clause=""
     if [[ -n ${channels} ]]; then
