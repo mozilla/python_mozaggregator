@@ -18,9 +18,11 @@ END
 
 function query_to_destination() {
     local table_name=$1
+    local document_type=$(echo "$table_name" | cut -d_ -f1)
+    local document_version=$(echo "$table_name" | cut -d_ -f2 | cut -c2-)
     local channels=$2
 
-    local table="${SOURCE_PROJECT}.payload_bytes_decoded.telemetry_telemetry__${table_name}"
+    local table="${SOURCE_PROJECT}.payload_bytes_decoded.telemetry"
 
     local channel_clause=""
     if [[ -n ${channels} ]]; then
@@ -31,7 +33,7 @@ function query_to_destination() {
         --destination_table "${DESTINATION_DATASET}.${table_name}" \
         --replace \
         --use_legacy_sql=false \
-        "SELECT * FROM \`${table}\` WHERE DATE(submission_timestamp) = DATE \"${DATE}\" ${channel_clause}"
+        "SELECT * FROM \`${table}\` WHERE metadata.document_type = '{document_type}' AND metadata.document_version = '${document_version}' AND DATE(submission_timestamp) = DATE \"${DATE}\" ${channel_clause}"
 
 }
 
