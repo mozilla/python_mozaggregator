@@ -89,6 +89,10 @@ class BigQueryDataset:
             f"submission_timestamp >= '{start}' AND submission_timestamp < '{end}'"
         )
         filters = [date_clause]
+        doc_version_suffix = doc_version[-1]
+        doc_clause = f"metadata.document_type = '{doc_type}' AND metadata.document_version = '{doc_version_suffix}'"
+        filters.append(doc_clause)
+
         if channels:
             # build up a clause like "(normalized_channel = 'nightly' OR normalized_channel = 'beta')"
             clauses = [f"normalized_channel = '{channel}'" for channel in channels]
@@ -102,7 +106,7 @@ class BigQueryDataset:
             # Assumes the namespace is telemetry
             .option(
                 "table",
-                f"{project_id}.{dataset_id}.telemetry_telemetry__{doc_type}_{doc_version}",
+                f"{project_id}.{dataset_id}.telemetry",
             )
             .option("filter", " AND ".join(filters))
             .load()
@@ -123,7 +127,9 @@ class BigQueryDataset:
         filters = []
         if channels:
             # build up a clause like "(normalized_channel = 'nightly' OR normalized_channel = 'beta')"
-            clauses = ' OR '.join([f"normalized_channel = '{channel}'" for channel in channels])
+            clauses = " OR ".join(
+                [f"normalized_channel = '{channel}'" for channel in channels]
+            )
             joined = f"({clauses})"
             filters.append(joined)
         if filter_clause:
