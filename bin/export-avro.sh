@@ -33,7 +33,7 @@ function query_to_destination() {
         --destination_table "${DESTINATION_DATASET}.${table_name}" \
         --replace \
         --use_legacy_sql=false \
-        "SELECT * FROM \`${table}\` WHERE metadata.document_type = '{document_type}' AND metadata.document_version = '${document_version}' AND DATE(submission_timestamp) = DATE \"${DATE}\" ${channel_clause}"
+        "SELECT * FROM \`${table}\` WHERE metadata.document_type = '${document_type}' AND metadata.document_version = '${document_version}' AND DATE(submission_timestamp) = DATE \"${DATE}\" ${channel_clause}"
 
 }
 
