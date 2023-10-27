@@ -90,6 +90,8 @@ class BigQueryDataset:
         )
         filters = [date_clause]
         doc_version_suffix = doc_version[-1]
+        if doc_type == "main":
+            doc_version_suffix = "5"
         doc_clause = f"metadata.document_type = '{doc_type}' AND metadata.document_version = '{doc_version_suffix}'"
         filters.append(doc_clause)
 

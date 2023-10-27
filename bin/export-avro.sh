@@ -20,6 +20,9 @@ function query_to_destination() {
     local table_name=$1
     local document_type=$(echo "$table_name" | cut -d_ -f1)
     local document_version=$(echo "$table_name" | cut -d_ -f2 | cut -c2-)
+    if [[ "$document_type" == "main" ]] ; then
+      document_version="5"
+    fi
     local channels=$2
 
     local table="${SOURCE_PROJECT}.payload_bytes_decoded.telemetry"
