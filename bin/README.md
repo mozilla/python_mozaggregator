@@ -43,7 +43,7 @@ bin/export-avro.sh \
     moz-fx-data-shar-nonprod-efed \
     ${PROJECT_ID}:avro_export \
     gs://${PROJECT_ID}/avro-mozaggregator \
-    "main_v4" \
+    "main_v5" \
     "'nightly', 'beta'" \
     2019-12-15
 ```
@@ -64,7 +64,7 @@ docker run \
             moz-fx-data-shar-nonprod-efed \
             ${PROJECT_ID}:avro_export \
             gs://${PROJECT_ID}/avro-mozaggregator \
-            "main_v4" \
+            "main_v5" \
             "'nightly', 'beta'" \
             2019-12-15
 ```
@@ -72,6 +72,6 @@ docker run \
 The production settings for pre-release aggregates are as follows:
 
 ```bash
-"main_v4"              "'nightly', 'beta'"
+"main_v5"              "'nightly', 'beta'"
 "mobile_metrics_v1"    ""
 ```

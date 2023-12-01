@@ -50,7 +50,7 @@ def bq_testing_table():
     results = []
     # create the relevant tables
     for table_name, df in [
-        ("main_v4", df),
+        ("main_v5", df),
         ("mobile_metrics_v1", mobile_df),
     ]:
         table_id = f"{dataset_id}.telemetry_telemetry__{table_name}"

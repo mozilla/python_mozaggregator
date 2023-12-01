@@ -79,7 +79,7 @@ class BigQueryDataset:
         channels=None,
         filter_clause=None,
         fraction=1,
-        doc_version="v4",
+        doc_version="v5",
     ):
 
         start = self._date_add_days(submission_date, 0)
@@ -118,7 +118,7 @@ class BigQueryDataset:
         submission_date,
         channels=None,
         filter_clause=None,
-        doc_version="v4",
+        doc_version="v5",
     ):
         filters = []
         if channels:
